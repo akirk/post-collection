@@ -139,6 +139,32 @@ class Post_Collection {
 	}
 
 	/**
+	 * Find post ID by URL.
+	 *
+	 * @param string $url     The URL to find.
+	 * @param int    $user_id The post author ID.
+	 * @return int|null The post ID if found, null otherwise.
+	 */
+	public function url_to_postid( $url, $user_id ) {
+		if ( $this->friends ) {
+			return $this->friends->feed->url_to_postid( $url, $user_id );
+		}
+
+		// Fallback: query by guid field.
+		global $wpdb;
+		$post_id = $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT ID FROM $wpdb->posts WHERE guid = %s AND post_author = %d AND post_type = %s LIMIT 1",
+				$url,
+				$user_id,
+				self::CPT
+			)
+		);
+
+		return $post_id ? intval( $post_id ) : null;
+	}
+
+	/**
 	 * Register the WordPress hooks
 	 */
 	private function register_hooks() {
@@ -909,7 +935,7 @@ class Post_Collection {
 		}
 		if ( 'POST' !== $_SERVER['REQUEST_METHOD'] && isset( $_REQUEST['post-only'] ) ) {
 			$friend_user = new User( intval( $_REQUEST['user'] ) );
-			$post_id = $this->friends ? $this->friends->feed->url_to_postid( $url, $friend_user->ID ) : null;
+			$post_id = $this->url_to_postid( $url, $friend_user->ID );
 			if ( ! $post_id ) {
 				$_REQUEST['post-only'] += 1;
 				if ( $_REQUEST['post-only'] <= 3 ) {
@@ -958,7 +984,7 @@ class Post_Collection {
 			return new \WP_Error( 'invalid-url', __( 'You entered an invalid URL.', 'friends' ) );
 		}
 
-		$post_id = $this->friends ? $this->friends->feed->url_to_postid( $url, $friend_user->ID ) : null;
+		$post_id = $this->url_to_postid( $url, $friend_user->ID );
 		if ( is_null( $post_id ) ) {
 			$item = $this->download( $url, $content );
 
