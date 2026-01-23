@@ -51,17 +51,14 @@ jobs:
                    ./ release/post-collection/
 
       - name: Create ZIP archive
-        env:
-          TAG_NAME: ${{ github.ref_name }}
         run: |
           cd release
-          zip -r "post-collection-${TAG_NAME}.zip" post-collection/
+          zip -r "post-collection.zip" post-collection/
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
         env:
-          TAG_NAME: ${{ github.ref_name }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          files: release/post-collection-${{ env.TAG_NAME }}.zip
+          files: release/post-collection.zip
           generate_release_notes: true
