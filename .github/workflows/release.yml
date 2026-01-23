@@ -27,9 +27,13 @@ jobs:
           mkdir -p release
           rsync -av --exclude='.git' \
                    --exclude='.github' \
+                   --exclude='.claude' \
                    --exclude='node_modules' \
                    --exclude='tests' \
+                   --exclude='bin' \
+                   --exclude='patches' \
                    --exclude='.gitignore' \
+                   --exclude='.gitattributes' \
                    --exclude='.phpunit.result.cache' \
                    --exclude='phpunit.xml' \
                    --exclude='phpcs.xml' \
@@ -40,14 +44,18 @@ jobs:
                    --exclude='sftp-config.json' \
                    --exclude='.DS_Store' \
                    --exclude='release' \
-                   ./ release/friends-post-collection/
+                   --exclude='vendor/**/test' \
+                   --exclude='vendor/**/tests' \
+                   --exclude='vendor/**/Test' \
+                   --exclude='vendor/**/Tests' \
+                   ./ release/post-collection/
 
       - name: Create ZIP archive
         env:
           TAG_NAME: ${{ github.ref_name }}
         run: |
           cd release
-          zip -r "friends-post-collection-${TAG_NAME}.zip" friends-post-collection/
+          zip -r "post-collection-${TAG_NAME}.zip" post-collection/
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
@@ -55,5 +63,5 @@ jobs:
           TAG_NAME: ${{ github.ref_name }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          files: release/friends-post-collection-${{ env.TAG_NAME }}.zip
+          files: release/post-collection-${{ env.TAG_NAME }}.zip
           generate_release_notes: true
