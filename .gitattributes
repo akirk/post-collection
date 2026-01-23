@@ -30,7 +30,9 @@ vendor/phpspec export-ignore
 vendor/mockery export-ignore
 vendor/phpstan export-ignore
 vendor/wp-coding-standards export-ignore
+vendor/**/test export-ignore
 vendor/**/tests export-ignore
+vendor/**/Test export-ignore
 vendor/**/Tests export-ignore
 vendor.backup export-ignore
 
