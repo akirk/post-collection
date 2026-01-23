@@ -1,26 +1,5 @@
 <?php
 
-namespace Friends {
-	class User {
-		public $ID;
-		public function __construct( $id = null ) {
-			$this->ID = $id;
-		}
-	}
-
-	class User_Feed {}
-	class Subscription {}
-	class User_Query {
-		public function __construct( $args = array() ) {}
-		public function get_results() {
-			return array();
-		}
-		public function get_total() {
-			return 0;
-		}
-	}
-}
-
 namespace {
 	require_once __DIR__ . '/../vendor/autoload.php';
 
@@ -84,5 +63,9 @@ namespace {
 
 	function add_filter( $tag, $function_to_add, $priority = 10, $accepted_args = 1 ) {
 		return true;
+	}
+
+	function did_action( $hook_name ) {
+		return false;
 	}
 }

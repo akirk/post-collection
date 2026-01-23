@@ -17,7 +17,7 @@
 		</thead>
 		<?php
 		foreach ( $args['post_collections'] as $user ) :
-			$user = new Friends\User( $user );
+			$user = new \PostCollection\User( $user );
 			$feed_url = trailingslashit( $user->get_local_friends_page_url() . 'feed' );
 			?>
 		<tr>
@@ -44,7 +44,7 @@
 		endif;
 	?>
 		</td>
-		<td><a href="javascript:<?php echo rawurlencode( trim( str_replace( "window.document.getElementById( 'friends-post-collection-script' ).getAttribute( 'data-post-url' )", "'" . esc_url( home_url( '/?user=' . $user->ID ) ) . "'", $args['bookmarklet_js'] ), ';' ) ); ?>">
+		<td><a href="javascript:<?php echo rawurlencode( trim( str_replace( "window.document.getElementById( 'post-collection-script' ).getAttribute( 'data-post-url' )", "'" . esc_url( home_url() ) . "/?user=" . $user->ID . "'", $args['bookmarklet_js'] ), ';' ) ); ?>">
 			<?php
 			echo esc_html(
 				sprintf(

@@ -2,33 +2,33 @@ jQuery( function ( $ ) {
 	var $document = $( document );
 
 	wp = wp || {};
-	$document.on( 'click', 'a.friends-post-collection-mark-publish', function () {
+	$document.on( 'click', 'a.post-collection-mark-publish', function () {
 		var $this = $( this );
-		wp.ajax.send( 'friends-post-collection-mark-publish', {
+		wp.ajax.send( 'post-collection-mark-publish', {
 			data: {
 				id: $this.data( 'id' ),
 			},
 			success: function ( response ) {
-				$this.text( response.new_text ).removeClass( 'friends-post-collection-mark-publish' ).addClass( 'friends-post-collection-mark-private' );
+				$this.text( response.new_text ).removeClass( 'post-collection-mark-publish' ).addClass( 'post-collection-mark-private' );
 			}
 		} );
 		return false;
 	} );
-	$document.on( 'click', 'a.friends-post-collection-mark-private', function () {
+	$document.on( 'click', 'a.post-collection-mark-private', function () {
 		var $this = $( this );
-		wp.ajax.send( 'friends-post-collection-mark-private', {
+		wp.ajax.send( 'post-collection-mark-private', {
 			data: {
 				id: $this.data( 'id' ),
 			},
 			success: function ( response ) {
-				$this.text( response.new_text ).removeClass( 'friends-post-collection-mark-private' ).addClass( 'friends-post-collection-mark-publish' );
+				$this.text( response.new_text ).removeClass( 'post-collection-mark-private' ).addClass( 'post-collection-mark-publish' );
 			}
 		} );
 		return false;
 	} );
-	$document.on( 'click', 'a.friends-post-collection-change-author', function () {
+	$document.on( 'click', 'a.post-collection-change-author', function () {
 		var $this = $( this );
-		wp.ajax.send( 'friends-post-collection-change-author', {
+		wp.ajax.send( 'post-collection-change-author', {
 			data: {
 				id: $this.data( 'id' ),
 				author: $this.data( 'author' ),
@@ -40,13 +40,13 @@ jQuery( function ( $ ) {
 		} );
 		return false;
 	} );
-	$document.on( 'click', 'a.friends-post-collection-fetch-full-content', function () {
+	$document.on( 'click', 'a.post-collection-fetch-full-content', function () {
 		var $this = $( this );
 		var search_indicator = $this.find( 'i' );
 		if ( search_indicator.hasClass( 'loading' ) ) {
 			return;
 		}
-		wp.ajax.send( 'friends-post-collection-fetch-full-content', {
+		wp.ajax.send( 'post-collection-fetch-full-content', {
 			data: {
 				id: $this.data( 'id' ),
 				author: $this.data( 'author' )
@@ -66,13 +66,13 @@ jQuery( function ( $ ) {
 		return false;
 	} );
 
-	$document.on( 'click', 'a.friends-post-collection-download-images', function () {
+	$document.on( 'click', 'a.post-collection-download-images', function () {
 		var $this = $( this );
 		var search_indicator = $this.find( 'i' );
 		if ( search_indicator.hasClass( 'loading' ) ) {
 			return;
 		}
-		wp.ajax.send( 'friends-post-collection-download-images', {
+		wp.ajax.send( 'post-collection-download-images', {
 			data: {
 				id: $this.data( 'id' ),
 				author: $this.data( 'author' )
@@ -92,13 +92,13 @@ jQuery( function ( $ ) {
 		return false;
 	} );
 
-	$document.on( 'click', 'a.friends-post-collection-re-extract', function () {
+	$document.on( 'click', 'a.post-collection-re-extract', function () {
 		var $this = $( this );
 		var search_indicator = $this.find( 'i' );
 		if ( search_indicator.hasClass( 'loading' ) ) {
 			return;
 		}
-		wp.ajax.send( 'friends-post-collection-re-extract', {
+		wp.ajax.send( 'post-collection-re-extract', {
 			data: {
 				id: $this.data( 'id' )
 			},

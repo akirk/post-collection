@@ -9,7 +9,7 @@ class Test_Artificial_Line_Breaks extends TestCase {
 	private $post_collection;
 
 	public function setUp(): void {
-		$this->post_collection = new Friends\Post_Collection();
+		$this->post_collection = new PostCollection\Post_Collection();
 	}
 
 	public function test_removes_artificial_line_breaks_from_goatcounter_content() {

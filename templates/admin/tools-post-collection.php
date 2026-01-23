@@ -13,14 +13,14 @@
 
 	<p><?php esc_html_e( "Drag one of these bookmarklets to your bookmarks bar and click it when you're on an article you want to save from the web.", 'friends' ); ?></p>
 	<p>
-		<?php foreach ( $args['post_collections'] as $url => $display_name ) : ?>
-		<a href="javascript:<?php echo rawurlencode( trim( str_replace( "window.document.getElementById( 'friends-post-collection-script' ).getAttribute( 'data-post-url' )", "'" . esc_url( $url ) . "'", $args['bookmarklet_js'] ), ';' ) ); ?>" style="display: inline-block; padding: .5em; border: 1px solid #999; border-radius: 4px; background-color: #ddd;text-decoration: none; margin-right: 3em">
+		<?php foreach ( $args['post_collections'] as $collection ) : ?>
+		<a href="javascript:<?php echo rawurlencode( trim( str_replace( "window.document.getElementById( 'post-collection-script' ).getAttribute( 'data-post-url' )", "'" . esc_url( home_url() ) . "/?user=" . $collection['user_id'] . "'", $args['bookmarklet_js'] ), ';' ) ); ?>" style="display: inline-block; padding: .5em; border: 1px solid #999; border-radius: 4px; background-color: #ddd;text-decoration: none; margin-right: 3em">
 			<?php
 			echo esc_html(
 				sprintf(
 				// translators: %s is the name of a Post Collection user.
 					__( 'Save to %s', 'friends' ),
-					$display_name
+					$collection['display_name']
 				)
 			);
 			?>

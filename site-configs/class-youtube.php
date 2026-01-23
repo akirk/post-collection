@@ -1,5 +1,7 @@
 <?php
-namespace Friends\PostCollection\SiteConfig;
+namespace PostCollection\SiteConfig;
+
+use PostCollection\ExtractedPage;
 
 class Youtube extends SiteConfig {
 
@@ -19,7 +21,7 @@ class Youtube extends SiteConfig {
 	}
 
 	public function download( $url ) {
-		$item = new \Friends\ExtractedPage( $url );
+		$item = new ExtractedPage( $url );
 		$item->post_format = 'video';
 
 		$api_url = 'https://www.youtube.com/oembed?url=' . urlencode( $url ) . '&format=json';

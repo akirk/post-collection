@@ -1,5 +1,5 @@
 <?php
-namespace Friends\PostCollection\SiteConfig;
+namespace PostCollection\SiteConfig;
 
 abstract class SiteConfig {
 	abstract public function is_url_supported( $url );

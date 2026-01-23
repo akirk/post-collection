@@ -10,11 +10,6 @@
     "scripts": {
         "test": "phpunit"
     },
-    "autoload-dev": {
-        "classmap": [
-            "tests/"
-        ]
-    },
     "config": {
         "allow-plugins": {
             "cweagans/composer-patches": true

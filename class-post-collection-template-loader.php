@@ -10,14 +10,16 @@
  * @version   1.3.1
  */
 
-namespace Friends;
+namespace PostCollection;
+
+use Friends\Template_Loader;
 
 /**
  * Template loader.
  *
  * Originally based on functions in Easy Digital Downloads (thanks Pippin!).
 
- * @package Friends
+ * @package Post_Collection
  * @author  Alex Kirk
  */
 class Post_Collection_Template_Loader extends Template_Loader {
@@ -32,5 +34,5 @@ class Post_Collection_Template_Loader extends Template_Loader {
 	 *
 	 * @var string
 	 */
-	protected $plugin_directory = FRIENDS_POST_COLLECTION_PLUGIN_DIR;
+	protected $plugin_directory = POST_COLLECTION_PLUGIN_DIR;
 }

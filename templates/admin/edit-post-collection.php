@@ -81,7 +81,7 @@
 			<tr>
 				<th><label><?php esc_html_e( 'Bookmarklet', 'friends' ); ?></label></th>
 				<td>
-					<a href="javascript:<?php echo rawurlencode( trim( str_replace( "window.document.getElementById( 'friends-post-collection-script' ).getAttribute( 'data-post-url' )", "'" . esc_url( $args['post_collection_url'] ) . "'", $args['bookmarklet_js'] ), ';' ) ); ?>" style="display: inline-block; padding: .5em; border: 1px solid #999; border-radius: 4px; background-color: #ddd;text-decoration: none; margin-right: 3em">
+					<a href="javascript:<?php echo rawurlencode( trim( str_replace( "window.document.getElementById( 'post-collection-script' ).getAttribute( 'data-post-url' )", "'" . esc_url( home_url() ) . "/?user=" . $args['user']->ID . "'", $args['bookmarklet_js'] ), ';' ) ); ?>" style="display: inline-block; padding: .5em; border: 1px solid #999; border-radius: 4px; background-color: #ddd;text-decoration: none; margin-right: 3em">
 						<?php
 						echo esc_html(
 							sprintf(
@@ -139,7 +139,7 @@
 	</p>
 
 	<p class="description">
-		<a href="<?php echo esc_url( self_admin_url( 'admin.php?page=friends-post-collection' ) ); ?>"><?php esc_html_e( 'Back to the Post Collection overview', 'friends' ); ?></a></p>
+		<a href="<?php echo esc_url( self_admin_url( 'admin.php?page=post-collection' ) ); ?>"><?php esc_html_e( 'Back to the Post Collection overview', 'friends' ); ?></a></p>
 
 </form>
 

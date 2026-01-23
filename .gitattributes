@@ -1,0 +1,38 @@
+# Git/CI
+.git* export-ignore
+.github export-ignore
+
+# IDE/Editor
+.vscode export-ignore
+.claude export-ignore
+
+# Testing
+.phpunit.* export-ignore
+phpunit.xml export-ignore
+phpunit.xml.dist export-ignore
+phpcs.xml export-ignore
+phpcs.xml.dist export-ignore
+tests export-ignore
+bin export-ignore
+
+# Build/Dev
+composer.lock export-ignore
+package-lock.json export-ignore
+node_modules export-ignore
+patches export-ignore
+patches.lock.json export-ignore
+
+# Dev vendors
+vendor/squizlabs export-ignore
+vendor/phpunit export-ignore
+vendor/sebastian export-ignore
+vendor/phpspec export-ignore
+vendor/mockery export-ignore
+vendor/phpstan export-ignore
+vendor/wp-coding-standards export-ignore
+vendor/**/tests export-ignore
+vendor/**/Tests export-ignore
+vendor.backup export-ignore
+
+# Misc
+.DS_Store export-ignore

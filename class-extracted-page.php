@@ -1,6 +1,6 @@
 <?php
 
-namespace Friends;
+namespace PostCollection;
 
 class ExtractedPage {
 	public $title;
