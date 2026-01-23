@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.0.0
+- Post Collection now works as a standalone plugin without requiring the Friends plugin ([#7])
+- Renamed plugin from Friends Post Collection to Post Collection ([#12])
+
 ## 1.2.6
 - Use a Read More link as fetch url if exists ([#10])
 - Use HTML API in post collection ([#6])
@@ -35,8 +39,10 @@
 ## 0.8
 - Update for Friends 2.0
 
-[#10]: https://github.com/akirk/friends-post-collection/pull/10
-[#6]: https://github.com/akirk/friends-post-collection/pull/6
-[#5]: https://github.com/akirk/friends-post-collection/pull/5
-[#4]: https://github.com/akirk/friends-post-collection/pull/4
-[#3]: https://github.com/akirk/friends-post-collection/pull/3
+[#12]: https://github.com/akirk/post-collection/pull/12
+[#10]: https://github.com/akirk/post-collection/pull/10
+[#7]: https://github.com/akirk/post-collection/issues/7
+[#6]: https://github.com/akirk/post-collection/pull/6
+[#5]: https://github.com/akirk/post-collection/pull/5
+[#4]: https://github.com/akirk/post-collection/pull/4
+[#3]: https://github.com/akirk/post-collection/pull/3

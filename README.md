@@ -1,19 +1,23 @@
-# Friends Post Collection
+# Post Collection
 
 Collect posts from around the web and create feeds.
 
 **Contributors:** akirk
 **Requires at least:** 5.0
-**Tested up to:** 6.3
+**Tested up to:** 6.9
 **Requires PHP:** 5.2.4
 **License:** [GPLv2 or later](http://www.gnu.org/licenses/gpl-2.0.html)
-**Stable tag:** 1.2.6
+**Stable tag:** 2.0.0
 
 ## Description
 
 This plugin provides the facilities to store feed items in a separate post type. These can be used to create your own compliation of posts and re-publish them for friends.
 
 ## Changelog
+
+### 2.0.0
+- Post Collection now works as a standalone plugin without requiring the Friends plugin ([#7])
+- Renamed plugin from Friends Post Collection to Post Collection ([#12])
 
 ### 1.2.6
 - Use a Read More link as fetch url if exists ([#10])
@@ -50,9 +54,11 @@ This plugin provides the facilities to store feed items in a separate post type.
 ### 0.8
 - Update for Friends 2.0
 
-[#10]: https://github.com/akirk/friends-post-collection/pull/10
-[#6]: https://github.com/akirk/friends-post-collection/pull/6
-[#5]: https://github.com/akirk/friends-post-collection/pull/5
-[#4]: https://github.com/akirk/friends-post-collection/pull/4
-[#3]: https://github.com/akirk/friends-post-collection/pull/3
+[#12]: https://github.com/akirk/post-collection/pull/12
+[#10]: https://github.com/akirk/post-collection/pull/10
+[#7]: https://github.com/akirk/post-collection/issues/7
+[#6]: https://github.com/akirk/post-collection/pull/6
+[#5]: https://github.com/akirk/post-collection/pull/5
+[#4]: https://github.com/akirk/post-collection/pull/4
+[#3]: https://github.com/akirk/post-collection/pull/3
 
