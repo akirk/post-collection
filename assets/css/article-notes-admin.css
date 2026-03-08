@@ -1,0 +1,207 @@
+/**
+ * Article Notes Admin Page Styles
+ *
+ * @package Send_To_E_Reader
+ */
+
+.ereader-notes-admin .ereader-notes-filters {
+	margin: 20px 0;
+}
+
+.ereader-notes-admin .subsubsub {
+	float: none;
+	margin-bottom: 10px;
+}
+
+.ereader-no-notes {
+	color: #787c82;
+	font-style: italic;
+	padding: 20px;
+	text-align: center;
+	background: #fff;
+	border: 1px solid #c3c4c7;
+}
+
+/* Table Styles */
+.ereader-notes-table {
+	margin-top: 10px;
+}
+
+.ereader-notes-table .column-title {
+	width: 25%;
+}
+
+.ereader-notes-table .column-status {
+	width: 20%;
+}
+
+.ereader-notes-table .column-rating {
+	width: 10%;
+}
+
+.ereader-notes-table .column-notes {
+	width: 30%;
+}
+
+.ereader-notes-table .column-date {
+	width: 15%;
+}
+
+.ereader-notes-table .column-title a {
+	font-weight: 600;
+	color: #2271b1;
+	text-decoration: none;
+}
+
+.ereader-notes-table .column-title a:hover {
+	color: #135e96;
+	text-decoration: underline;
+}
+
+.ereader-article-author {
+	color: #787c82;
+	font-size: 12px;
+	margin-top: 4px;
+}
+
+/* Status Buttons */
+.ereader-notes-table .ereader-status-buttons {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 4px;
+	margin-bottom: 8px;
+}
+
+.ereader-notes-table .ereader-status-btn {
+	padding: 4px 8px;
+	font-size: 11px;
+	background: #f6f7f7;
+	border: 1px solid #c3c4c7;
+	border-radius: 3px;
+	cursor: pointer;
+	color: #50575e;
+	transition: all 0.2s ease;
+}
+
+.ereader-notes-table .ereader-status-btn:hover {
+	background: #f0f0f1;
+	border-color: #8c8f94;
+}
+
+.ereader-notes-table .ereader-status-btn.active {
+	background: #2271b1;
+	border-color: #2271b1;
+	color: #fff;
+}
+
+.ereader-notes-table .ereader-status-btn.active:hover {
+	background: #135e96;
+	border-color: #135e96;
+}
+
+/* Archive Button */
+.ereader-notes-table .ereader-archive-btn {
+	padding: 4px 8px;
+	font-size: 11px;
+	background: #f6f7f7;
+	border: 1px solid #c3c4c7;
+	border-radius: 3px;
+	cursor: pointer;
+	color: #787c82;
+	transition: all 0.2s ease;
+}
+
+.ereader-notes-table .ereader-archive-btn:hover {
+	background: #f0f0f1;
+	border-color: #8c8f94;
+	color: #50575e;
+}
+
+/* Star Rating */
+.ereader-notes-table .ereader-rating {
+	display: flex;
+	gap: 2px;
+}
+
+.ereader-notes-table .ereader-star {
+	background: none;
+	border: none;
+	cursor: pointer;
+	font-size: 18px;
+	color: #dcdcde;
+	padding: 0;
+	line-height: 1;
+	transition: color 0.15s ease;
+}
+
+.ereader-notes-table .ereader-star:hover,
+.ereader-notes-table .ereader-star.active {
+	color: #ffb900;
+}
+
+.ereader-notes-table .ereader-rating:hover .ereader-star {
+	color: #ffb900;
+}
+
+.ereader-notes-table .ereader-rating:hover .ereader-star:hover ~ .ereader-star {
+	color: #dcdcde;
+}
+
+/* Notes */
+.ereader-notes-table .ereader-notes-wrapper {
+	margin-bottom: 4px;
+}
+
+.ereader-notes-table .ereader-notes {
+	width: 100%;
+	min-height: 60px;
+	padding: 8px;
+	border: 1px solid #c3c4c7;
+	border-radius: 4px;
+	font-size: 13px;
+	resize: vertical;
+	box-sizing: border-box;
+}
+
+.ereader-notes-table .ereader-notes:focus {
+	border-color: #2271b1;
+	box-shadow: 0 0 0 1px #2271b1;
+	outline: none;
+}
+
+/* Save Status */
+.ereader-notes-table .ereader-save-status {
+	font-size: 11px;
+	min-height: 16px;
+}
+
+.ereader-notes-table .ereader-save-status.saving {
+	color: #787c82;
+}
+
+.ereader-notes-table .ereader-save-status.saved {
+	color: #00a32a;
+}
+
+.ereader-notes-table .ereader-save-status.error {
+	color: #d63638;
+}
+
+/* Pagination */
+.ereader-notes-admin .tablenav-pages {
+	float: right;
+}
+
+.ereader-notes-admin .displaying-num {
+	margin-right: 10px;
+}
+
+/* Row animations */
+.ereader-notes-table .ereader-article-item {
+	transition: opacity 0.3s ease, background-color 0.3s ease;
+}
+
+.ereader-notes-table .ereader-article-item.ereader-moving {
+	opacity: 0.5;
+	background-color: #fffbcc;
+}
