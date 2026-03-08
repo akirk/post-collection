@@ -1,0 +1,377 @@
+/**
+ * Article Notes Widget Styles
+ *
+ * @package Send_To_E_Reader
+ */
+
+.ereader-article-notes-widget {
+	margin: -11px -12px;
+}
+
+/* Tabs */
+.ereader-widget-tabs {
+	display: flex;
+	border-bottom: 1px solid #c3c4c7;
+	background: #f6f7f7;
+	margin-bottom: 0;
+}
+
+.ereader-tab {
+	flex: 1;
+	padding: 10px 12px;
+	background: none;
+	border: none;
+	border-bottom: 2px solid transparent;
+	cursor: pointer;
+	font-size: 13px;
+	color: #50575e;
+	transition: all 0.2s ease;
+}
+
+.ereader-tab:hover {
+	color: #2271b1;
+	background: #fff;
+}
+
+.ereader-tab.active {
+	color: #1d2327;
+	border-bottom-color: #2271b1;
+	background: #fff;
+}
+
+.ereader-tab .count {
+	color: #787c82;
+	font-size: 12px;
+}
+
+/* Tab Content */
+.ereader-tab-content {
+	display: none;
+	padding: 12px;
+}
+
+.ereader-tab-content.active {
+	display: block;
+}
+
+/* No articles message */
+.ereader-no-articles {
+	color: #787c82;
+	font-style: italic;
+	margin: 0;
+	padding: 20px;
+	text-align: center;
+}
+
+/* Tab hint */
+.ereader-tab-hint {
+	color: #787c82;
+	font-size: 12px;
+	margin: 0 0 12px;
+	padding: 8px;
+	background: #f6f7f7;
+	border-radius: 3px;
+}
+
+/* Article item animations */
+.ereader-article-item {
+	transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.ereader-article-item.ereader-moving {
+	opacity: 0.5;
+	transform: translateX(10px);
+}
+
+.ereader-article-item.ereader-removed {
+	opacity: 0;
+	transform: translateX(100%);
+	max-height: 0;
+	padding: 0;
+	margin: 0;
+	overflow: hidden;
+}
+
+/* Article List */
+.ereader-article-list {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+}
+
+.ereader-article-item {
+	padding: 12px 0;
+	border-bottom: 1px solid #f0f0f1;
+}
+
+.ereader-article-item:last-child {
+	border-bottom: none;
+	padding-bottom: 0;
+}
+
+.ereader-article-item:first-child {
+	padding-top: 0;
+}
+
+/* Article Header */
+.ereader-article-header {
+	margin-bottom: 8px;
+}
+
+.ereader-article-title {
+	display: block;
+	font-weight: 600;
+	color: #2271b1;
+	text-decoration: none;
+	line-height: 1.4;
+	margin-bottom: 2px;
+}
+
+.ereader-article-title:hover {
+	color: #135e96;
+	text-decoration: underline;
+}
+
+.ereader-article-meta {
+	display: block;
+	font-size: 12px;
+	color: #787c82;
+}
+
+/* Select article checkbox */
+.ereader-select-article {
+	display: flex;
+	align-items: flex-start;
+	gap: 6px;
+}
+
+.ereader-select-article input[type="checkbox"] {
+	margin-top: 3px;
+}
+
+/* Controls Row */
+.ereader-article-controls {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 12px;
+	align-items: center;
+	margin-bottom: 8px;
+}
+
+/* Status Buttons */
+.ereader-status-buttons {
+	display: flex;
+	gap: 4px;
+}
+
+.ereader-status-btn {
+	padding: 4px 8px;
+	font-size: 11px;
+	background: #f6f7f7;
+	border: 1px solid #c3c4c7;
+	border-radius: 3px;
+	cursor: pointer;
+	color: #50575e;
+	transition: all 0.2s ease;
+}
+
+.ereader-status-btn:hover {
+	background: #f0f0f1;
+	border-color: #8c8f94;
+}
+
+.ereader-status-btn.active {
+	background: #2271b1;
+	border-color: #2271b1;
+	color: #fff;
+}
+
+.ereader-status-btn.active:hover {
+	background: #135e96;
+	border-color: #135e96;
+}
+
+/* Star Rating */
+.ereader-rating {
+	display: flex;
+	gap: 2px;
+}
+
+.ereader-star {
+	background: none;
+	border: none;
+	cursor: pointer;
+	font-size: 18px;
+	color: #dcdcde;
+	padding: 0;
+	line-height: 1;
+	transition: color 0.15s ease;
+}
+
+.ereader-star:hover,
+.ereader-star.active {
+	color: #ffb900;
+}
+
+.ereader-rating:hover .ereader-star {
+	color: #dcdcde;
+}
+
+.ereader-rating:hover .ereader-star:hover,
+.ereader-rating:hover .ereader-star:hover ~ .ereader-star {
+	color: #dcdcde;
+}
+
+.ereader-rating .ereader-star:hover,
+.ereader-rating .ereader-star:hover ~ .ereader-star {
+	color: #dcdcde;
+}
+
+.ereader-rating:hover .ereader-star:hover,
+.ereader-rating:hover .ereader-star.hovered {
+	color: #ffb900;
+}
+
+/* Make stars highlight up to hovered star */
+.ereader-rating:hover .ereader-star {
+	color: #ffb900;
+}
+
+.ereader-rating:hover .ereader-star:hover ~ .ereader-star {
+	color: #dcdcde;
+}
+
+/* Notes */
+.ereader-notes-wrapper {
+	margin-top: 8px;
+}
+
+.ereader-notes {
+	width: 100%;
+	min-height: 50px;
+	padding: 8px;
+	border: 1px solid #c3c4c7;
+	border-radius: 4px;
+	font-size: 13px;
+	resize: vertical;
+	box-sizing: border-box;
+}
+
+.ereader-notes:focus {
+	border-color: #2271b1;
+	box-shadow: 0 0 0 1px #2271b1;
+	outline: none;
+}
+
+.ereader-notes-preview {
+	font-size: 12px;
+	color: #787c82;
+	font-style: italic;
+	cursor: pointer;
+	padding: 4px;
+	margin-top: 4px;
+	background: #f9f9f9;
+	border-radius: 3px;
+}
+
+.ereader-notes-preview:hover {
+	background: #f0f0f1;
+}
+
+/* Save Status */
+.ereader-save-status {
+	font-size: 11px;
+	min-height: 16px;
+	margin-top: 4px;
+}
+
+.ereader-save-status.saving {
+	color: #787c82;
+}
+
+.ereader-save-status.saved {
+	color: #00a32a;
+}
+
+.ereader-save-status.error {
+	color: #d63638;
+}
+
+/* Create Post Section */
+.ereader-create-post-section {
+	margin-top: 16px;
+	padding-top: 16px;
+	border-top: 1px solid #f0f0f1;
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.ereader-post-title-input {
+	width: 100%;
+	padding: 8px;
+	border: 1px solid #c3c4c7;
+	border-radius: 4px;
+	font-size: 13px;
+	box-sizing: border-box;
+}
+
+.ereader-post-title-input:focus {
+	border-color: #2271b1;
+	box-shadow: 0 0 0 1px #2271b1;
+	outline: none;
+}
+
+.ereader-create-post-btn {
+	align-self: flex-start;
+}
+
+.ereader-create-post-btn:disabled {
+	opacity: 0.6;
+	cursor: not-allowed;
+}
+
+/* Reviewed list specific */
+.ereader-reviewed-list .ereader-article-item {
+	background: #fafafa;
+	padding: 12px;
+	margin-bottom: 8px;
+	border: 1px solid #f0f0f1;
+	border-radius: 4px;
+}
+
+.ereader-reviewed-list .ereader-article-item:last-child {
+	margin-bottom: 0;
+}
+
+/* Load More Section */
+.ereader-load-more-section {
+	text-align: center;
+	padding: 12px 0 0;
+	border-top: 1px solid #f0f0f1;
+	margin-top: 12px;
+}
+
+.ereader-load-more-btn:disabled {
+	opacity: 0.6;
+	cursor: not-allowed;
+}
+
+/* Archive Button */
+.ereader-archive-btn {
+	padding: 4px 8px;
+	font-size: 11px;
+	background: #f6f7f7;
+	border: 1px solid #c3c4c7;
+	border-radius: 3px;
+	cursor: pointer;
+	color: #787c82;
+	transition: all 0.2s ease;
+	margin-left: auto;
+}
+
+.ereader-archive-btn:hover {
+	background: #f0f0f1;
+	border-color: #8c8f94;
+	color: #50575e;
+}

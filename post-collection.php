@@ -1,9 +1,10 @@
 <?php
 /**
  * Plugin name: Post Collection
- * Plugin author: Alex Kirk
  * Plugin URI: https://github.com/akirk/post-collection
  * Version: 2.0.0
+ * Author: Alex Kirk
+ * Author URI: https://alex.kirk.at/
  *
  * Description: Collect posts from around the web.
  *
@@ -23,6 +24,7 @@ namespace PostCollection;
 defined( 'ABSPATH' ) || exit;
 define( 'POST_COLLECTION_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'POST_COLLECTION_PLUGIN_FILE', plugin_dir_path( __FILE__ ) . '/' . basename( __FILE__ ) );
+define( 'POST_COLLECTION_VERSION', '2.0.0' );
 
 require_once __DIR__ . '/vendor/autoload.php';
 require_once __DIR__ . '/class-user.php';
@@ -31,6 +33,7 @@ require_once __DIR__ . '/class-post-collection.php';
 require_once __DIR__ . '/class-extracted-page.php';
 require_once __DIR__ . '/site-configs/class-site-config.php';
 require_once __DIR__ . '/site-configs/class-youtube.php';
+require_once __DIR__ . '/includes/class-article-notes.php';
 
 add_filter( 'post_collection_active', '__return_true' );
 

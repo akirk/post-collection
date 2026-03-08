@@ -53,12 +53,20 @@ class Post_Collection {
 	private $site_configs = array();
 
 	/**
+	 * Contains the article notes instance
+	 *
+	 * @var Article_Notes
+	 */
+	private $article_notes;
+
+	/**
 	 * Constructor
 	 *
 	 * @param Friends|null $friends A reference to the Friends object (optional).
 	 */
 	public function __construct( ?Friends $friends = null ) {
 		$this->friends = $friends;
+		$this->article_notes = new Article_Notes( $this );
 		$this->register_hooks();
 	}
 
@@ -164,6 +172,62 @@ class Post_Collection {
 		);
 
 		return $post_id ? intval( $post_id ) : null;
+	}
+
+	/**
+	 * Get the article notes instance.
+	 *
+	 * @return Article_Notes The article notes instance.
+	 */
+	public function get_article_notes() {
+		return $this->article_notes;
+	}
+
+	/**
+	 * Get the post author name.
+	 *
+	 * @param \WP_Post $post The post object.
+	 * @return string The author display name.
+	 */
+	public function get_post_author_name( \WP_Post $post ) {
+		if ( $this->friends && class_exists( '\Friends\User' ) ) {
+			$author = \Friends\User::get_post_author( $post );
+			return $author->display_name;
+		}
+		return get_the_author_meta( 'display_name', $post->post_author );
+	}
+
+	/**
+	 * Get the template loader.
+	 *
+	 * @return object Template loader instance.
+	 */
+	public function get_template_loader() {
+		if ( $this->friends ) {
+			return \Friends\Friends::template_loader();
+		}
+		return $this->get_fallback_template_loader();
+	}
+
+	/**
+	 * Get a simple fallback template loader for standalone mode.
+	 *
+	 * @return object Template loader instance.
+	 */
+	private function get_fallback_template_loader() {
+		static $loader = null;
+		if ( null === $loader ) {
+			$loader = new class {
+				public function get_template_part( $slug, $name = null, $args = array() ) {
+					$template_file = POST_COLLECTION_PLUGIN_DIR . 'templates/' . $slug . '.php';
+					if ( file_exists( $template_file ) ) {
+						extract( $args );
+						include $template_file;
+					}
+				}
+			};
+		}
+		return $loader;
 	}
 
 	/**
