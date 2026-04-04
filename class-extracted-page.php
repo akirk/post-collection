@@ -2,6 +2,8 @@
 
 namespace PostCollection;
 
+defined( 'ABSPATH' ) || exit;
+
 class ExtractedPage {
 	public $title;
 	public $content;

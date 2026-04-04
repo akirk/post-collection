@@ -9,6 +9,8 @@
 
 namespace PostCollection;
 
+defined( 'ABSPATH' ) || exit;
+
 use Friends\Friends;
 use WP_HTML_Tag_Processor;
 
@@ -329,7 +331,7 @@ class Post_Collection {
 	}
 
 	public function entry_dropdown_menu() {
-		$divider = '<li class="divider" data-content="' . esc_attr__( 'Post Collection', 'friends' ) . '"></li>';
+		$divider = '<li class="divider" data-content="' . esc_attr__( 'Post Collection', 'post-collection' ) . '"></li>';
 		$list_tags = array(
 			'li' => array(
 				'class'        => true,
@@ -341,15 +343,15 @@ class Post_Collection {
 			echo wp_kses( $divider, $list_tags );
 			$divider = '';
 			?>
-			<li class="menu-item"><a href="<?php echo esc_url( get_edit_user_link( $user_id ) ); ?>"><?php esc_html_e( 'Edit Post Collection', 'friends' ); ?></a></li>
+			<li class="menu-item"><a href="<?php echo esc_url( get_edit_user_link( $user_id ) ); ?>"><?php esc_html_e( 'Edit Post Collection', 'post-collection' ); ?></a></li>
 			<?php
 			if ( 'private' === get_post_status() ) {
 				?>
-				<li class="menu-item"><a href="#" data-id="<?php echo esc_attr( get_the_ID() ); ?>" class="post-collection-mark-publish"><?php esc_html_e( 'Show post in the feed', 'friends' ); ?></a></li>
+				<li class="menu-item"><a href="#" data-id="<?php echo esc_attr( get_the_ID() ); ?>" class="post-collection-mark-publish"><?php esc_html_e( 'Show post in the feed', 'post-collection' ); ?></a></li>
 				<?php
 			} elseif ( 'publish' === get_post_status() ) {
 				?>
-					<li class="menu-item"><a href="#" data-id="<?php echo esc_attr( get_the_ID() ); ?>" class="post-collection-mark-private"><?php esc_html_e( 'Hide post from the feed', 'friends' ); ?></a></li>
+					<li class="menu-item"><a href="#" data-id="<?php echo esc_attr( get_the_ID() ); ?>" class="post-collection-mark-private"><?php esc_html_e( 'Hide post from the feed', 'post-collection' ); ?></a></li>
 				<?php
 			}
 		}
@@ -370,7 +372,7 @@ class Post_Collection {
 					echo esc_html(
 						sprintf(
 							// translators: %s is the name of a post collection.
-							_x( 'Copy to %s', 'post-collection', 'friends' ),
+							_x( 'Copy to %s', 'post-collection', 'post-collection' ),
 							$user->display_name
 						)
 					);
@@ -378,7 +380,7 @@ class Post_Collection {
 					echo esc_html(
 						sprintf(
 							// translators: %s is the name of a post collection.
-							_x( 'Move to %s', 'post-collection', 'friends' ),
+							_x( 'Move to %s', 'post-collection', 'post-collection' ),
 							$user->display_name
 						)
 					);
@@ -404,13 +406,13 @@ class Post_Collection {
 		?>
 		<li class="menu-item"><a href="#" data-id="<?php echo esc_attr( get_the_ID() ); ?>" data-author="<?php echo esc_attr( get_the_author_meta( 'ID' ) ); ?>" class="post-collection-fetch-full-content has-icon-right">
 			<?php
-				esc_html_e( 'Fetch full content', 'friends' );
+				esc_html_e( 'Fetch full content', 'post-collection' );
 			?>
 			<i class="<?php echo esc_attr( $i_classes ); ?>"></i></a>
 		</li>
 		<li class="menu-item"><a href="#" data-id="<?php echo esc_attr( get_the_ID() ); ?>" data-author="<?php echo esc_attr( get_the_author_meta( 'ID' ) ); ?>" class="post-collection-download-images has-icon-right">
 			<?php
-				esc_html_e( 'Download external images', 'friends' );
+				esc_html_e( 'Download external images', 'post-collection' );
 			?>
 			<i class="<?php echo esc_attr( $i_classes ); ?>"></i></a>
 		</li>
@@ -420,7 +422,7 @@ class Post_Collection {
 			?>
 		<li class="menu-item"><a href="#" data-id="<?php echo esc_attr( get_the_ID() ); ?>" class="post-collection-re-extract has-icon-right">
 			<?php
-				esc_html_e( 'Re-extract from original HTML', 'friends' );
+				esc_html_e( 'Re-extract from original HTML', 'post-collection' );
 			?>
 			<i class="form-icon"></i></a>
 		</li>
@@ -478,7 +480,7 @@ class Post_Collection {
 		if (
 			! $user->has_cap( 'post_collection' )
 		) {
-			wp_die( esc_html__( 'This is not a user related to this plugin.', 'friends' ) );
+			wp_die( esc_html__( 'This is not a user related to this plugin.', 'post-collection' ) );
 		}
 
 		return $user;
@@ -556,11 +558,11 @@ class Post_Collection {
 
 		if ( isset( $_GET['updated'] ) ) {
 			?>
-			<div id="message" class="updated notice is-dismissible"><p><?php esc_html_e( 'User was updated.', 'friends' ); ?></p></div>
+			<div id="message" class="updated notice is-dismissible"><p><?php esc_html_e( 'User was updated.', 'post-collection' ); ?></p></div>
 			<?php
 		} elseif ( isset( $_GET['error'] ) ) {
 			?>
-			<div id="message" class="updated error is-dismissible"><p><?php esc_html_e( 'An error occurred.', 'friends' ); ?></p></div>
+			<div id="message" class="updated error is-dismissible"><p><?php esc_html_e( 'An error occurred.', 'post-collection' ); ?></p></div>
 			<?php
 		}
 
@@ -631,14 +633,14 @@ class Post_Collection {
 
 		if ( ! empty( $_POST ) ) {
 			if ( ! wp_verify_nonce( $_POST['_wpnonce'], 'create-post-collection' ) ) {
-				$response = new \WP_Error( 'invalid-nonce', __( 'For security reasons, please verify the URL and click next if you want to proceed.', 'friends' ) );
+				$response = new \WP_Error( 'invalid-nonce', __( 'For security reasons, please verify the URL and click next if you want to proceed.', 'post-collection' ) );
 			} else {
 				$response = $this->process_create_post_collection();
 			}
 		}
 
 		?>
-		<h1><?php esc_html_e( 'Create Post Collection', 'friends' ); ?></h1>
+		<h1><?php esc_html_e( 'Create Post Collection', 'post-collection' ); ?></h1>
 		<?php
 
 		if ( is_wp_error( $response ) ) {
@@ -763,7 +765,7 @@ class Post_Collection {
 				array(
 					'id'     => 'new-post-collection',
 					'parent' => 'new-content',
-					'title'  => esc_html__( 'Post Collection', 'friends' ),
+					'title'  => esc_html__( 'Post Collection', 'post-collection' ),
 					'href'   => self_admin_url( 'admin.php?page=create-post-collection' ),
 				)
 			);
@@ -810,9 +812,9 @@ class Post_Collection {
 	public function about_page( $display_about_friends = false ) {
 		?>
 		<div class="wrap">
-			<h1><?php esc_html_e( 'Friends Post Collection', 'friends' ); ?></h1>
+			<h1><?php esc_html_e( 'Friends Post Collection', 'post-collection' ); ?></h1>
 
-			<p><?php esc_html_e( 'The Friends Post Collection plugin allows you to save external posts to your WordPress, either for just collecting them for yourself as a searchable archive, or to syndicate those posts into new feeds.', 'friends' ); ?></p>
+			<p><?php esc_html_e( 'The Friends Post Collection plugin allows you to save external posts to your WordPress, either for just collecting them for yourself as a searchable archive, or to syndicate those posts into new feeds.', 'post-collection' ); ?></p>
 
 			<?php
 			$this->template_loader()->get_template_part(
@@ -830,7 +832,7 @@ class Post_Collection {
 				<?php
 				echo wp_kses(
 						// translators: %s: URL to the Friends Plugin page on WordPress.org.
-					sprintf( __( 'The Friends plugin is all about connecting with friends and news. Learn more on its <a href=%s>plugin page on WordPress.org</a>.', 'friends' ), '"https://wordpress.org/plugins/friends" target="_blank" rel="noopener noreferrer"' ),
+					sprintf( __( 'The Friends plugin is all about connecting with friends and news. Learn more on its <a href=%s>plugin page on WordPress.org</a>.', 'post-collection' ), '"https://wordpress.org/plugins/friends" target="_blank" rel="noopener noreferrer"' ),
 					array(
 						'a' => array(
 							'href'   => array(),
@@ -846,7 +848,7 @@ class Post_Collection {
 				<?php
 				echo wp_kses(
 					// translators: %s: URL to the Embed library.
-					sprintf( __( 'This plugin is uses information of the open source project <a href=%s>FTR Site Config</a>.', 'friends' ), '"https://github.com/fivefilters/ftr-site-config" target="_blank" rel="noopener noreferrer"' ),
+					sprintf( __( 'This plugin is uses information of the open source project <a href=%s>FTR Site Config</a>.', 'post-collection' ), '"https://github.com/fivefilters/ftr-site-config" target="_blank" rel="noopener noreferrer"' ),
 					array(
 						'a' => array(
 							'href'   => array(),
@@ -884,8 +886,8 @@ class Post_Collection {
 
 	private function get_bookmarklet_js() {
 		$js = file_get_contents( __DIR__ . '/post-collection-injector.js' );
-		$js = str_replace( 'text.sending_article_to_your_blog', '"' . addslashes( __( 'Sending the article to your WordPress...', 'friends' ) ) . '"', $js );
-		$js = str_replace( 'text.do_you_want_to_send_the_article_to_your_blog', '"' . addslashes( __( 'Do you want to send the article on this page to your WordPress?', 'friends' ) ) . '"', $js );
+		$js = str_replace( 'text.sending_article_to_your_blog', '"' . addslashes( __( 'Sending the article to your WordPress...', 'post-collection' ) ) . '"', $js );
+		$js = str_replace( 'text.do_you_want_to_send_the_article_to_your_blog', '"' . addslashes( __( 'Do you want to send the article on this page to your WordPress?', 'post-collection' ) ) . '"', $js );
 		$js = str_replace( PHP_EOL, '', preg_replace( '/\s+/', ' ', $js ) );
 		return $js;
 	}
@@ -981,7 +983,7 @@ class Post_Collection {
 	 */
 	public function save_url( $url, User $friend_user, $content = null ) {
 		if ( ! is_string( $url ) || ! $this->check_url( $url ) ) {
-			return new \WP_Error( 'invalid-url', __( 'You entered an invalid URL.', 'friends' ) );
+			return new \WP_Error( 'invalid-url', __( 'You entered an invalid URL.', 'post-collection' ) );
 		}
 
 		$post_id = $this->url_to_postid( $url, $friend_user->ID );
@@ -990,10 +992,10 @@ class Post_Collection {
 
 			$title = '';
 			if ( ! is_wp_error( $item ) && $item->title ) {
-				$title = strip_tags( trim( $item->title ) );
+				$title = wp_strip_all_tags( trim( $item->title ) );
 			}
 			if ( ! $title ) {
-				$path = parse_url( $url, PHP_URL_PATH );
+				$path = wp_parse_url( $url, PHP_URL_PATH );
 				$path = trim( $path, '/' );
 				$path = explode( '/', $path );
 				$slug = end( $path );
@@ -1063,7 +1065,7 @@ class Post_Collection {
 			if ( 200 !== wp_remote_retrieve_response_code( $response ) ) {
 				return new \WP_Error(
 					'could-not-download',
-					__( 'Could not download the URL.', 'friends' ),
+					__( 'Could not download the URL.', 'post-collection' ),
 					array(
 						'url'         => $url,
 						'http_status' => wp_remote_retrieve_response_code( $response ),
@@ -1112,7 +1114,7 @@ class Post_Collection {
 				'could-not-extract-content',
 				sprintf(
 				// translators: $s is an error message.
-					__( 'Error processing HTML: %s', 'friends' ),
+					__( 'Error processing HTML: %s', 'post-collection' ),
 					$e->getMessage()
 				),
 				$logger
@@ -1191,7 +1193,7 @@ class Post_Collection {
 
 			$text_between_brs[] = array(
 				'text'   => $between,
-				'length' => strlen( strip_tags( $between ) ),
+				'length' => strlen( wp_strip_all_tags( $between ) ),
 			);
 		}
 
@@ -1486,7 +1488,7 @@ class Post_Collection {
 	 */
 	public function friend_user_role_name( $name, \WP_User $user ) {
 		if ( ! $name && $user->has_cap( 'post_collection' ) ) {
-			$name = _x( 'Post Collection', 'User role', 'friends' );
+			$name = _x( 'Post Collection', 'User role', 'post-collection' );
 		}
 
 		return $name;
@@ -1608,7 +1610,7 @@ class Post_Collection {
 				<summary class="accordion-header">
 					<?php
 					echo wp_kses_post( $args['before_title'] );
-					echo esc_html( _ex( 'Post Collections', 'widget-header', 'friends' ) );
+					echo esc_html( _ex( 'Post Collections', 'widget-header', 'post-collection' ) );
 					echo wp_kses_post( $args['after_title'] );
 					?>
 				</summary>
@@ -1659,7 +1661,7 @@ class Post_Collection {
 
 	public function feed_table_header() {
 		?>
-		<th><?php esc_html_e( 'Fetch Full Content', 'friends' ); ?></th>
+		<th><?php esc_html_e( 'Fetch Full Content', 'post-collection' ); ?></th>
 		<?php
 	}
 
@@ -1668,7 +1670,7 @@ class Post_Collection {
 			return;
 		}
 		?>
-		<td style="padding-left: 1em"><input type="checkbox" name="feeds[<?php echo esc_attr( $term_id ); ?>][fetch-full-content]" value="1" aria-label="<?php esc_attr_e( 'Fetch Full Content', 'friends' ); ?>" <?php checked( $feed->get_metadata( 'fetch-full-content' ) ); ?> /></td>
+		<td style="padding-left: 1em"><input type="checkbox" name="feeds[<?php echo esc_attr( $term_id ); ?>][fetch-full-content]" value="1" aria-label="<?php esc_attr_e( 'Fetch Full Content', 'post-collection' ); ?>" <?php checked( $feed->get_metadata( 'fetch-full-content' ) ); ?> /></td>
 		<?php
 	}
 
@@ -1678,8 +1680,8 @@ class Post_Collection {
 		}
 		?>
 		<tr>
-			<th><?php esc_html_e( 'Fetch Full Content', 'friends' ); ?></th>
-			<td><input type="checkbox" name="feeds[<?php echo esc_attr( $term_id ); ?>][fetch-full-content]" value="1" aria-label="<?php esc_attr_e( 'Fetch Full Content', 'friends' ); ?>" <?php checked( $feed->get_metadata( 'fetch-full-content' ) ); ?> /></td>
+			<th><?php esc_html_e( 'Fetch Full Content', 'post-collection' ); ?></th>
+			<td><input type="checkbox" name="feeds[<?php echo esc_attr( $term_id ); ?>][fetch-full-content]" value="1" aria-label="<?php esc_attr_e( 'Fetch Full Content', 'post-collection' ); ?>" <?php checked( $feed->get_metadata( 'fetch-full-content' ) ); ?> /></td>
 		</tr>
 		<?php
 	}
@@ -1732,7 +1734,7 @@ class Post_Collection {
 					return $item;
 				}
 
-				$item->title   = strip_tags( trim( $fetched_item->title ) );
+				$item->title   = wp_strip_all_tags( trim( $fetched_item->title ) );
 				$item->post_content = force_balance_tags( trim( wp_kses_post( $fetched_item->content ) ) );
 				$item->_full_content_fetched = true;
 				if ( $post_id ) {
@@ -1768,7 +1770,7 @@ class Post_Collection {
 
 		wp_send_json_success(
 			array(
-				'new_text' => __( 'Make post public', 'friends' ),
+				'new_text' => __( 'Make post public', 'post-collection' ),
 			)
 		);
 	}
@@ -1784,7 +1786,7 @@ class Post_Collection {
 
 		wp_send_json_success(
 			array(
-				'new_text' => __( 'Make post private', 'friends' ),
+				'new_text' => __( 'Make post private', 'post-collection' ),
 			)
 		);
 	}
@@ -1815,7 +1817,7 @@ class Post_Collection {
 			$new_author->insert_post( (array) $post );
 			$new_text = sprintf(
 				// translators: %s is the name of a post collection.
-				__( 'Copied to %s!', 'post-collection', 'friends' ),
+				_x( 'Copied to %s!', 'post-collection', 'post-collection' ),
 				$new_author->display_name
 			);
 		} else {
@@ -1826,7 +1828,7 @@ class Post_Collection {
 			if ( $new_author->ID !== $originalauthor->ID ) {
 				$new_text = sprintf(
 					// translators: %s is the name of a post collection.
-					_x( 'Moved to %s!', 'post-collection', 'friends' ),
+					_x( 'Moved to %s!', 'post-collection', 'post-collection' ),
 					$new_author->display_name
 				);
 			}
@@ -1879,11 +1881,11 @@ class Post_Collection {
 		}
 
 		if ( ! $item->content && ! $item->title ) {
-			wp_send_json_error( new \WP_Error( 'invalid-content', __( 'No content was extracted.', 'friends' ) ) );
+			wp_send_json_error( new \WP_Error( 'invalid-content', __( 'No content was extracted.', 'post-collection' ) ) );
 			exit;
 		}
 
-		$title   = strip_tags( trim( $item->title ) );
+		$title   = wp_strip_all_tags( trim( $item->title ) );
 		$content = force_balance_tags( trim( wp_kses_post( $item->content ) ) );
 
 		if ( $href ) {
@@ -1955,7 +1957,7 @@ class Post_Collection {
 			);
 
 			// delete the temp file
-			unlink( $tmp_file );
+			wp_delete_file( $tmp_file );
 
 			if ( is_wp_error( $attachment_id ) ) {
 				continue;
@@ -2019,7 +2021,7 @@ class Post_Collection {
 		);
 
 		if ( empty( $revisions ) ) {
-			wp_send_json_error( new \WP_Error( 'no-revisions', __( 'No original HTML revision found.', 'friends' ) ) );
+			wp_send_json_error( new \WP_Error( 'no-revisions', __( 'No original HTML revision found.', 'post-collection' ) ) );
 			exit;
 		}
 
@@ -2027,7 +2029,7 @@ class Post_Collection {
 		$raw_html = $first_revision->post_content;
 
 		if ( empty( $raw_html ) ) {
-			wp_send_json_error( new \WP_Error( 'empty-revision', __( 'The original HTML revision is empty.', 'friends' ) ) );
+			wp_send_json_error( new \WP_Error( 'empty-revision', __( 'The original HTML revision is empty.', 'post-collection' ) ) );
 			exit;
 		}
 
@@ -2043,11 +2045,11 @@ class Post_Collection {
 		}
 
 		if ( ! $item->content && ! $item->title ) {
-			wp_send_json_error( new \WP_Error( 'invalid-content', __( 'No content was extracted.', 'friends' ) ) );
+			wp_send_json_error( new \WP_Error( 'invalid-content', __( 'No content was extracted.', 'post-collection' ) ) );
 			exit;
 		}
 
-		$title   = strip_tags( trim( $item->title ) );
+		$title   = wp_strip_all_tags( trim( $item->title ) );
 		$content = force_balance_tags( trim( wp_kses_post( $item->content ) ) );
 
 		$post_data = array(
@@ -2145,7 +2147,7 @@ class Post_Collection {
 	 */
 	private static function setup_roles() {
 		$default_roles = array(
-			'post_collection' => _x( 'Post Collection', 'User role', 'friends' ),
+			'post_collection' => _x( 'Post Collection', 'User role', 'post-collection' ),
 		);
 
 		$roles = new \WP_Roles();
@@ -2181,8 +2183,8 @@ class Post_Collection {
 		}
 		if ( ! $default_user ) {
 			$userdata  = array(
-				'user_login'   => sanitize_user( sanitize_title_with_dashes( remove_accents( __( 'Collected Posts', 'friends' ) ) ) ),
-				'display_name' => __( 'Collected Posts', 'friends' ),
+				'user_login'   => sanitize_user( sanitize_title_with_dashes( remove_accents( __( 'Collected Posts', 'post-collection' ) ) ) ),
+				'display_name' => __( 'Collected Posts', 'post-collection' ),
 				'user_pass'    => wp_generate_password( 256 ),
 				'role'         => 'post_collection',
 			);

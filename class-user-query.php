@@ -9,6 +9,8 @@
 
 namespace PostCollection;
 
+defined( 'ABSPATH' ) || exit;
+
 /**
  * User_Query class for the Post Collection plugin.
  *

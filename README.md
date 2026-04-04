@@ -1,17 +1,18 @@
 # Post Collection
 
-Collect posts from around the web and create feeds.
-
 **Contributors:** akirk
 **Requires at least:** 5.0
 **Tested up to:** 6.9
-**Requires PHP:** 5.2.4
-**License:** [GPLv2 or later](http://www.gnu.org/licenses/gpl-2.0.html)
+**Requires PHP:** 7.1
+**License:** GPLv2 or later
+**License URI:** http://www.gnu.org/licenses/gpl-2.0.html
 **Stable tag:** 2.0.0
+
+Collect posts from around the web.
 
 ## Description
 
-This plugin provides the facilities to store feed items in a separate post type. These can be used to create your own compliation of posts and re-publish them for friends.
+This plugin provides the facilities to store feed items in a separate post type. These can be used to create your own compilation of posts and re-publish them for friends.
 
 ## Changelog
 
