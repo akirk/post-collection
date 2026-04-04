@@ -671,12 +671,12 @@ class Post_Collection {
 	}
 
 	public function enqueue_scripts() {
-		if ( ! class_exists( 'Friends\Friends' ) ) {
+		if ( ! is_user_logged_in() ) {
 			return;
 		}
 
-		if ( is_user_logged_in() && $this->is_on_friends_frontend() ) {
-			wp_enqueue_script( 'send-to-e-reader', plugins_url( 'post-collection.js', __FILE__ ), array( 'friends' ), 1.0 );
+		if ( $this->is_on_friends_frontend() ) {
+			wp_enqueue_script( 'post-collection', plugins_url( 'post-collection.js', __FILE__ ), array( 'friends' ), 1.0 );
 		}
 	}
 
