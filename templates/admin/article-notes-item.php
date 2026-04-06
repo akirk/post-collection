@@ -13,9 +13,11 @@ defined( 'ABSPATH' ) || exit;
 <div class="post-collection-article-header">
 	<label class="post-collection-select-article">
 		<input type="checkbox" name="selected_articles[]" value="<?php echo esc_attr( $article['id'] ); ?>">
-		<a href="<?php echo esc_url( $article['permalink'] ); ?>" class="post-collection-article-title" target="_blank">
-			<?php echo esc_html( $article['title'] ); ?>
-		</a>
+		<span class="post-collection-title-wrapper">
+			<a href="<?php echo esc_url( $article['permalink'] ); ?>" class="post-collection-article-title" target="_blank"><?php echo esc_html( $article['title'] ); ?></a>
+			<button type="button" class="post-collection-edit-title-btn" title="<?php esc_attr_e( 'Edit title', 'post-collection' ); ?>">&#9998;</button>
+			<input type="text" class="post-collection-title-input" value="<?php echo esc_attr( $article['title'] ); ?>">
+		</span>
 	</label>
 	<span class="post-collection-article-meta">
 		<?php echo esc_html( $article['author'] ); ?>
