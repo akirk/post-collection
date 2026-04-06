@@ -1,22 +1,22 @@
 /**
  * Article Notes Widget Styles
  *
- * @package Send_To_E_Reader
+ * @package Post_Collection
  */
 
-.ereader-article-notes-widget {
+.post-collection-article-notes-widget {
 	margin: -11px -12px;
 }
 
 /* Tabs */
-.ereader-widget-tabs {
+.post-collection-widget-tabs {
 	display: flex;
 	border-bottom: 1px solid #c3c4c7;
 	background: #f6f7f7;
 	margin-bottom: 0;
 }
 
-.ereader-tab {
+.post-collection-tab {
 	flex: 1;
 	padding: 10px 12px;
 	background: none;
@@ -28,34 +28,34 @@
 	transition: all 0.2s ease;
 }
 
-.ereader-tab:hover {
+.post-collection-tab:hover {
 	color: #2271b1;
 	background: #fff;
 }
 
-.ereader-tab.active {
+.post-collection-tab.active {
 	color: #1d2327;
 	border-bottom-color: #2271b1;
 	background: #fff;
 }
 
-.ereader-tab .count {
+.post-collection-tab .count {
 	color: #787c82;
 	font-size: 12px;
 }
 
 /* Tab Content */
-.ereader-tab-content {
+.post-collection-tab-content {
 	display: none;
 	padding: 12px;
 }
 
-.ereader-tab-content.active {
+.post-collection-tab-content.active {
 	display: block;
 }
 
 /* No articles message */
-.ereader-no-articles {
+.post-collection-no-articles {
 	color: #787c82;
 	font-style: italic;
 	margin: 0;
@@ -64,7 +64,7 @@
 }
 
 /* Tab hint */
-.ereader-tab-hint {
+.post-collection-tab-hint {
 	color: #787c82;
 	font-size: 12px;
 	margin: 0 0 12px;
@@ -74,16 +74,16 @@
 }
 
 /* Article item animations */
-.ereader-article-item {
+.post-collection-article-item {
 	transition: opacity 0.3s ease, transform 0.3s ease;
 }
 
-.ereader-article-item.ereader-moving {
+.post-collection-article-item.post-collection-moving {
 	opacity: 0.5;
 	transform: translateX(10px);
 }
 
-.ereader-article-item.ereader-removed {
+.post-collection-article-item.post-collection-removed {
 	opacity: 0;
 	transform: translateX(100%);
 	max-height: 0;
@@ -93,32 +93,32 @@
 }
 
 /* Article List */
-.ereader-article-list {
+.post-collection-article-list {
 	list-style: none;
 	margin: 0;
 	padding: 0;
 }
 
-.ereader-article-item {
+.post-collection-article-item {
 	padding: 12px 0;
 	border-bottom: 1px solid #f0f0f1;
 }
 
-.ereader-article-item:last-child {
+.post-collection-article-item:last-child {
 	border-bottom: none;
 	padding-bottom: 0;
 }
 
-.ereader-article-item:first-child {
+.post-collection-article-item:first-child {
 	padding-top: 0;
 }
 
 /* Article Header */
-.ereader-article-header {
+.post-collection-article-header {
 	margin-bottom: 8px;
 }
 
-.ereader-article-title {
+.post-collection-article-title {
 	display: block;
 	font-weight: 600;
 	color: #2271b1;
@@ -127,30 +127,30 @@
 	margin-bottom: 2px;
 }
 
-.ereader-article-title:hover {
+.post-collection-article-title:hover {
 	color: #135e96;
 	text-decoration: underline;
 }
 
-.ereader-article-meta {
+.post-collection-article-meta {
 	display: block;
 	font-size: 12px;
 	color: #787c82;
 }
 
 /* Select article checkbox */
-.ereader-select-article {
+.post-collection-select-article {
 	display: flex;
 	align-items: flex-start;
 	gap: 6px;
 }
 
-.ereader-select-article input[type="checkbox"] {
+.post-collection-select-article input[type="checkbox"] {
 	margin-top: 3px;
 }
 
 /* Controls Row */
-.ereader-article-controls {
+.post-collection-article-controls {
 	display: flex;
 	flex-wrap: wrap;
 	gap: 12px;
@@ -159,12 +159,12 @@
 }
 
 /* Status Buttons */
-.ereader-status-buttons {
+.post-collection-status-buttons {
 	display: flex;
 	gap: 4px;
 }
 
-.ereader-status-btn {
+.post-collection-status-btn {
 	padding: 4px 8px;
 	font-size: 11px;
 	background: #f6f7f7;
@@ -175,29 +175,29 @@
 	transition: all 0.2s ease;
 }
 
-.ereader-status-btn:hover {
+.post-collection-status-btn:hover {
 	background: #f0f0f1;
 	border-color: #8c8f94;
 }
 
-.ereader-status-btn.active {
+.post-collection-status-btn.active {
 	background: #2271b1;
 	border-color: #2271b1;
 	color: #fff;
 }
 
-.ereader-status-btn.active:hover {
+.post-collection-status-btn.active:hover {
 	background: #135e96;
 	border-color: #135e96;
 }
 
 /* Star Rating */
-.ereader-rating {
+.post-collection-rating {
 	display: flex;
 	gap: 2px;
 }
 
-.ereader-star {
+.post-collection-star {
 	background: none;
 	border: none;
 	cursor: pointer;
@@ -208,45 +208,45 @@
 	transition: color 0.15s ease;
 }
 
-.ereader-star:hover,
-.ereader-star.active {
+.post-collection-star:hover,
+.post-collection-star.active {
 	color: #ffb900;
 }
 
-.ereader-rating:hover .ereader-star {
+.post-collection-rating:hover .post-collection-star {
 	color: #dcdcde;
 }
 
-.ereader-rating:hover .ereader-star:hover,
-.ereader-rating:hover .ereader-star:hover ~ .ereader-star {
+.post-collection-rating:hover .post-collection-star:hover,
+.post-collection-rating:hover .post-collection-star:hover ~ .post-collection-star {
 	color: #dcdcde;
 }
 
-.ereader-rating .ereader-star:hover,
-.ereader-rating .ereader-star:hover ~ .ereader-star {
+.post-collection-rating .post-collection-star:hover,
+.post-collection-rating .post-collection-star:hover ~ .post-collection-star {
 	color: #dcdcde;
 }
 
-.ereader-rating:hover .ereader-star:hover,
-.ereader-rating:hover .ereader-star.hovered {
+.post-collection-rating:hover .post-collection-star:hover,
+.post-collection-rating:hover .post-collection-star.hovered {
 	color: #ffb900;
 }
 
 /* Make stars highlight up to hovered star */
-.ereader-rating:hover .ereader-star {
+.post-collection-rating:hover .post-collection-star {
 	color: #ffb900;
 }
 
-.ereader-rating:hover .ereader-star:hover ~ .ereader-star {
+.post-collection-rating:hover .post-collection-star:hover ~ .post-collection-star {
 	color: #dcdcde;
 }
 
 /* Notes */
-.ereader-notes-wrapper {
+.post-collection-notes-wrapper {
 	margin-top: 8px;
 }
 
-.ereader-notes {
+.post-collection-notes {
 	width: 100%;
 	min-height: 50px;
 	padding: 8px;
@@ -257,13 +257,13 @@
 	box-sizing: border-box;
 }
 
-.ereader-notes:focus {
+.post-collection-notes:focus {
 	border-color: #2271b1;
 	box-shadow: 0 0 0 1px #2271b1;
 	outline: none;
 }
 
-.ereader-notes-preview {
+.post-collection-notes-preview {
 	font-size: 12px;
 	color: #787c82;
 	font-style: italic;
@@ -274,31 +274,31 @@
 	border-radius: 3px;
 }
 
-.ereader-notes-preview:hover {
+.post-collection-notes-preview:hover {
 	background: #f0f0f1;
 }
 
 /* Save Status */
-.ereader-save-status {
+.post-collection-save-status {
 	font-size: 11px;
 	min-height: 16px;
 	margin-top: 4px;
 }
 
-.ereader-save-status.saving {
+.post-collection-save-status.saving {
 	color: #787c82;
 }
 
-.ereader-save-status.saved {
+.post-collection-save-status.saved {
 	color: #00a32a;
 }
 
-.ereader-save-status.error {
+.post-collection-save-status.error {
 	color: #d63638;
 }
 
 /* Create Post Section */
-.ereader-create-post-section {
+.post-collection-create-post-section {
 	margin-top: 16px;
 	padding-top: 16px;
 	border-top: 1px solid #f0f0f1;
@@ -307,7 +307,7 @@
 	gap: 8px;
 }
 
-.ereader-post-title-input {
+.post-collection-post-title-input {
 	width: 100%;
 	padding: 8px;
 	border: 1px solid #c3c4c7;
@@ -316,23 +316,23 @@
 	box-sizing: border-box;
 }
 
-.ereader-post-title-input:focus {
+.post-collection-post-title-input:focus {
 	border-color: #2271b1;
 	box-shadow: 0 0 0 1px #2271b1;
 	outline: none;
 }
 
-.ereader-create-post-btn {
+.post-collection-create-post-btn {
 	align-self: flex-start;
 }
 
-.ereader-create-post-btn:disabled {
+.post-collection-create-post-btn:disabled {
 	opacity: 0.6;
 	cursor: not-allowed;
 }
 
 /* Reviewed list specific */
-.ereader-reviewed-list .ereader-article-item {
+.post-collection-reviewed-list .post-collection-article-item {
 	background: #fafafa;
 	padding: 12px;
 	margin-bottom: 8px;
@@ -340,25 +340,25 @@
 	border-radius: 4px;
 }
 
-.ereader-reviewed-list .ereader-article-item:last-child {
+.post-collection-reviewed-list .post-collection-article-item:last-child {
 	margin-bottom: 0;
 }
 
 /* Load More Section */
-.ereader-load-more-section {
+.post-collection-load-more-section {
 	text-align: center;
 	padding: 12px 0 0;
 	border-top: 1px solid #f0f0f1;
 	margin-top: 12px;
 }
 
-.ereader-load-more-btn:disabled {
+.post-collection-load-more-btn:disabled {
 	opacity: 0.6;
 	cursor: not-allowed;
 }
 
 /* Archive Button */
-.ereader-archive-btn {
+.post-collection-archive-btn {
 	padding: 4px 8px;
 	font-size: 11px;
 	background: #f6f7f7;
@@ -370,7 +370,7 @@
 	margin-left: auto;
 }
 
-.ereader-archive-btn:hover {
+.post-collection-archive-btn:hover {
 	background: #f0f0f1;
 	border-color: #8c8f94;
 	color: #50575e;

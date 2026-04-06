@@ -1,19 +1,19 @@
 /**
  * Article Notes Admin Page Styles
  *
- * @package Send_To_E_Reader
+ * @package Post_Collection
  */
 
-.ereader-notes-admin .ereader-notes-filters {
+.post-collection-notes-admin .post-collection-notes-filters {
 	margin: 20px 0;
 }
 
-.ereader-notes-admin .subsubsub {
+.post-collection-notes-admin .subsubsub {
 	float: none;
 	margin-bottom: 10px;
 }
 
-.ereader-no-notes {
+.post-collection-no-notes {
 	color: #787c82;
 	font-style: italic;
 	padding: 20px;
@@ -23,56 +23,56 @@
 }
 
 /* Table Styles */
-.ereader-notes-table {
+.post-collection-notes-table {
 	margin-top: 10px;
 }
 
-.ereader-notes-table .column-title {
+.post-collection-notes-table .column-title {
 	width: 25%;
 }
 
-.ereader-notes-table .column-status {
+.post-collection-notes-table .column-status {
 	width: 20%;
 }
 
-.ereader-notes-table .column-rating {
+.post-collection-notes-table .column-rating {
 	width: 10%;
 }
 
-.ereader-notes-table .column-notes {
+.post-collection-notes-table .column-notes {
 	width: 30%;
 }
 
-.ereader-notes-table .column-date {
+.post-collection-notes-table .column-date {
 	width: 15%;
 }
 
-.ereader-notes-table .column-title a {
+.post-collection-notes-table .column-title a {
 	font-weight: 600;
 	color: #2271b1;
 	text-decoration: none;
 }
 
-.ereader-notes-table .column-title a:hover {
+.post-collection-notes-table .column-title a:hover {
 	color: #135e96;
 	text-decoration: underline;
 }
 
-.ereader-article-author {
+.post-collection-article-author {
 	color: #787c82;
 	font-size: 12px;
 	margin-top: 4px;
 }
 
 /* Status Buttons */
-.ereader-notes-table .ereader-status-buttons {
+.post-collection-notes-table .post-collection-status-buttons {
 	display: flex;
 	flex-wrap: wrap;
 	gap: 4px;
 	margin-bottom: 8px;
 }
 
-.ereader-notes-table .ereader-status-btn {
+.post-collection-notes-table .post-collection-status-btn {
 	padding: 4px 8px;
 	font-size: 11px;
 	background: #f6f7f7;
@@ -83,24 +83,24 @@
 	transition: all 0.2s ease;
 }
 
-.ereader-notes-table .ereader-status-btn:hover {
+.post-collection-notes-table .post-collection-status-btn:hover {
 	background: #f0f0f1;
 	border-color: #8c8f94;
 }
 
-.ereader-notes-table .ereader-status-btn.active {
+.post-collection-notes-table .post-collection-status-btn.active {
 	background: #2271b1;
 	border-color: #2271b1;
 	color: #fff;
 }
 
-.ereader-notes-table .ereader-status-btn.active:hover {
+.post-collection-notes-table .post-collection-status-btn.active:hover {
 	background: #135e96;
 	border-color: #135e96;
 }
 
 /* Archive Button */
-.ereader-notes-table .ereader-archive-btn {
+.post-collection-notes-table .post-collection-archive-btn {
 	padding: 4px 8px;
 	font-size: 11px;
 	background: #f6f7f7;
@@ -111,19 +111,19 @@
 	transition: all 0.2s ease;
 }
 
-.ereader-notes-table .ereader-archive-btn:hover {
+.post-collection-notes-table .post-collection-archive-btn:hover {
 	background: #f0f0f1;
 	border-color: #8c8f94;
 	color: #50575e;
 }
 
 /* Star Rating */
-.ereader-notes-table .ereader-rating {
+.post-collection-notes-table .post-collection-rating {
 	display: flex;
 	gap: 2px;
 }
 
-.ereader-notes-table .ereader-star {
+.post-collection-notes-table .post-collection-star {
 	background: none;
 	border: none;
 	cursor: pointer;
@@ -134,25 +134,25 @@
 	transition: color 0.15s ease;
 }
 
-.ereader-notes-table .ereader-star:hover,
-.ereader-notes-table .ereader-star.active {
+.post-collection-notes-table .post-collection-star:hover,
+.post-collection-notes-table .post-collection-star.active {
 	color: #ffb900;
 }
 
-.ereader-notes-table .ereader-rating:hover .ereader-star {
+.post-collection-notes-table .post-collection-rating:hover .post-collection-star {
 	color: #ffb900;
 }
 
-.ereader-notes-table .ereader-rating:hover .ereader-star:hover ~ .ereader-star {
+.post-collection-notes-table .post-collection-rating:hover .post-collection-star:hover ~ .post-collection-star {
 	color: #dcdcde;
 }
 
 /* Notes */
-.ereader-notes-table .ereader-notes-wrapper {
+.post-collection-notes-table .post-collection-notes-wrapper {
 	margin-bottom: 4px;
 }
 
-.ereader-notes-table .ereader-notes {
+.post-collection-notes-table .post-collection-notes {
 	width: 100%;
 	min-height: 60px;
 	padding: 8px;
@@ -163,45 +163,45 @@
 	box-sizing: border-box;
 }
 
-.ereader-notes-table .ereader-notes:focus {
+.post-collection-notes-table .post-collection-notes:focus {
 	border-color: #2271b1;
 	box-shadow: 0 0 0 1px #2271b1;
 	outline: none;
 }
 
 /* Save Status */
-.ereader-notes-table .ereader-save-status {
+.post-collection-notes-table .post-collection-save-status {
 	font-size: 11px;
 	min-height: 16px;
 }
 
-.ereader-notes-table .ereader-save-status.saving {
+.post-collection-notes-table .post-collection-save-status.saving {
 	color: #787c82;
 }
 
-.ereader-notes-table .ereader-save-status.saved {
+.post-collection-notes-table .post-collection-save-status.saved {
 	color: #00a32a;
 }
 
-.ereader-notes-table .ereader-save-status.error {
+.post-collection-notes-table .post-collection-save-status.error {
 	color: #d63638;
 }
 
 /* Pagination */
-.ereader-notes-admin .tablenav-pages {
+.post-collection-notes-admin .tablenav-pages {
 	float: right;
 }
 
-.ereader-notes-admin .displaying-num {
+.post-collection-notes-admin .displaying-num {
 	margin-right: 10px;
 }
 
 /* Row animations */
-.ereader-notes-table .ereader-article-item {
+.post-collection-notes-table .post-collection-article-item {
 	transition: opacity 0.3s ease, background-color 0.3s ease;
 }
 
-.ereader-notes-table .ereader-article-item.ereader-moving {
+.post-collection-notes-table .post-collection-article-item.post-collection-moving {
 	opacity: 0.5;
 	background-color: #fffbcc;
 }
