@@ -252,8 +252,69 @@ class Article_Notes {
 		wp_add_dashboard_widget(
 			'post_collection_article_notes',
 			__( 'Collected Posts Notes', 'post-collection' ),
-			array( $this, 'render_dashboard_widget' )
+			array( $this, 'render_dashboard_widget' ),
+			array( $this, 'render_dashboard_widget_config' )
 		);
+	}
+
+	/**
+	 * Get widget options for the current user.
+	 *
+	 * @return array Widget options.
+	 */
+	private function get_widget_options() {
+		$defaults = array(
+			'pending_count'      => 1,
+			'reviewed_count'     => 5,
+			'show_random_note'   => true,
+			'show_tabs'          => true,
+		);
+		$options = get_user_option( 'post_collection_widget_options' );
+		if ( ! is_array( $options ) ) {
+			$options = array();
+		}
+		return array_merge( $defaults, $options );
+	}
+
+	/**
+	 * Render the dashboard widget configuration form.
+	 */
+	public function render_dashboard_widget_config() {
+		$options = $this->get_widget_options();
+
+		if ( isset( $_POST['post_collection_widget_config_nonce'] )
+			&& wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['post_collection_widget_config_nonce'] ) ), 'post_collection_widget_config' )
+		) {
+			$options['pending_count']    = isset( $_POST['pending_count'] ) ? max( 1, (int) $_POST['pending_count'] ) : 1;
+			$options['reviewed_count']   = isset( $_POST['reviewed_count'] ) ? max( 1, (int) $_POST['reviewed_count'] ) : 5;
+			$options['show_random_note'] = ! empty( $_POST['show_random_note'] );
+			$options['show_tabs']        = ! empty( $_POST['show_tabs'] );
+			update_user_option( get_current_user_id(), 'post_collection_widget_options', $options );
+		}
+
+		?>
+		<?php wp_nonce_field( 'post_collection_widget_config', 'post_collection_widget_config_nonce' ); ?>
+		<p>
+			<label>
+				<input type="checkbox" name="show_random_note" value="1" <?php checked( $options['show_random_note'] ); ?>>
+				<?php esc_html_e( 'Show "From your notes" section', 'post-collection' ); ?>
+			</label>
+		</p>
+		<p>
+			<label>
+				<input type="checkbox" name="show_tabs" value="1" <?php checked( $options['show_tabs'] ); ?>>
+				<?php esc_html_e( 'Show Pending / Reviewed tabs', 'post-collection' ); ?>
+			</label>
+		</p>
+		<p>
+			<label for="post-collection-pending-count"><?php esc_html_e( 'Pending articles to show:', 'post-collection' ); ?></label>
+			<input type="number" id="post-collection-pending-count" name="pending_count" value="<?php echo esc_attr( $options['pending_count'] ); ?>" min="1" max="50" class="small-text">
+		</p>
+		<p>
+			<label for="post-collection-reviewed-count"><?php esc_html_e( 'Reviewed articles to show:', 'post-collection' ); ?></label>
+			<input type="number" id="post-collection-reviewed-count" name="reviewed_count" value="<?php echo esc_attr( $options['reviewed_count'] ); ?>" min="1" max="50" class="small-text">
+		</p>
+		<?php
 	}
 
 	/**
@@ -261,8 +322,10 @@ class Article_Notes {
 	 */
 	public function render_dashboard_widget() {
 		$this->enqueue_widget_assets();
-		$pending_limit = 1;
-		$review_limit = 5;
+		$options = $this->get_widget_options();
+
+		$pending_limit = (int) $options['pending_count'];
+		$review_limit  = (int) $options['reviewed_count'];
 
 		$pending_articles = $this->get_pending_and_unread_articles( $pending_limit + 1 );
 		$has_more_pending = count( $pending_articles ) > $pending_limit;
@@ -274,10 +337,11 @@ class Article_Notes {
 			'admin/article-notes-widget',
 			null,
 			array(
-				'pending_articles'  => $pending_articles,
-				'has_more_pending'  => $has_more_pending,
-				'reviewed_articles' => $this->get_reviewed_articles( $review_limit ),
-				'random_remembered' => $this->get_random_remembered_article(),
+				'pending_articles'  => $options['show_tabs'] ? $pending_articles : array(),
+				'has_more_pending'  => $options['show_tabs'] && $has_more_pending,
+				'reviewed_articles' => $options['show_tabs'] ? $this->get_reviewed_articles( $review_limit ) : array(),
+				'show_tabs'         => $options['show_tabs'],
+				'random_remembered' => $options['show_random_note'] ? $this->get_random_remembered_article() : null,
 				'nonce'             => wp_create_nonce( 'post-collection-article-notes' ),
 			)
 		);
@@ -622,7 +686,7 @@ class Article_Notes {
 
 		return array(
 			'id'          => $post->ID,
-			'title'       => get_the_title( $post ),
+			'title'       => html_entity_decode( get_the_title( $post ), ENT_QUOTES, 'UTF-8' ),
 			'permalink'   => $permalink,
 			'author'      => $author,
 			'collection'  => $user->display_name,
