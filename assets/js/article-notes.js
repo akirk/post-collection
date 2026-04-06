@@ -114,12 +114,9 @@
 				self.saveNote(articleId, { notes: $textarea.val() }, $item);
 			});
 
-			// Toggle notes in reviewed list by clicking the article title area.
-			$(document).on('click', '.post-collection-reviewed-list .post-collection-article-header', function(e) {
-				// Don't toggle if clicking a link or checkbox.
-				if ($(e.target).is('a, input')) {
-					return;
-				}
+			// Toggle notes visibility.
+			$(document).on('click', '.post-collection-toggle-notes-btn', function(e) {
+				e.preventDefault();
 				var $item = $(this).closest('.post-collection-article-item');
 				$item.toggleClass('post-collection-notes-open');
 			});
@@ -385,6 +382,7 @@
 			}
 			html += '</div>';
 
+			html += '<button type="button" class="post-collection-toggle-notes-btn" title="Toggle notes">Notes</button>';
 			html += '<button type="button" class="post-collection-archive-btn" title="Archive">Archive</button>';
 			html += '</div>';
 
