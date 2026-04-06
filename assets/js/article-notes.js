@@ -148,6 +148,47 @@
 				e.preventDefault();
 				self.loadRandomRemembered();
 			});
+
+			// Edit title — show input.
+			$(document).on('click', '.post-collection-edit-title-btn', function(e) {
+				e.preventDefault();
+				e.stopPropagation();
+				var $wrapper = $(this).closest('.post-collection-title-wrapper');
+				$wrapper.find('.post-collection-article-title, .post-collection-edit-title-btn').hide();
+				$wrapper.find('.post-collection-title-input').show().focus().select();
+			});
+
+			// Save title on Enter.
+			$(document).on('keydown', '.post-collection-title-input', function(e) {
+				if (e.key === 'Enter') {
+					e.preventDefault();
+					$(this).blur();
+				} else if (e.key === 'Escape') {
+					// Revert.
+					var $wrapper = $(this).closest('.post-collection-title-wrapper');
+					var original = $wrapper.find('.post-collection-article-title').text();
+					$(this).val(original).blur();
+				}
+			});
+
+			// Save title on blur.
+			$(document).on('blur', '.post-collection-title-input', function() {
+				var $input = $(this);
+				var $wrapper = $input.closest('.post-collection-title-wrapper');
+				var $title = $wrapper.find('.post-collection-article-title');
+				var $item = $input.closest('.post-collection-article-item');
+				var newTitle = $.trim($input.val());
+
+				if (newTitle && newTitle !== $title.text()) {
+					$title.text(newTitle);
+					var articleId = $item.data('article-id');
+					self.saveTitle(articleId, newTitle, $item);
+				}
+
+				$input.hide();
+				$title.show();
+				$wrapper.find('.post-collection-edit-title-btn').show();
+			});
 		},
 
 		/**
@@ -188,6 +229,41 @@
 							$details.remove();
 						}
 					}
+				});
+		},
+
+		/**
+		 * Save article title via AJAX.
+		 *
+		 * @param {number} articleId Article post ID.
+		 * @param {string} title New title.
+		 * @param {jQuery} $item Article item element.
+		 */
+		saveTitle: function(articleId, title, $item) {
+			var $status = $item.find('.post-collection-save-status');
+			$status.text(postCollectionArticleNotes.i18n.saving).addClass('saving');
+
+			$.post(postCollectionArticleNotes.ajaxurl, {
+				action: 'post_collection_save_title',
+				_ajax_nonce: postCollectionArticleNotes.nonce,
+				article_id: articleId,
+				title: title
+			})
+				.done(function(response) {
+					if (response.success) {
+						$status.text(postCollectionArticleNotes.i18n.saved)
+							.removeClass('saving error').addClass('saved');
+						setTimeout(function() {
+							$status.text('').removeClass('saved');
+						}, 2000);
+					} else {
+						$status.text(postCollectionArticleNotes.i18n.error)
+							.removeClass('saving saved').addClass('error');
+					}
+				})
+				.fail(function() {
+					$status.text(postCollectionArticleNotes.i18n.error)
+						.removeClass('saving saved').addClass('error');
 				});
 		},
 
@@ -398,7 +474,11 @@
 			html += '<div class="post-collection-article-header">';
 			html += '<label class="post-collection-select-article">';
 			html += '<input type="checkbox" name="selected_articles[]" value="' + article.id + '">';
+			html += '<span class="post-collection-title-wrapper">';
 			html += '<a href="' + article.permalink + '" class="post-collection-article-title" target="_blank">' + this.escapeHtml(article.title) + '</a>';
+			html += '<button type="button" class="post-collection-edit-title-btn" title="Edit title">&#9998;</button>';
+			html += '<input type="text" class="post-collection-title-input" value="' + this.escapeHtml(article.title) + '">';
+			html += '</span>';
 			html += '</label>';
 			html += '<span class="post-collection-article-meta">' + this.escapeHtml(article.author);
 			if (article.sent_date) {

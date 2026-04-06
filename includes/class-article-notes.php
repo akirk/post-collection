@@ -55,6 +55,7 @@ class Article_Notes {
 		add_action( 'wp_ajax_post_collection_create_post_from_notes', array( $this, 'ajax_create_post_from_notes' ) );
 		add_action( 'wp_ajax_post_collection_dismiss_old_articles', array( $this, 'ajax_dismiss_old_articles' ) );
 		add_action( 'wp_ajax_post_collection_random_remembered', array( $this, 'ajax_random_remembered' ) );
+		add_action( 'wp_ajax_post_collection_save_title', array( $this, 'ajax_save_title' ) );
 		add_action( 'before_delete_post', array( $this, 'maybe_delete_note' ) );
 		add_action( 'wp_dashboard_setup', array( $this, 'register_dashboard_widget' ) );
 		add_action( 'admin_menu', array( $this, 'register_admin_menu' ) );
@@ -1019,6 +1020,37 @@ class Article_Notes {
 		}
 
 		wp_send_json_success( $article );
+	}
+
+	/**
+	 * AJAX handler for saving an article title.
+	 */
+	public function ajax_save_title() {
+		check_ajax_referer( 'post-collection-article-notes' );
+
+		if ( ! current_user_can( 'edit_posts' ) ) {
+			wp_send_json_error( __( 'Permission denied.', 'post-collection' ) );
+		}
+
+		$article_id = isset( $_POST['article_id'] ) ? (int) $_POST['article_id'] : 0;
+		$title = isset( $_POST['title'] ) ? sanitize_text_field( wp_unslash( $_POST['title'] ) ) : '';
+
+		if ( ! $article_id || ! $title ) {
+			wp_send_json_error( __( 'Invalid article ID or title.', 'post-collection' ) );
+		}
+
+		$result = wp_update_post(
+			array(
+				'ID'         => $article_id,
+				'post_title' => $title,
+			)
+		);
+
+		if ( is_wp_error( $result ) ) {
+			wp_send_json_error( $result->get_error_message() );
+		}
+
+		wp_send_json_success( array( 'title' => $title ) );
 	}
 
 	/**
