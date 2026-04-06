@@ -9,7 +9,7 @@
 }
 
 /* Remember section */
-.post-collection-remember {
+.post-collection-remember.post-collection-article-item {
 	padding: 12px;
 	border-bottom: 1px solid #c3c4c7;
 	background: #f6f7f7;
@@ -165,7 +165,7 @@
 	padding-bottom: 0;
 }
 
-.post-collection-article-item:first-child {
+.post-collection-article-item:first-child:not(.post-collection-remember) {
 	padding-top: 0;
 }
 
@@ -240,7 +240,8 @@
 	gap: 6px;
 }
 
-.post-collection-pending-list .post-collection-select-article input[type="checkbox"] {
+.post-collection-pending-list .post-collection-select-article input[type="checkbox"],
+.post-collection-remember .post-collection-select-article input[type="checkbox"] {
 	display: none;
 }
 
@@ -248,8 +249,10 @@
 	margin-top: 3px;
 }
 
-/* Archive button — hidden in pending list */
-.post-collection-pending-list .post-collection-archive-btn {
+/* Hide elements that don't belong in certain contexts */
+.post-collection-pending-list .post-collection-archive-btn,
+.post-collection-remember .post-collection-archive-btn,
+.post-collection-remember .post-collection-article-controls {
 	display: none;
 }
 
