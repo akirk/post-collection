@@ -198,39 +198,6 @@ class Post_Collection {
 	}
 
 	/**
-	 * Get the template loader.
-	 *
-	 * @return object Template loader instance.
-	 */
-	public function get_template_loader() {
-		if ( $this->friends ) {
-			return \Friends\Friends::template_loader();
-		}
-		return $this->get_fallback_template_loader();
-	}
-
-	/**
-	 * Get a simple fallback template loader for standalone mode.
-	 *
-	 * @return object Template loader instance.
-	 */
-	private function get_fallback_template_loader() {
-		static $loader = null;
-		if ( null === $loader ) {
-			$loader = new class {
-				public function get_template_part( $slug, $name = null, $args = array() ) {
-					$template_file = POST_COLLECTION_PLUGIN_DIR . 'templates/' . $slug . '.php';
-					if ( file_exists( $template_file ) ) {
-						extract( $args );
-						include $template_file;
-					}
-				}
-			};
-		}
-		return $loader;
-	}
-
-	/**
 	 * Register the WordPress hooks
 	 */
 	private function register_hooks() {
