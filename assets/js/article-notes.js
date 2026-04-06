@@ -114,13 +114,6 @@
 				self.saveNote(articleId, { notes: $textarea.val() }, $item);
 			});
 
-			// Toggle notes visibility.
-			$(document).on('click', '.post-collection-toggle-notes-btn', function(e) {
-				e.preventDefault();
-				var $item = $(this).closest('.post-collection-article-item');
-				$item.toggleClass('post-collection-notes-open');
-			});
-
 			// Create post from selected.
 			$(document).on('click', '.post-collection-create-post-btn', function(e) {
 				e.preventDefault();
@@ -382,7 +375,6 @@
 			}
 			html += '</div>';
 
-			html += '<button type="button" class="post-collection-toggle-notes-btn" title="Toggle notes">Notes</button>';
 			html += '<button type="button" class="post-collection-archive-btn" title="Archive">Archive</button>';
 			html += '</div>';
 

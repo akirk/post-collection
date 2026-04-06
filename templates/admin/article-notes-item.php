@@ -25,6 +25,15 @@ defined( 'ABSPATH' ) || exit;
 	</span>
 </div>
 
+<?php if ( ! empty( $article['content'] ) ) : ?>
+	<details class="post-collection-article-preview">
+		<summary><?php esc_html_e( 'Show article', 'post-collection' ); ?></summary>
+		<div class="post-collection-article-preview-content">
+			<?php echo $article['content']; ?>
+		</div>
+	</details>
+<?php endif; ?>
+
 <div class="post-collection-article-controls">
 	<div class="post-collection-status-buttons">
 		<?php foreach ( $statuses as $status_key => $status_label ) : ?>
@@ -47,10 +56,6 @@ defined( 'ABSPATH' ) || exit;
 			</button>
 		<?php endfor; ?>
 	</div>
-
-	<button type="button" class="post-collection-toggle-notes-btn" title="<?php esc_attr_e( 'Toggle notes', 'post-collection' ); ?>">
-		<?php esc_html_e( 'Notes', 'post-collection' ); ?>
-	</button>
 
 	<button type="button" class="post-collection-archive-btn" title="<?php esc_attr_e( 'Archive - hide from this list', 'post-collection' ); ?>">
 		<?php esc_html_e( 'Archive', 'post-collection' ); ?>

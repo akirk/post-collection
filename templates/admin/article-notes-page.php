@@ -16,7 +16,7 @@ $statuses = isset( $args['statuses'] ) ? $args['statuses'] : array();
 $nonce = isset( $args['nonce'] ) ? $args['nonce'] : '';
 
 $total_pages = ceil( $total / $per_page );
-$base_url = admin_url( 'options-general.php?page=post-collection-article-notes' );
+$base_url = admin_url( 'edit.php?post_type=post_collection&page=post-collection-article-notes' );
 ?>
 
 <div class="wrap post-collection-notes-admin">
