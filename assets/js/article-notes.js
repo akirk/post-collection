@@ -32,7 +32,7 @@
 				self.switchTab($(this).data('tab'));
 			});
 
-			// Status button clicks — radio-style, no auto-dismiss.
+			// Status button clicks — radio-style, stay in place.
 			$(document).on('click', '.post-collection-status-btn', function(e) {
 				e.preventDefault();
 				var $btn = $(this);
@@ -45,6 +45,9 @@
 				// Update UI — toggle like radio buttons.
 				$item.find('.post-collection-status-btn').removeClass('active');
 				$btn.addClass('active');
+
+				// Track the new status on the element for tab-switch sorting.
+				$item.data('status', status);
 			});
 
 			// Star rating clicks.
@@ -111,12 +114,14 @@
 				self.saveNote(articleId, { notes: $textarea.val() }, $item);
 			});
 
-			// Toggle notes in reviewed list.
-			$(document).on('click', '.post-collection-notes-preview', function() {
+			// Toggle notes in reviewed list by clicking the article title area.
+			$(document).on('click', '.post-collection-reviewed-list .post-collection-article-header', function(e) {
+				// Don't toggle if clicking a link or checkbox.
+				if ($(e.target).is('a, input')) {
+					return;
+				}
 				var $item = $(this).closest('.post-collection-article-item');
-				$(this).hide();
-				$item.find('.post-collection-notes-wrapper').show();
-				$item.find('.post-collection-notes').focus();
+				$item.toggleClass('post-collection-notes-open');
 			});
 
 			// Create post from selected.
@@ -155,11 +160,65 @@
 		 * @param {string} tab Tab name.
 		 */
 		switchTab: function(tab) {
+			// Before showing the new tab, move articles to their correct lists.
+			this.relocateArticles();
+
 			$('.post-collection-tab').removeClass('active');
 			$('.post-collection-tab[data-tab="' + tab + '"]').addClass('active');
 
 			$('.post-collection-tab-content').removeClass('active');
 			$('.post-collection-tab-content[data-tab="' + tab + '"]').addClass('active');
+		},
+
+		/**
+		 * Move articles between pending and reviewed lists based on their current status.
+		 */
+		relocateArticles: function() {
+			var self = this;
+
+			// Move read/skipped items from pending to reviewed.
+			$('.post-collection-pending-list .post-collection-article-item').each(function() {
+				var $item = $(this);
+				var status = self.getItemStatus($item);
+				if (status === 'read' || status === 'skipped') {
+					self.ensureReviewedList();
+					$item.addClass('post-collection-reviewed').detach();
+					$('.post-collection-reviewed-list').prepend($item);
+				}
+			});
+
+			// Move unread items from reviewed back to pending.
+			$('.post-collection-reviewed-list .post-collection-article-item').each(function() {
+				var $item = $(this);
+				var status = self.getItemStatus($item);
+				if (status === 'unread') {
+					$item.removeClass('post-collection-reviewed').detach();
+					$('.post-collection-pending-list').prepend($item);
+				}
+			});
+		},
+
+		/**
+		 * Get the current status of an article item from its active button.
+		 *
+		 * @param {jQuery} $item The article item.
+		 * @return {string} Status value, or empty string if none selected.
+		 */
+		getItemStatus: function($item) {
+			var $active = $item.find('.post-collection-status-btn.active');
+			return $active.length ? $active.data('status') : '';
+		},
+
+		/**
+		 * Ensure the reviewed list element exists, creating it if needed.
+		 */
+		ensureReviewedList: function() {
+			if ($('.post-collection-reviewed-list').length) {
+				return;
+			}
+			var $reviewedTab = $('.post-collection-tab-content[data-tab="reviewed"]');
+			$reviewedTab.find('.post-collection-no-articles').remove();
+			$reviewedTab.prepend('<ul class="post-collection-article-list post-collection-reviewed-list"></ul>');
 		},
 
 		/**
@@ -295,10 +354,15 @@
 			};
 
 			var hasNote = article.note_id > 0;
+			var isReviewed = hasNote && (article.status === 'read' || article.status === 'skipped');
+			var itemClass = 'post-collection-article-item' + (isReviewed ? ' post-collection-reviewed' : '');
 
-			var html = '<li class="post-collection-article-item" data-article-id="' + article.id + '">';
+			var html = '<li class="' + itemClass + '" data-article-id="' + article.id + '">';
 			html += '<div class="post-collection-article-header">';
+			html += '<label class="post-collection-select-article">';
+			html += '<input type="checkbox" name="selected_articles[]" value="' + article.id + '">';
 			html += '<a href="' + article.permalink + '" class="post-collection-article-title" target="_blank">' + this.escapeHtml(article.title) + '</a>';
+			html += '</label>';
 			html += '<span class="post-collection-article-meta">' + this.escapeHtml(article.author);
 			if (article.sent_date) {
 				html += ' &bull; ' + this.escapeHtml(article.sent_date);
@@ -319,14 +383,18 @@
 				var starChar = i <= article.rating ? '&#9733;' : '&#9734;';
 				html += '<button type="button" class="post-collection-star' + starActive + '" data-rating="' + i + '" title="' + i + ' stars">' + starChar + '</button>';
 			}
-			html += '</div></div>';
+			html += '</div>';
+
+			html += '<button type="button" class="post-collection-archive-btn" title="Archive">Archive</button>';
+			html += '</div>';
 
 			html += '<div class="post-collection-notes-wrapper">';
 			html += '<textarea class="post-collection-notes" placeholder="Add your notes..." rows="2">' + this.escapeHtml(article.notes || '') + '</textarea>';
+			html += '<div class="post-collection-notes-actions">';
 			html += '<button type="button" class="button button-small post-collection-save-notes-btn">Save</button>';
-			html += '</div>';
+			html += '<span class="post-collection-save-status"></span>';
+			html += '</div></div>';
 
-			html += '<div class="post-collection-save-status"></div>';
 			html += '</li>';
 
 			return html;

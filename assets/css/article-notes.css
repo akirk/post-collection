@@ -39,11 +39,6 @@
 	background: #fff;
 }
 
-.post-collection-tab .count {
-	color: #787c82;
-	font-size: 12px;
-}
-
 /* Tab Content */
 .post-collection-tab-content {
 	display: none;
@@ -73,7 +68,7 @@
 	border-radius: 3px;
 }
 
-/* Article item animations */
+/* Article item */
 .post-collection-article-item {
 	transition: opacity 0.3s ease, transform 0.3s ease;
 }
@@ -138,15 +133,24 @@
 	color: #787c82;
 }
 
-/* Select article checkbox */
+/* Select article checkbox — hidden in pending list, visible in reviewed list */
 .post-collection-select-article {
 	display: flex;
 	align-items: flex-start;
 	gap: 6px;
 }
 
+.post-collection-pending-list .post-collection-select-article input[type="checkbox"] {
+	display: none;
+}
+
 .post-collection-select-article input[type="checkbox"] {
 	margin-top: 3px;
+}
+
+/* Archive button — hidden in pending list */
+.post-collection-pending-list .post-collection-archive-btn {
+	display: none;
 }
 
 /* Controls Row */
@@ -213,25 +217,6 @@
 	color: #ffb900;
 }
 
-.post-collection-rating:hover .post-collection-star {
-	color: #dcdcde;
-}
-
-.post-collection-rating:hover .post-collection-star:hover,
-.post-collection-rating:hover .post-collection-star:hover ~ .post-collection-star {
-	color: #dcdcde;
-}
-
-.post-collection-rating .post-collection-star:hover,
-.post-collection-rating .post-collection-star:hover ~ .post-collection-star {
-	color: #dcdcde;
-}
-
-.post-collection-rating:hover .post-collection-star:hover,
-.post-collection-rating:hover .post-collection-star.hovered {
-	color: #ffb900;
-}
-
 /* Make stars highlight up to hovered star */
 .post-collection-rating:hover .post-collection-star {
 	color: #ffb900;
@@ -246,6 +231,15 @@
 	margin-top: 8px;
 }
 
+/* Notes hidden by default in reviewed list, shown on click */
+.post-collection-reviewed-list .post-collection-notes-wrapper {
+	display: none;
+}
+
+.post-collection-reviewed-list .post-collection-article-item.post-collection-notes-open .post-collection-notes-wrapper {
+	display: block;
+}
+
 .post-collection-notes {
 	width: 100%;
 	min-height: 50px;
@@ -257,16 +251,38 @@
 	box-sizing: border-box;
 }
 
-.post-collection-save-notes-btn {
-	margin-top: 4px;
-}
-
 .post-collection-notes:focus {
 	border-color: #2271b1;
 	box-shadow: 0 0 0 1px #2271b1;
 	outline: none;
 }
 
+/* Notes actions row — save button and status inline */
+.post-collection-notes-actions {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin-top: 4px;
+}
+
+.post-collection-save-status {
+	font-size: 11px;
+	line-height: 1;
+}
+
+.post-collection-save-status.saving {
+	color: #787c82;
+}
+
+.post-collection-save-status.saved {
+	color: #00a32a;
+}
+
+.post-collection-save-status.error {
+	color: #d63638;
+}
+
+/* Notes preview in reviewed list */
 .post-collection-notes-preview {
 	font-size: 12px;
 	color: #787c82;
@@ -280,25 +296,6 @@
 
 .post-collection-notes-preview:hover {
 	background: #f0f0f1;
-}
-
-/* Save Status */
-.post-collection-save-status {
-	font-size: 11px;
-	min-height: 16px;
-	margin-top: 4px;
-}
-
-.post-collection-save-status.saving {
-	color: #787c82;
-}
-
-.post-collection-save-status.saved {
-	color: #00a32a;
-}
-
-.post-collection-save-status.error {
-	color: #d63638;
 }
 
 /* Create Post Section */
