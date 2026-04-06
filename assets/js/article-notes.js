@@ -288,6 +288,7 @@
 
 			$('.post-collection-tab-content').removeClass('active');
 			$('.post-collection-tab-content[data-tab="' + tab + '"]').addClass('active');
+
 		},
 
 		/**

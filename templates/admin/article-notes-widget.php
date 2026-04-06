@@ -10,6 +10,7 @@ defined( 'ABSPATH' ) || exit;
 $pending_articles   = isset( $args['pending_articles'] ) ? $args['pending_articles'] : array();
 $has_more_pending   = isset( $args['has_more_pending'] ) ? $args['has_more_pending'] : false;
 $reviewed_articles  = isset( $args['reviewed_articles'] ) ? $args['reviewed_articles'] : array();
+$show_tabs          = isset( $args['show_tabs'] ) ? $args['show_tabs'] : true;
 $random_remembered  = isset( $args['random_remembered'] ) ? $args['random_remembered'] : null;
 $nonce              = isset( $args['nonce'] ) ? $args['nonce'] : '';
 $statuses           = \PostCollection\Article_Notes::get_statuses();
@@ -27,11 +28,13 @@ $statuses           = \PostCollection\Article_Notes::get_statuses();
 		</div>
 	<?php endif; ?>
 
-	<?php if ( empty( $pending_articles ) && empty( $reviewed_articles ) ) : ?>
+	<?php if ( ! $random_remembered && ! $show_tabs ) : ?>
 		<p class="post-collection-no-articles">
 			<?php esc_html_e( 'No articles in your collection yet. Collect posts from the web to start adding notes and reviews.', 'post-collection' ); ?>
 		</p>
-	<?php else : ?>
+	<?php endif; ?>
+
+	<?php if ( $show_tabs && ( ! empty( $pending_articles ) || ! empty( $reviewed_articles ) ) ) : ?>
 		<div class="post-collection-widget-tabs">
 			<button type="button" class="post-collection-tab active" data-tab="pending">
 				<?php esc_html_e( 'Pending', 'post-collection' ); ?>
