@@ -142,6 +142,53 @@
 				self.saveNote(articleId, { status: 'archived' }, $item);
 				self.animateItemRemoval($item);
 			});
+
+			// Show another random remembered article.
+			$(document).on('click', '.post-collection-remember-another', function(e) {
+				e.preventDefault();
+				self.loadRandomRemembered();
+			});
+		},
+
+		/**
+		 * Load a random remembered article via AJAX.
+		 */
+		loadRandomRemembered: function() {
+			var $container = $('.post-collection-remember');
+
+			$.get(postCollectionArticleNotes.ajaxurl, {
+				action: 'post_collection_random_remembered',
+				_ajax_nonce: postCollectionArticleNotes.nonce
+			})
+				.done(function(response) {
+					if (response.success && response.data) {
+						var article = response.data;
+						$container.find('.post-collection-remember-title')
+							.attr('href', article.permalink)
+							.text(article.title);
+						$container.find('.post-collection-remember-meta')
+							.text(article.author);
+						$container.find('.post-collection-remember-notes')
+							.html(article.notes);
+
+						// Update the article preview if present.
+						var $details = $container.find('.post-collection-article-preview');
+						if (article.content) {
+							if ($details.length) {
+								$details.find('.post-collection-article-preview-content').html(article.content);
+								$details.removeAttr('open');
+							} else {
+								var detailsHtml = '<details class="post-collection-article-preview">';
+								detailsHtml += '<summary>' + (postCollectionArticleNotes.i18n.showArticle || 'Show article') + '</summary>';
+								detailsHtml += '<div class="post-collection-article-preview-content">' + article.content + '</div>';
+								detailsHtml += '</details>';
+								$container.find('.post-collection-remember-notes').after(detailsHtml);
+							}
+						} else if ($details.length) {
+							$details.remove();
+						}
+					}
+				});
 		},
 
 		/**

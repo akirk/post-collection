@@ -54,6 +54,7 @@ class Article_Notes {
 		add_action( 'wp_ajax_post_collection_load_more_pending', array( $this, 'ajax_load_more_pending' ) );
 		add_action( 'wp_ajax_post_collection_create_post_from_notes', array( $this, 'ajax_create_post_from_notes' ) );
 		add_action( 'wp_ajax_post_collection_dismiss_old_articles', array( $this, 'ajax_dismiss_old_articles' ) );
+		add_action( 'wp_ajax_post_collection_random_remembered', array( $this, 'ajax_random_remembered' ) );
 		add_action( 'before_delete_post', array( $this, 'maybe_delete_note' ) );
 		add_action( 'wp_dashboard_setup', array( $this, 'register_dashboard_widget' ) );
 		add_action( 'admin_menu', array( $this, 'register_admin_menu' ) );
@@ -275,6 +276,7 @@ class Article_Notes {
 				'pending_articles'  => $pending_articles,
 				'has_more_pending'  => $has_more_pending,
 				'reviewed_articles' => $this->get_reviewed_articles( $review_limit ),
+				'random_remembered' => $this->get_random_remembered_article(),
 				'nonce'             => wp_create_nonce( 'post-collection-article-notes' ),
 			)
 		);
@@ -314,6 +316,7 @@ class Article_Notes {
 					'error'         => __( 'Error saving', 'post-collection' ),
 					'loading'       => __( 'Loading...', 'post-collection' ),
 					'confirmCreate' => __( 'Create a post from the selected reviews?', 'post-collection' ),
+					'showArticle'   => __( 'Show article', 'post-collection' ),
 				),
 			)
 		);
@@ -529,6 +532,60 @@ class Article_Notes {
 		$posts = get_posts( $args );
 
 		return array_map( array( $this, 'prepare_article_data' ), $posts );
+	}
+
+	/**
+	 * Get a random reviewed article that has notes content.
+	 *
+	 * @return array|null Article data or null if none found.
+	 */
+	public function get_random_remembered_article() {
+		$note_ids = get_posts(
+			array(
+				'post_type'      => self::POST_TYPE,
+				'posts_per_page' => -1,
+				'post_status'    => 'publish',
+				'fields'         => 'ids',
+				'meta_query'     => array(
+					array(
+						'key'     => self::STATUS_META,
+						'value'   => array( self::STATUS_READ, self::STATUS_SKIPPED ),
+						'compare' => 'IN',
+					),
+				),
+			)
+		);
+
+		if ( empty( $note_ids ) ) {
+			return null;
+		}
+
+		// Filter to only notes that have actual content.
+		$notes_with_content = array();
+		foreach ( $note_ids as $note_id ) {
+			$note_post = get_post( $note_id );
+			if ( $note_post && ! empty( trim( $note_post->post_content ) ) ) {
+				$notes_with_content[] = $note_id;
+			}
+		}
+
+		if ( empty( $notes_with_content ) ) {
+			return null;
+		}
+
+		$random_note_id = $notes_with_content[ array_rand( $notes_with_content ) ];
+		$parent_id = wp_get_post_parent_id( $random_note_id );
+
+		if ( ! $parent_id ) {
+			return null;
+		}
+
+		$post = get_post( $parent_id );
+		if ( ! $post ) {
+			return null;
+		}
+
+		return $this->prepare_article_data( $post );
 	}
 
 	/**
@@ -943,6 +1000,25 @@ class Article_Notes {
 				),
 			)
 		);
+	}
+
+	/**
+	 * AJAX handler for getting a random remembered article.
+	 */
+	public function ajax_random_remembered() {
+		check_ajax_referer( 'post-collection-article-notes' );
+
+		if ( ! current_user_can( 'edit_posts' ) ) {
+			wp_send_json_error( __( 'Permission denied.', 'post-collection' ) );
+		}
+
+		$article = $this->get_random_remembered_article();
+
+		if ( ! $article ) {
+			wp_send_json_error( __( 'No articles with notes found.', 'post-collection' ) );
+		}
+
+		wp_send_json_success( $article );
 	}
 
 	/**
