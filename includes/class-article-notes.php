@@ -259,19 +259,13 @@ class Article_Notes {
 	 */
 	public function render_dashboard_widget() {
 		$this->enqueue_widget_assets();
-		$pending_limit = 5;
-		$other_limit = 10;
+		$pending_limit = 10;
+		$review_limit = 10;
 
-		$pending_articles = $this->get_pending_articles( $pending_limit + 1 );
+		$pending_articles = $this->get_pending_and_unread_articles( $pending_limit + 1 );
 		$has_more_pending = count( $pending_articles ) > $pending_limit;
 		if ( $has_more_pending ) {
 			$pending_articles = array_slice( $pending_articles, 0, $pending_limit );
-		}
-
-		$unread_articles = $this->get_unread_articles( $other_limit + 1 );
-		$has_more_unread = count( $unread_articles ) > $other_limit;
-		if ( $has_more_unread ) {
-			$unread_articles = array_slice( $unread_articles, 0, $other_limit );
 		}
 
 		Post_Collection::template_loader()->get_template_part(
@@ -280,10 +274,7 @@ class Article_Notes {
 			array(
 				'pending_articles'  => $pending_articles,
 				'has_more_pending'  => $has_more_pending,
-				'pending_limit'     => $pending_limit,
-				'unread_articles'   => $unread_articles,
-				'has_more_unread'   => $has_more_unread,
-				'reviewed_articles' => $this->get_reviewed_articles( $other_limit ),
+				'reviewed_articles' => $this->get_reviewed_articles( $review_limit ),
 				'nonce'             => wp_create_nonce( 'post-collection-article-notes' ),
 			)
 		);
@@ -395,6 +386,40 @@ class Article_Notes {
 		$posts = get_posts( $args );
 
 		return array_map( array( $this, 'prepare_article_data' ), $posts );
+	}
+
+	/**
+	 * Get articles that are pending review: either no note yet, or note with unread status.
+	 *
+	 * @param int $limit  Maximum number of articles to return.
+	 * @param int $offset Number of articles to skip.
+	 * @return array Combined array of pending and unread articles.
+	 */
+	public function get_pending_and_unread_articles( $limit = 20, $offset = 0 ) {
+		$pending = $this->get_pending_articles( $limit, $offset );
+		$unread = $this->get_unread_articles( $limit, $offset );
+
+		$combined = array_merge( $pending, $unread );
+
+		// Deduplicate by article ID.
+		$seen = array();
+		$result = array();
+		foreach ( $combined as $article ) {
+			if ( ! isset( $seen[ $article['id'] ] ) ) {
+				$seen[ $article['id'] ] = true;
+				$result[] = $article;
+			}
+		}
+
+		// Sort by ID descending (newest first).
+		usort(
+			$result,
+			function ( $a, $b ) {
+				return $b['id'] - $a['id'];
+			}
+		);
+
+		return array_slice( $result, 0, $limit );
 	}
 
 	/**
