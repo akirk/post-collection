@@ -32,37 +32,19 @@
 				self.switchTab($(this).data('tab'));
 			});
 
-			// Status button clicks.
+			// Status button clicks — radio-style, no auto-dismiss.
 			$(document).on('click', '.post-collection-status-btn', function(e) {
 				e.preventDefault();
 				var $btn = $(this);
 				var $item = $btn.closest('.post-collection-article-item');
 				var articleId = $item.data('article-id');
 				var status = $btn.data('status');
-				var currentTab = $('.post-collection-tab.active').data('tab');
 
 				self.saveNote(articleId, { status: status }, $item);
 
-				// Update UI.
+				// Update UI — toggle like radio buttons.
 				$item.find('.post-collection-status-btn').removeClass('active');
 				$btn.addClass('active');
-
-				// Check if item should move to another tab.
-				var shouldMove = false;
-				if (currentTab === 'pending') {
-					// Any status in pending moves the item out.
-					shouldMove = true;
-				} else if (currentTab === 'unread' && (status === 'read' || status === 'skipped' || status === 'archived')) {
-					// Read, Skipped, or Archived in unread moves to reviewed.
-					shouldMove = true;
-				} else if (currentTab === 'reviewed' && status === 'unread') {
-					// Changing back to unread moves to unread tab.
-					shouldMove = true;
-				}
-
-				if (shouldMove) {
-					self.animateItemRemoval($item);
-				}
 			});
 
 			// Star rating clicks.
@@ -80,7 +62,7 @@
 				self.updateStars($ratingContainer, rating);
 			});
 
-			// Notes textarea - save on blur with debounce.
+			// Notes textarea - auto-save with debounce.
 			$(document).on('input', '.post-collection-notes', function() {
 				var $textarea = $(this);
 				var $item = $textarea.closest('.post-collection-article-item');
@@ -97,13 +79,30 @@
 				}, 1000);
 			});
 
-			// Also save on blur.
+			// Save on blur.
 			$(document).on('blur', '.post-collection-notes', function() {
 				var $textarea = $(this);
 				var $item = $textarea.closest('.post-collection-article-item');
 				var articleId = $item.data('article-id');
 
 				// Clear pending timer and save immediately.
+				if (self.saveTimers[articleId]) {
+					clearTimeout(self.saveTimers[articleId]);
+					delete self.saveTimers[articleId];
+				}
+
+				self.saveNote(articleId, { notes: $textarea.val() }, $item);
+			});
+
+			// Explicit save button for notes.
+			$(document).on('click', '.post-collection-save-notes-btn', function(e) {
+				e.preventDefault();
+				var $btn = $(this);
+				var $item = $btn.closest('.post-collection-article-item');
+				var $textarea = $item.find('.post-collection-notes');
+				var articleId = $item.data('article-id');
+
+				// Clear any pending debounce timer.
 				if (self.saveTimers[articleId]) {
 					clearTimeout(self.saveTimers[articleId]);
 					delete self.saveTimers[articleId];
@@ -132,7 +131,7 @@
 				$('.post-collection-reviewed-list input[type="checkbox"]').prop('checked', checked);
 			});
 
-			// Load more pending articles.
+			// Load more articles.
 			$(document).on('click', '.post-collection-load-more-btn', function(e) {
 				e.preventDefault();
 				self.loadMorePending($(this));
@@ -259,7 +258,7 @@
 			})
 				.done(function(response) {
 					if (response.success && response.data.articles) {
-						var $list = $('.post-collection-' + type + '-list');
+						var $list = $('.post-collection-pending-list');
 
 						// Append new articles.
 						response.data.articles.forEach(function(article) {
@@ -295,6 +294,8 @@
 				'skipped': 'Skipped'
 			};
 
+			var hasNote = article.note_id > 0;
+
 			var html = '<li class="post-collection-article-item" data-article-id="' + article.id + '">';
 			html += '<div class="post-collection-article-header">';
 			html += '<a href="' + article.permalink + '" class="post-collection-article-title" target="_blank">' + this.escapeHtml(article.title) + '</a>';
@@ -307,7 +308,7 @@
 			html += '<div class="post-collection-article-controls">';
 			html += '<div class="post-collection-status-buttons">';
 			for (var key in statuses) {
-				var activeClass = article.status === key ? ' active' : '';
+				var activeClass = (hasNote && article.status === key) ? ' active' : '';
 				html += '<button type="button" class="post-collection-status-btn' + activeClass + '" data-status="' + key + '" title="' + statuses[key] + '">' + statuses[key] + '</button>';
 			}
 			html += '</div>';
@@ -322,6 +323,7 @@
 
 			html += '<div class="post-collection-notes-wrapper">';
 			html += '<textarea class="post-collection-notes" placeholder="Add your notes..." rows="2">' + this.escapeHtml(article.notes || '') + '</textarea>';
+			html += '<button type="button" class="button button-small post-collection-save-notes-btn">Save</button>';
 			html += '</div>';
 
 			html += '<div class="post-collection-save-status"></div>';
