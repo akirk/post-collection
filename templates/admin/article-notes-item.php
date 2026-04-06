@@ -48,6 +48,10 @@ defined( 'ABSPATH' ) || exit;
 		<?php endfor; ?>
 	</div>
 
+	<button type="button" class="post-collection-toggle-notes-btn" title="<?php esc_attr_e( 'Toggle notes', 'post-collection' ); ?>">
+		<?php esc_html_e( 'Notes', 'post-collection' ); ?>
+	</button>
+
 	<button type="button" class="post-collection-archive-btn" title="<?php esc_attr_e( 'Archive - hide from this list', 'post-collection' ); ?>">
 		<?php esc_html_e( 'Archive', 'post-collection' ); ?>
 	</button>

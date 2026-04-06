@@ -148,9 +148,28 @@
 	margin-top: 3px;
 }
 
-/* Archive button — hidden in pending list */
+/* Notes toggle and Archive buttons — hidden in pending list */
+.post-collection-pending-list .post-collection-toggle-notes-btn,
 .post-collection-pending-list .post-collection-archive-btn {
 	display: none;
+}
+
+/* Notes toggle button style */
+.post-collection-toggle-notes-btn {
+	padding: 4px 8px;
+	font-size: 11px;
+	background: #f6f7f7;
+	border: 1px solid #c3c4c7;
+	border-radius: 3px;
+	cursor: pointer;
+	color: #787c82;
+	transition: all 0.2s ease;
+}
+
+.post-collection-toggle-notes-btn:hover {
+	background: #f0f0f1;
+	border-color: #8c8f94;
+	color: #50575e;
 }
 
 /* Controls Row */
