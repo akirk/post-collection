@@ -17,15 +17,24 @@ $statuses           = \PostCollection\Article_Notes::get_statuses();
 
 <div class="post-collection-article-notes-widget" data-nonce="<?php echo esc_attr( $nonce ); ?>">
 	<?php if ( $random_remembered ) : ?>
-		<div class="post-collection-remember">
+		<div class="post-collection-remember" data-article-id="<?php echo esc_attr( $random_remembered['id'] ); ?>">
 			<div class="post-collection-remember-header">
 				<span class="post-collection-remember-label"><?php esc_html_e( 'From your notes:', 'post-collection' ); ?></span>
 				<a href="#" class="post-collection-remember-another"><?php esc_html_e( 'Show another', 'post-collection' ); ?> &rarr;</a>
 			</div>
-			<a href="<?php echo esc_url( $random_remembered['permalink'] ); ?>" class="post-collection-remember-title" target="_blank">
-				<?php echo esc_html( $random_remembered['title'] ); ?>
-			</a>
-			<span class="post-collection-remember-meta"><?php echo esc_html( $random_remembered['author'] ); ?></span>
+			<div class="post-collection-article-header">
+				<span class="post-collection-title-wrapper">
+					<a href="<?php echo esc_url( $random_remembered['permalink'] ); ?>" class="post-collection-article-title" target="_blank"><?php echo esc_html( $random_remembered['title'] ); ?></a>
+					<button type="button" class="post-collection-edit-title-btn" title="<?php esc_attr_e( 'Edit title', 'post-collection' ); ?>">&#9998;</button>
+					<input type="text" class="post-collection-title-input" value="<?php echo esc_attr( $random_remembered['title'] ); ?>">
+				</span>
+				<span class="post-collection-article-meta">
+					<?php echo esc_html( $random_remembered['author'] ); ?>
+					<?php if ( ! empty( $random_remembered['collection'] ) && $random_remembered['collection'] !== $random_remembered['author'] ) : ?>
+						&bull; <?php echo esc_html( $random_remembered['collection'] ); ?>
+					<?php endif; ?>
+				</span>
+			</div>
 			<blockquote class="post-collection-remember-notes">
 				<?php echo wp_kses_post( $random_remembered['notes'] ); ?>
 			</blockquote>
@@ -37,6 +46,7 @@ $statuses           = \PostCollection\Article_Notes::get_statuses();
 					</div>
 				</details>
 			<?php endif; ?>
+			<div class="post-collection-save-status"></div>
 		</div>
 	<?php endif; ?>
 

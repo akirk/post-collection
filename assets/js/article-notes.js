@@ -176,7 +176,7 @@
 				var $input = $(this);
 				var $wrapper = $input.closest('.post-collection-title-wrapper');
 				var $title = $wrapper.find('.post-collection-article-title');
-				var $item = $input.closest('.post-collection-article-item');
+				var $item = $input.closest('[data-article-id]');
 				var newTitle = $.trim($input.val());
 
 				if (newTitle && newTitle !== $title.text()) {
@@ -204,11 +204,18 @@
 				.done(function(response) {
 					if (response.success && response.data) {
 						var article = response.data;
-						$container.find('.post-collection-remember-title')
+						$container.data('article-id', article.id);
+						$container.find('.post-collection-article-title')
 							.attr('href', article.permalink)
 							.text(article.title);
+						$container.find('.post-collection-title-input')
+							.val(article.title);
+						var meta = article.author;
+						if (article.collection && article.collection !== article.author) {
+							meta += ' \u2022 ' + article.collection;
+						}
 						$container.find('.post-collection-remember-meta')
-							.text(article.author);
+							.text(meta);
 						$container.find('.post-collection-remember-notes')
 							.html(article.notes);
 
@@ -481,6 +488,9 @@
 			html += '</span>';
 			html += '</label>';
 			html += '<span class="post-collection-article-meta">' + this.escapeHtml(article.author);
+			if (article.collection && article.collection !== article.author) {
+				html += ' &bull; ' + this.escapeHtml(article.collection);
+			}
 			if (article.sent_date) {
 				html += ' &bull; ' + this.escapeHtml(article.sent_date);
 			}

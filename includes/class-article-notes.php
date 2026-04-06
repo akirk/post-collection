@@ -67,8 +67,8 @@ class Article_Notes {
 	public function register_admin_menu() {
 		add_submenu_page(
 			'edit.php?post_type=' . Post_Collection::CPT,
-			__( 'Article Notes', 'post-collection' ),
-			__( 'Article Notes', 'post-collection' ),
+			__( 'Collected Posts Notes', 'post-collection' ),
+			__( 'Notes', 'post-collection' ),
 			'edit_posts',
 			'post-collection-article-notes',
 			array( $this, 'render_admin_page' )
@@ -251,7 +251,7 @@ class Article_Notes {
 
 		wp_add_dashboard_widget(
 			'post_collection_article_notes',
-			__( 'Article Notes', 'post-collection' ),
+			__( 'Collected Posts Notes', 'post-collection' ),
 			array( $this, 'render_dashboard_widget' )
 		);
 	}
@@ -611,11 +611,21 @@ class Article_Notes {
 		$content = preg_replace( '/<img[^>]*>/i', '', $content );
 		$content = preg_replace( '/<figure[^>]*>.*?<\/figure>/is', '', $content );
 
+		// Use the per-post author meta if available.
+		$author = get_post_meta( $post->ID, 'author', true );
+		if ( ! $author ) {
+			$author = $this->plugin->get_post_author_name( $post );
+		}
+
+		$user = new User( $post->post_author );
+		$permalink = $user->get_local_friends_page_url( $post->ID );
+
 		return array(
 			'id'          => $post->ID,
 			'title'       => get_the_title( $post ),
-			'permalink'   => get_permalink( $post ),
-			'author'      => $this->plugin->get_post_author_name( $post ),
+			'permalink'   => $permalink,
+			'author'      => $author,
+			'collection'  => $user->display_name,
 			'sent_date'   => $sent_date,
 			'excerpt'     => get_the_excerpt( $post ),
 			'content'     => wp_kses_post( $content ),

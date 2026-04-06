@@ -21,6 +21,9 @@ defined( 'ABSPATH' ) || exit;
 	</label>
 	<span class="post-collection-article-meta">
 		<?php echo esc_html( $article['author'] ); ?>
+		<?php if ( ! empty( $article['collection'] ) && $article['collection'] !== $article['author'] ) : ?>
+			&bull; <?php echo esc_html( $article['collection'] ); ?>
+		<?php endif; ?>
 		<?php if ( ! empty( $article['sent_date'] ) ) : ?>
 			&bull; <?php echo esc_html( $article['sent_date'] ); ?>
 		<?php endif; ?>
