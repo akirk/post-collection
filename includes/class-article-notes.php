@@ -64,7 +64,7 @@ class Article_Notes {
 	 */
 	public function register_admin_menu() {
 		add_submenu_page(
-			'options-general.php',
+			'edit.php?post_type=' . Post_Collection::CPT,
 			__( 'Article Notes', 'post-collection' ),
 			__( 'Article Notes', 'post-collection' ),
 			'edit_posts',
@@ -548,6 +548,11 @@ class Article_Notes {
 			}
 		}
 
+		// Strip images from content for the preview.
+		$content = $post->post_content;
+		$content = preg_replace( '/<img[^>]*>/i', '', $content );
+		$content = preg_replace( '/<figure[^>]*>.*?<\/figure>/is', '', $content );
+
 		return array(
 			'id'          => $post->ID,
 			'title'       => get_the_title( $post ),
@@ -555,6 +560,7 @@ class Article_Notes {
 			'author'      => $this->plugin->get_post_author_name( $post ),
 			'sent_date'   => $sent_date,
 			'excerpt'     => get_the_excerpt( $post ),
+			'content'     => wp_kses_post( $content ),
 			'note_id'     => $note ? $note['id'] : 0,
 			'status'      => $note ? $note['status'] : self::STATUS_UNREAD,
 			'rating'      => $note ? $note['rating'] : 0,

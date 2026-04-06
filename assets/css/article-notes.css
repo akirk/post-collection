@@ -148,28 +148,46 @@
 	margin-top: 3px;
 }
 
-/* Notes toggle and Archive buttons — hidden in pending list */
-.post-collection-pending-list .post-collection-toggle-notes-btn,
+/* Archive button — hidden in pending list */
 .post-collection-pending-list .post-collection-archive-btn {
 	display: none;
 }
 
-/* Notes toggle button style */
-.post-collection-toggle-notes-btn {
-	padding: 4px 8px;
-	font-size: 11px;
-	background: #f6f7f7;
-	border: 1px solid #c3c4c7;
+/* Article Preview */
+.post-collection-article-preview {
+	margin: 8px 0;
+	border: 1px solid #f0f0f1;
 	border-radius: 3px;
-	cursor: pointer;
-	color: #787c82;
-	transition: all 0.2s ease;
 }
 
-.post-collection-toggle-notes-btn:hover {
+.post-collection-article-preview summary {
+	padding: 6px 8px;
+	font-size: 12px;
+	color: #787c82;
+	cursor: pointer;
+	background: #f9f9f9;
+}
+
+.post-collection-article-preview summary:hover {
 	background: #f0f0f1;
-	border-color: #8c8f94;
 	color: #50575e;
+}
+
+.post-collection-article-preview-content {
+	max-height: 200px;
+	overflow-y: auto;
+	padding: 8px 12px;
+	font-size: 13px;
+	line-height: 1.6;
+	border-top: 1px solid #f0f0f1;
+}
+
+.post-collection-article-preview-content p {
+	margin: 0 0 0.8em;
+}
+
+.post-collection-article-preview-content p:last-child {
+	margin-bottom: 0;
 }
 
 /* Controls Row */
@@ -250,15 +268,6 @@
 	margin-top: 8px;
 }
 
-/* Notes hidden by default in reviewed list, shown on click */
-.post-collection-reviewed-list .post-collection-notes-wrapper {
-	display: none;
-}
-
-.post-collection-reviewed-list .post-collection-article-item.post-collection-notes-open .post-collection-notes-wrapper {
-	display: block;
-}
-
 .post-collection-notes {
 	width: 100%;
 	min-height: 50px;
@@ -299,22 +308,6 @@
 
 .post-collection-save-status.error {
 	color: #d63638;
-}
-
-/* Notes preview in reviewed list */
-.post-collection-notes-preview {
-	font-size: 12px;
-	color: #787c82;
-	font-style: italic;
-	cursor: pointer;
-	padding: 4px;
-	margin-top: 4px;
-	background: #f9f9f9;
-	border-radius: 3px;
-}
-
-.post-collection-notes-preview:hover {
-	background: #f0f0f1;
 }
 
 /* Create Post Section */
