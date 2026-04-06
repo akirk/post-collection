@@ -7,14 +7,39 @@
 
 defined( 'ABSPATH' ) || exit;
 
-$pending_articles  = isset( $args['pending_articles'] ) ? $args['pending_articles'] : array();
-$has_more_pending  = isset( $args['has_more_pending'] ) ? $args['has_more_pending'] : false;
-$reviewed_articles = isset( $args['reviewed_articles'] ) ? $args['reviewed_articles'] : array();
-$nonce             = isset( $args['nonce'] ) ? $args['nonce'] : '';
-$statuses          = \PostCollection\Article_Notes::get_statuses();
+$pending_articles   = isset( $args['pending_articles'] ) ? $args['pending_articles'] : array();
+$has_more_pending   = isset( $args['has_more_pending'] ) ? $args['has_more_pending'] : false;
+$reviewed_articles  = isset( $args['reviewed_articles'] ) ? $args['reviewed_articles'] : array();
+$random_remembered  = isset( $args['random_remembered'] ) ? $args['random_remembered'] : null;
+$nonce              = isset( $args['nonce'] ) ? $args['nonce'] : '';
+$statuses           = \PostCollection\Article_Notes::get_statuses();
 ?>
 
 <div class="post-collection-article-notes-widget" data-nonce="<?php echo esc_attr( $nonce ); ?>">
+	<?php if ( $random_remembered ) : ?>
+		<div class="post-collection-remember">
+			<div class="post-collection-remember-header">
+				<span class="post-collection-remember-label"><?php esc_html_e( 'From your notes:', 'post-collection' ); ?></span>
+				<a href="#" class="post-collection-remember-another"><?php esc_html_e( 'Show another', 'post-collection' ); ?> &rarr;</a>
+			</div>
+			<a href="<?php echo esc_url( $random_remembered['permalink'] ); ?>" class="post-collection-remember-title" target="_blank">
+				<?php echo esc_html( $random_remembered['title'] ); ?>
+			</a>
+			<span class="post-collection-remember-meta"><?php echo esc_html( $random_remembered['author'] ); ?></span>
+			<blockquote class="post-collection-remember-notes">
+				<?php echo wp_kses_post( $random_remembered['notes'] ); ?>
+			</blockquote>
+			<?php if ( ! empty( $random_remembered['content'] ) ) : ?>
+				<details class="post-collection-article-preview">
+					<summary><?php esc_html_e( 'Show article', 'post-collection' ); ?></summary>
+					<div class="post-collection-article-preview-content">
+						<?php echo $random_remembered['content']; ?>
+					</div>
+				</details>
+			<?php endif; ?>
+		</div>
+	<?php endif; ?>
+
 	<?php if ( empty( $pending_articles ) && empty( $reviewed_articles ) ) : ?>
 		<p class="post-collection-no-articles">
 			<?php esc_html_e( 'No articles in your collection yet. Collect posts from the web to start adding notes and reviews.', 'post-collection' ); ?>
