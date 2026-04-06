@@ -87,7 +87,7 @@ class Article_Notes {
 		// Get notes based on filter.
 		$notes_data = $this->get_all_notes( $status_filter, $per_page, ( $paged - 1 ) * $per_page );
 
-		$this->plugin->get_template_loader()->get_template_part(
+		Post_Collection::template_loader()->get_template_part(
 			'admin/article-notes-page',
 			null,
 			array(
@@ -274,7 +274,7 @@ class Article_Notes {
 			$unread_articles = array_slice( $unread_articles, 0, $other_limit );
 		}
 
-		$this->plugin->get_template_loader()->get_template_part(
+		Post_Collection::template_loader()->get_template_part(
 			'admin/article-notes-widget',
 			null,
 			array(
