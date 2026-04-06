@@ -20,7 +20,7 @@ $base_url = admin_url( 'edit.php?post_type=post_collection&page=post-collection-
 ?>
 
 <div class="wrap post-collection-notes-admin">
-	<h1><?php esc_html_e( 'Article Notes', 'post-collection' ); ?></h1>
+	<h1><?php esc_html_e( 'Collected Posts Notes', 'post-collection' ); ?></h1>
 
 	<div class="post-collection-notes-filters">
 		<ul class="subsubsub">
