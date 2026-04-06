@@ -260,8 +260,8 @@ class Article_Notes {
 	 */
 	public function render_dashboard_widget() {
 		$this->enqueue_widget_assets();
-		$pending_limit = 10;
-		$review_limit = 10;
+		$pending_limit = 1;
+		$review_limit = 5;
 
 		$pending_articles = $this->get_pending_and_unread_articles( $pending_limit + 1 );
 		$has_more_pending = count( $pending_articles ) > $pending_limit;
