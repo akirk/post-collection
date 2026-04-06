@@ -6,14 +6,16 @@
  * @package Friends_Post_Collection
  */
 
+defined( 'ABSPATH' ) || exit;
+
 ?>
 <form method="post">
 	<table class="widefat fixed striped">
 		<thead>
-			<th><?php esc_html_e( 'Post Collection Name', 'friends' ); ?></th>
-			<th style="width: 10em"><?php esc_html_e( 'Dropdown', 'friends' ); ?></th>
-			<th><?php esc_html_e( 'External feed', 'friends' ); ?></th>
-			<th><?php esc_html_e( 'Bookmarklet', 'friends' ); ?></th>
+			<th><?php esc_html_e( 'Post Collection Name', 'post-collection' ); ?></th>
+			<th style="width: 10em"><?php esc_html_e( 'Dropdown', 'post-collection' ); ?></th>
+			<th><?php esc_html_e( 'External feed', 'post-collection' ); ?></th>
+			<th><?php esc_html_e( 'Bookmarklet', 'post-collection' ); ?></th>
 		</thead>
 		<?php
 		foreach ( $args['post_collections'] as $user ) :
@@ -25,11 +27,11 @@
 		<td>
 			<?php
 			if ( get_user_option( 'friends_post_collection_inactive', $user->ID ) ) {
-				echo __( 'Hide', 'friends' );
+				echo esc_html__( 'Hide', 'post-collection' );
 			} elseif ( get_user_option( 'friends_post_collection_copy_mode', $user->ID ) ) {
-				echo __( 'Copy to', 'friends' );
+				echo esc_html__( 'Copy to', 'post-collection' );
 			} else {
-				echo __( 'Move to', 'friends' );
+				echo esc_html__( 'Move to', 'post-collection' );
 			}
 			?>
 		</td>
@@ -40,7 +42,7 @@
 		<a href="<?php echo esc_url( $feed_url ); ?>"><?php echo esc_html( $feed_url ); ?></a>
 				<?php
 	else :
-			esc_html_e( 'disabled', 'friends' );
+			esc_html_e( 'disabled', 'post-collection' );
 		endif;
 	?>
 		</td>
@@ -49,7 +51,7 @@
 			echo esc_html(
 				sprintf(
 					// translators: %s is the name of a Post Collection user.
-					__( 'Save to %s', 'friends' ),
+					__( 'Save to %s', 'post-collection' ),
 					$user->display_name
 				)
 			);
@@ -60,7 +62,7 @@
 	<?php endforeach; ?>
 </table>
 <p class="description">
-	<a href="<?php echo esc_url( self_admin_url( 'admin.php?page=create-post-collection' ) ); ?>"><?php esc_html_e( 'Create another user', 'friends' ); ?></a></p>
+	<a href="<?php echo esc_url( self_admin_url( 'admin.php?page=create-post-collection' ) ); ?>"><?php esc_html_e( 'Create another user', 'post-collection' ); ?></a></p>
 
 </form>
 
@@ -69,7 +71,7 @@
 echo wp_kses(
 	sprintf(
 		// translators: %s is a URL.
-		__( 'To save posts from anywhere on the web, use the <a href=%s>bookmarklets</a>.', 'friends' ),
+		__( 'To save posts from anywhere on the web, use the <a href=%s>bookmarklets</a>.', 'post-collection' ),
 		self_admin_url( 'tools.php' )
 	),
 	array(

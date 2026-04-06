@@ -9,6 +9,8 @@
 
 namespace PostCollection;
 
+defined( 'ABSPATH' ) || exit;
+
 /**
  * User class for the Post Collection plugin.
  *
