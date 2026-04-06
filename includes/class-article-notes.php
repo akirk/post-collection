@@ -9,16 +9,18 @@
 
 namespace PostCollection;
 
+defined( 'ABSPATH' ) || exit;
+
 /**
  * Class for managing article notes and reviews.
  *
  * @since 1.1.0
  */
 class Article_Notes {
-	const POST_TYPE = 'ereader_note';
-	const NOTE_ID_META = 'ereader_note_id';
-	const RATING_META = 'ereader_rating';
-	const STATUS_META = 'ereader_status';
+	const POST_TYPE = 'post_collection_note';
+	const NOTE_ID_META = 'post_collection_note_id';
+	const RATING_META = 'post_collection_rating';
+	const STATUS_META = 'post_collection_status';
 
 	const STATUS_UNREAD = 'unread';
 	const STATUS_READ = 'read';
@@ -47,11 +49,11 @@ class Article_Notes {
 	 */
 	private function register_hooks() {
 		add_action( 'init', array( $this, 'register_post_type' ) );
-		add_action( 'wp_ajax_ereader_save_note', array( $this, 'ajax_save_note' ) );
-		add_action( 'wp_ajax_ereader_get_notes', array( $this, 'ajax_get_notes' ) );
-		add_action( 'wp_ajax_ereader_load_more_pending', array( $this, 'ajax_load_more_pending' ) );
-		add_action( 'wp_ajax_ereader_create_post_from_notes', array( $this, 'ajax_create_post_from_notes' ) );
-		add_action( 'wp_ajax_ereader_dismiss_old_articles', array( $this, 'ajax_dismiss_old_articles' ) );
+		add_action( 'wp_ajax_post_collection_save_note', array( $this, 'ajax_save_note' ) );
+		add_action( 'wp_ajax_post_collection_get_notes', array( $this, 'ajax_get_notes' ) );
+		add_action( 'wp_ajax_post_collection_load_more_pending', array( $this, 'ajax_load_more_pending' ) );
+		add_action( 'wp_ajax_post_collection_create_post_from_notes', array( $this, 'ajax_create_post_from_notes' ) );
+		add_action( 'wp_ajax_post_collection_dismiss_old_articles', array( $this, 'ajax_dismiss_old_articles' ) );
 		add_action( 'before_delete_post', array( $this, 'maybe_delete_note' ) );
 		add_action( 'wp_dashboard_setup', array( $this, 'register_dashboard_widget' ) );
 		add_action( 'admin_menu', array( $this, 'register_admin_menu' ) );
@@ -66,7 +68,7 @@ class Article_Notes {
 			__( 'Article Notes', 'post-collection' ),
 			__( 'Article Notes', 'post-collection' ),
 			'edit_posts',
-			'ereader-article-notes',
+			'post-collection-article-notes',
 			array( $this, 'render_admin_page' )
 		);
 	}
@@ -95,7 +97,7 @@ class Article_Notes {
 				'per_page'      => $per_page,
 				'status_filter' => $status_filter,
 				'statuses'      => self::get_statuses(),
-				'nonce'         => wp_create_nonce( 'ereader-article-notes' ),
+				'nonce'         => wp_create_nonce( 'post-collection-article-notes' ),
 			)
 		);
 	}
@@ -107,14 +109,14 @@ class Article_Notes {
 		$version = POST_COLLECTION_VERSION;
 
 		wp_enqueue_style(
-			'ereader-article-notes-admin',
+			'post-collection-article-notes-admin',
 			plugins_url( 'assets/css/article-notes-admin.css', dirname( __FILE__ ) ),
 			array(),
 			$version
 		);
 
 		wp_enqueue_script(
-			'ereader-article-notes',
+			'post-collection-article-notes',
 			plugins_url( 'assets/js/article-notes.js', dirname( __FILE__ ) ),
 			array( 'jquery' ),
 			$version,
@@ -122,11 +124,11 @@ class Article_Notes {
 		);
 
 		wp_localize_script(
-			'ereader-article-notes',
-			'ereaderArticleNotes',
+			'post-collection-article-notes',
+			'postCollectionArticleNotes',
 			array(
 				'ajaxurl'  => admin_url( 'admin-ajax.php' ),
-				'nonce'    => wp_create_nonce( 'ereader-article-notes' ),
+				'nonce'    => wp_create_nonce( 'post-collection-article-notes' ),
 				'statuses' => self::get_statuses(),
 				'i18n'     => array(
 					'saving'  => __( 'Saving...', 'post-collection' ),
@@ -246,8 +248,8 @@ class Article_Notes {
 		}
 
 		wp_add_dashboard_widget(
-			'ereader_article_notes',
-			__( 'E-Reader Article Notes', 'post-collection' ),
+			'post_collection_article_notes',
+			__( 'Article Notes', 'post-collection' ),
 			array( $this, 'render_dashboard_widget' )
 		);
 	}
@@ -282,7 +284,7 @@ class Article_Notes {
 				'unread_articles'   => $unread_articles,
 				'has_more_unread'   => $has_more_unread,
 				'reviewed_articles' => $this->get_reviewed_articles( $other_limit ),
-				'nonce'             => wp_create_nonce( 'ereader-article-notes' ),
+				'nonce'             => wp_create_nonce( 'post-collection-article-notes' ),
 			)
 		);
 	}
@@ -294,14 +296,14 @@ class Article_Notes {
 		$version = POST_COLLECTION_VERSION;
 
 		wp_enqueue_style(
-			'ereader-article-notes',
+			'post-collection-article-notes',
 			plugins_url( 'assets/css/article-notes.css', dirname( __FILE__ ) ),
 			array(),
 			$version
 		);
 
 		wp_enqueue_script(
-			'ereader-article-notes',
+			'post-collection-article-notes',
 			plugins_url( 'assets/js/article-notes.js', dirname( __FILE__ ) ),
 			array( 'jquery' ),
 			$version,
@@ -309,11 +311,11 @@ class Article_Notes {
 		);
 
 		wp_localize_script(
-			'ereader-article-notes',
-			'ereaderArticleNotes',
+			'post-collection-article-notes',
+			'postCollectionArticleNotes',
 			array(
 				'ajaxurl'  => admin_url( 'admin-ajax.php' ),
-				'nonce'    => wp_create_nonce( 'ereader-article-notes' ),
+				'nonce'    => wp_create_nonce( 'post-collection-article-notes' ),
 				'statuses' => self::get_statuses(),
 				'i18n'     => array(
 					'saving'        => __( 'Saving...', 'post-collection' ),
@@ -655,7 +657,7 @@ class Article_Notes {
 	 * AJAX handler for saving a note.
 	 */
 	public function ajax_save_note() {
-		check_ajax_referer( 'ereader-article-notes' );
+		check_ajax_referer( 'post-collection-article-notes' );
 
 		if ( ! current_user_can( 'edit_posts' ) ) {
 			wp_send_json_error( __( 'Permission denied.', 'post-collection' ) );
@@ -689,7 +691,7 @@ class Article_Notes {
 	 * AJAX handler for getting notes data.
 	 */
 	public function ajax_get_notes() {
-		check_ajax_referer( 'ereader-article-notes' );
+		check_ajax_referer( 'post-collection-article-notes' );
 
 		if ( ! current_user_can( 'edit_posts' ) ) {
 			wp_send_json_error( __( 'Permission denied.', 'post-collection' ) );
@@ -711,7 +713,7 @@ class Article_Notes {
 	 * AJAX handler for loading more pending articles.
 	 */
 	public function ajax_load_more_pending() {
-		check_ajax_referer( 'ereader-article-notes' );
+		check_ajax_referer( 'post-collection-article-notes' );
 
 		if ( ! current_user_can( 'edit_posts' ) ) {
 			wp_send_json_error( __( 'Permission denied.', 'post-collection' ) );
@@ -745,7 +747,7 @@ class Article_Notes {
 	 * AJAX handler for creating a post from selected notes.
 	 */
 	public function ajax_create_post_from_notes() {
-		check_ajax_referer( 'ereader-article-notes' );
+		check_ajax_referer( 'post-collection-article-notes' );
 
 		if ( ! current_user_can( 'edit_posts' ) ) {
 			wp_send_json_error( __( 'Permission denied.', 'post-collection' ) );
@@ -866,7 +868,7 @@ class Article_Notes {
 	 * AJAX handler for dismissing old articles (marking all pending as skipped).
 	 */
 	public function ajax_dismiss_old_articles() {
-		check_ajax_referer( 'ereader-article-notes' );
+		check_ajax_referer( 'post-collection-article-notes' );
 
 		if ( ! current_user_can( 'edit_posts' ) ) {
 			wp_send_json_error( __( 'Permission denied.', 'post-collection' ) );

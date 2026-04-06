@@ -1,7 +1,7 @@
 /**
  * Article Notes Widget JavaScript
  *
- * @package Send_To_E_Reader
+ * @package Post_Collection
  */
 
 (function($) {
@@ -27,24 +27,24 @@
 			var self = this;
 
 			// Tab switching.
-			$(document).on('click', '.ereader-tab', function(e) {
+			$(document).on('click', '.post-collection-tab', function(e) {
 				e.preventDefault();
 				self.switchTab($(this).data('tab'));
 			});
 
 			// Status button clicks.
-			$(document).on('click', '.ereader-status-btn', function(e) {
+			$(document).on('click', '.post-collection-status-btn', function(e) {
 				e.preventDefault();
 				var $btn = $(this);
-				var $item = $btn.closest('.ereader-article-item');
+				var $item = $btn.closest('.post-collection-article-item');
 				var articleId = $item.data('article-id');
 				var status = $btn.data('status');
-				var currentTab = $('.ereader-tab.active').data('tab');
+				var currentTab = $('.post-collection-tab.active').data('tab');
 
 				self.saveNote(articleId, { status: status }, $item);
 
 				// Update UI.
-				$item.find('.ereader-status-btn').removeClass('active');
+				$item.find('.post-collection-status-btn').removeClass('active');
 				$btn.addClass('active');
 
 				// Check if item should move to another tab.
@@ -66,11 +66,11 @@
 			});
 
 			// Star rating clicks.
-			$(document).on('click', '.ereader-star', function(e) {
+			$(document).on('click', '.post-collection-star', function(e) {
 				e.preventDefault();
 				var $star = $(this);
-				var $item = $star.closest('.ereader-article-item');
-				var $ratingContainer = $star.closest('.ereader-rating');
+				var $item = $star.closest('.post-collection-article-item');
+				var $ratingContainer = $star.closest('.post-collection-rating');
 				var articleId = $item.data('article-id');
 				var rating = $star.data('rating');
 
@@ -81,9 +81,9 @@
 			});
 
 			// Notes textarea - save on blur with debounce.
-			$(document).on('input', '.ereader-notes', function() {
+			$(document).on('input', '.post-collection-notes', function() {
 				var $textarea = $(this);
-				var $item = $textarea.closest('.ereader-article-item');
+				var $item = $textarea.closest('.post-collection-article-item');
 				var articleId = $item.data('article-id');
 
 				// Clear existing timer for this article.
@@ -98,9 +98,9 @@
 			});
 
 			// Also save on blur.
-			$(document).on('blur', '.ereader-notes', function() {
+			$(document).on('blur', '.post-collection-notes', function() {
 				var $textarea = $(this);
-				var $item = $textarea.closest('.ereader-article-item');
+				var $item = $textarea.closest('.post-collection-article-item');
 				var articleId = $item.data('article-id');
 
 				// Clear pending timer and save immediately.
@@ -113,36 +113,36 @@
 			});
 
 			// Toggle notes in reviewed list.
-			$(document).on('click', '.ereader-notes-preview', function() {
-				var $item = $(this).closest('.ereader-article-item');
+			$(document).on('click', '.post-collection-notes-preview', function() {
+				var $item = $(this).closest('.post-collection-article-item');
 				$(this).hide();
-				$item.find('.ereader-notes-wrapper').show();
-				$item.find('.ereader-notes').focus();
+				$item.find('.post-collection-notes-wrapper').show();
+				$item.find('.post-collection-notes').focus();
 			});
 
 			// Create post from selected.
-			$(document).on('click', '.ereader-create-post-btn', function(e) {
+			$(document).on('click', '.post-collection-create-post-btn', function(e) {
 				e.preventDefault();
 				self.createPostFromSelected();
 			});
 
 			// Select all toggle for reviewed list.
-			$(document).on('change', '.ereader-select-all', function() {
+			$(document).on('change', '.post-collection-select-all', function() {
 				var checked = $(this).prop('checked');
-				$('.ereader-reviewed-list input[type="checkbox"]').prop('checked', checked);
+				$('.post-collection-reviewed-list input[type="checkbox"]').prop('checked', checked);
 			});
 
 			// Load more pending articles.
-			$(document).on('click', '.ereader-load-more-btn', function(e) {
+			$(document).on('click', '.post-collection-load-more-btn', function(e) {
 				e.preventDefault();
 				self.loadMorePending($(this));
 			});
 
 			// Archive button clicks.
-			$(document).on('click', '.ereader-archive-btn', function(e) {
+			$(document).on('click', '.post-collection-archive-btn', function(e) {
 				e.preventDefault();
 				var $btn = $(this);
-				var $item = $btn.closest('.ereader-article-item');
+				var $item = $btn.closest('.post-collection-article-item');
 				var articleId = $item.data('article-id');
 
 				self.saveNote(articleId, { status: 'archived' }, $item);
@@ -156,11 +156,11 @@
 		 * @param {string} tab Tab name.
 		 */
 		switchTab: function(tab) {
-			$('.ereader-tab').removeClass('active');
-			$('.ereader-tab[data-tab="' + tab + '"]').addClass('active');
+			$('.post-collection-tab').removeClass('active');
+			$('.post-collection-tab[data-tab="' + tab + '"]').addClass('active');
 
-			$('.ereader-tab-content').removeClass('active');
-			$('.ereader-tab-content[data-tab="' + tab + '"]').addClass('active');
+			$('.post-collection-tab-content').removeClass('active');
+			$('.post-collection-tab-content[data-tab="' + tab + '"]').addClass('active');
 		},
 
 		/**
@@ -171,7 +171,7 @@
 		 */
 		updateStars: function($container, rating) {
 			$container.data('rating', rating);
-			$container.find('.ereader-star').each(function(index) {
+			$container.find('.post-collection-star').each(function(index) {
 				var $star = $(this);
 				var starRating = index + 1;
 				if (starRating <= rating) {
@@ -188,9 +188,9 @@
 		 * @param {jQuery} $item The article item to remove.
 		 */
 		animateItemRemoval: function($item) {
-			$item.addClass('ereader-moving');
+			$item.addClass('post-collection-moving');
 			setTimeout(function() {
-				$item.addClass('ereader-removed');
+				$item.addClass('post-collection-removed');
 				setTimeout(function() {
 					$item.remove();
 				}, 300);
@@ -205,20 +205,20 @@
 		 * @param {jQuery} $item Article item element.
 		 */
 		saveNote: function(articleId, data, $item) {
-			var $status = $item.find('.ereader-save-status');
+			var $status = $item.find('.post-collection-save-status');
 
-			$status.text(ereaderArticleNotes.i18n.saving).addClass('saving');
+			$status.text(postCollectionArticleNotes.i18n.saving).addClass('saving');
 
 			var postData = $.extend({
-				action: 'ereader_save_note',
-				_ajax_nonce: ereaderArticleNotes.nonce,
+				action: 'post_collection_save_note',
+				_ajax_nonce: postCollectionArticleNotes.nonce,
 				article_id: articleId
 			}, data);
 
-			$.post(ereaderArticleNotes.ajaxurl, postData)
+			$.post(postCollectionArticleNotes.ajaxurl, postData)
 				.done(function(response) {
 					if (response.success) {
-						$status.text(ereaderArticleNotes.i18n.saved)
+						$status.text(postCollectionArticleNotes.i18n.saved)
 							.removeClass('saving error')
 							.addClass('saved');
 
@@ -226,13 +226,13 @@
 							$status.text('').removeClass('saved');
 						}, 2000);
 					} else {
-						$status.text(ereaderArticleNotes.i18n.error)
+						$status.text(postCollectionArticleNotes.i18n.error)
 							.removeClass('saving saved')
 							.addClass('error');
 					}
 				})
 				.fail(function() {
-					$status.text(ereaderArticleNotes.i18n.error)
+					$status.text(postCollectionArticleNotes.i18n.error)
 						.removeClass('saving saved')
 						.addClass('error');
 				});
@@ -249,17 +249,17 @@
 			var type = $btn.data('type') || 'pending';
 			var originalText = $btn.text();
 
-			$btn.prop('disabled', true).text(ereaderArticleNotes.i18n.loading || 'Loading...');
+			$btn.prop('disabled', true).text(postCollectionArticleNotes.i18n.loading || 'Loading...');
 
-			$.post(ereaderArticleNotes.ajaxurl, {
-				action: 'ereader_load_more_pending',
-				_ajax_nonce: ereaderArticleNotes.nonce,
+			$.post(postCollectionArticleNotes.ajaxurl, {
+				action: 'post_collection_load_more_pending',
+				_ajax_nonce: postCollectionArticleNotes.nonce,
 				offset: offset,
 				type: type
 			})
 				.done(function(response) {
 					if (response.success && response.data.articles) {
-						var $list = $('.ereader-' + type + '-list');
+						var $list = $('.post-collection-' + type + '-list');
 
 						// Append new articles.
 						response.data.articles.forEach(function(article) {
@@ -271,7 +271,7 @@
 							$btn.data('offset', response.data.offset);
 							$btn.prop('disabled', false).text(originalText);
 						} else {
-							$btn.closest('.ereader-load-more-section').remove();
+							$btn.closest('.post-collection-load-more-section').remove();
 						}
 					} else {
 						$btn.prop('disabled', false).text(originalText);
@@ -289,42 +289,42 @@
 		 * @return {string} HTML string.
 		 */
 		renderArticleItem: function(article) {
-			var statuses = ereaderArticleNotes.statuses || {
+			var statuses = postCollectionArticleNotes.statuses || {
 				'unread': 'Not read yet',
 				'read': 'Read',
 				'skipped': 'Skipped'
 			};
 
-			var html = '<li class="ereader-article-item" data-article-id="' + article.id + '">';
-			html += '<div class="ereader-article-header">';
-			html += '<a href="' + article.permalink + '" class="ereader-article-title" target="_blank">' + this.escapeHtml(article.title) + '</a>';
-			html += '<span class="ereader-article-meta">' + this.escapeHtml(article.author);
+			var html = '<li class="post-collection-article-item" data-article-id="' + article.id + '">';
+			html += '<div class="post-collection-article-header">';
+			html += '<a href="' + article.permalink + '" class="post-collection-article-title" target="_blank">' + this.escapeHtml(article.title) + '</a>';
+			html += '<span class="post-collection-article-meta">' + this.escapeHtml(article.author);
 			if (article.sent_date) {
 				html += ' &bull; ' + this.escapeHtml(article.sent_date);
 			}
 			html += '</span></div>';
 
-			html += '<div class="ereader-article-controls">';
-			html += '<div class="ereader-status-buttons">';
+			html += '<div class="post-collection-article-controls">';
+			html += '<div class="post-collection-status-buttons">';
 			for (var key in statuses) {
 				var activeClass = article.status === key ? ' active' : '';
-				html += '<button type="button" class="ereader-status-btn' + activeClass + '" data-status="' + key + '" title="' + statuses[key] + '">' + statuses[key] + '</button>';
+				html += '<button type="button" class="post-collection-status-btn' + activeClass + '" data-status="' + key + '" title="' + statuses[key] + '">' + statuses[key] + '</button>';
 			}
 			html += '</div>';
 
-			html += '<div class="ereader-rating" data-rating="' + article.rating + '">';
+			html += '<div class="post-collection-rating" data-rating="' + article.rating + '">';
 			for (var i = 1; i <= 5; i++) {
 				var starActive = i <= article.rating ? ' active' : '';
 				var starChar = i <= article.rating ? '&#9733;' : '&#9734;';
-				html += '<button type="button" class="ereader-star' + starActive + '" data-rating="' + i + '" title="' + i + ' stars">' + starChar + '</button>';
+				html += '<button type="button" class="post-collection-star' + starActive + '" data-rating="' + i + '" title="' + i + ' stars">' + starChar + '</button>';
 			}
 			html += '</div></div>';
 
-			html += '<div class="ereader-notes-wrapper">';
-			html += '<textarea class="ereader-notes" placeholder="Add your notes..." rows="2">' + this.escapeHtml(article.notes || '') + '</textarea>';
+			html += '<div class="post-collection-notes-wrapper">';
+			html += '<textarea class="post-collection-notes" placeholder="Add your notes..." rows="2">' + this.escapeHtml(article.notes || '') + '</textarea>';
 			html += '</div>';
 
-			html += '<div class="ereader-save-status"></div>';
+			html += '<div class="post-collection-save-status"></div>';
 			html += '</li>';
 
 			return html;
@@ -348,7 +348,7 @@
 		 */
 		createPostFromSelected: function() {
 			var selectedIds = [];
-			$('.ereader-reviewed-list input[type="checkbox"]:checked').each(function() {
+			$('.post-collection-reviewed-list input[type="checkbox"]:checked').each(function() {
 				selectedIds.push($(this).val());
 			});
 
@@ -357,14 +357,14 @@
 				return;
 			}
 
-			var postTitle = $('#ereader-post-title').val();
-			var $btn = $('.ereader-create-post-btn');
+			var postTitle = $('#post-collection-post-title').val();
+			var $btn = $('.post-collection-create-post-btn');
 
 			$btn.prop('disabled', true).text('Creating...');
 
-			$.post(ereaderArticleNotes.ajaxurl, {
-				action: 'ereader_create_post_from_notes',
-				_ajax_nonce: ereaderArticleNotes.nonce,
+			$.post(postCollectionArticleNotes.ajaxurl, {
+				action: 'post_collection_create_post_from_notes',
+				_ajax_nonce: postCollectionArticleNotes.nonce,
 				article_ids: selectedIds,
 				post_title: postTitle
 			})
