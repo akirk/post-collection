@@ -1,0 +1,207 @@
+/**
+ * Article Notes Admin Page Styles
+ *
+ * @package Post_Collection
+ */
+
+.post-collection-notes-admin .post-collection-notes-filters {
+	margin: 20px 0;
+}
+
+.post-collection-notes-admin .subsubsub {
+	float: none;
+	margin-bottom: 10px;
+}
+
+.post-collection-no-notes {
+	color: #787c82;
+	font-style: italic;
+	padding: 20px;
+	text-align: center;
+	background: #fff;
+	border: 1px solid #c3c4c7;
+}
+
+/* Table Styles */
+.post-collection-notes-table {
+	margin-top: 10px;
+}
+
+.post-collection-notes-table .column-title {
+	width: 25%;
+}
+
+.post-collection-notes-table .column-status {
+	width: 20%;
+}
+
+.post-collection-notes-table .column-rating {
+	width: 10%;
+}
+
+.post-collection-notes-table .column-notes {
+	width: 30%;
+}
+
+.post-collection-notes-table .column-date {
+	width: 15%;
+}
+
+.post-collection-notes-table .column-title a {
+	font-weight: 600;
+	color: #2271b1;
+	text-decoration: none;
+}
+
+.post-collection-notes-table .column-title a:hover {
+	color: #135e96;
+	text-decoration: underline;
+}
+
+.post-collection-article-author {
+	color: #787c82;
+	font-size: 12px;
+	margin-top: 4px;
+}
+
+/* Status Buttons */
+.post-collection-notes-table .post-collection-status-buttons {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 4px;
+	margin-bottom: 8px;
+}
+
+.post-collection-notes-table .post-collection-status-btn {
+	padding: 4px 8px;
+	font-size: 11px;
+	background: #f6f7f7;
+	border: 1px solid #c3c4c7;
+	border-radius: 3px;
+	cursor: pointer;
+	color: #50575e;
+	transition: all 0.2s ease;
+}
+
+.post-collection-notes-table .post-collection-status-btn:hover {
+	background: #f0f0f1;
+	border-color: #8c8f94;
+}
+
+.post-collection-notes-table .post-collection-status-btn.active {
+	background: #2271b1;
+	border-color: #2271b1;
+	color: #fff;
+}
+
+.post-collection-notes-table .post-collection-status-btn.active:hover {
+	background: #135e96;
+	border-color: #135e96;
+}
+
+/* Archive Button */
+.post-collection-notes-table .post-collection-archive-btn {
+	padding: 4px 8px;
+	font-size: 11px;
+	background: #f6f7f7;
+	border: 1px solid #c3c4c7;
+	border-radius: 3px;
+	cursor: pointer;
+	color: #787c82;
+	transition: all 0.2s ease;
+}
+
+.post-collection-notes-table .post-collection-archive-btn:hover {
+	background: #f0f0f1;
+	border-color: #8c8f94;
+	color: #50575e;
+}
+
+/* Star Rating */
+.post-collection-notes-table .post-collection-rating {
+	display: flex;
+	gap: 2px;
+}
+
+.post-collection-notes-table .post-collection-star {
+	background: none;
+	border: none;
+	cursor: pointer;
+	font-size: 18px;
+	color: #dcdcde;
+	padding: 0;
+	line-height: 1;
+	transition: color 0.15s ease;
+}
+
+.post-collection-notes-table .post-collection-star:hover,
+.post-collection-notes-table .post-collection-star.active {
+	color: #ffb900;
+}
+
+.post-collection-notes-table .post-collection-rating:hover .post-collection-star {
+	color: #ffb900;
+}
+
+.post-collection-notes-table .post-collection-rating:hover .post-collection-star:hover ~ .post-collection-star {
+	color: #dcdcde;
+}
+
+/* Notes */
+.post-collection-notes-table .post-collection-notes-wrapper {
+	margin-bottom: 4px;
+}
+
+.post-collection-notes-table .post-collection-notes {
+	width: 100%;
+	min-height: 60px;
+	padding: 8px;
+	border: 1px solid #c3c4c7;
+	border-radius: 4px;
+	font-size: 13px;
+	resize: vertical;
+	box-sizing: border-box;
+}
+
+.post-collection-notes-table .post-collection-notes:focus {
+	border-color: #2271b1;
+	box-shadow: 0 0 0 1px #2271b1;
+	outline: none;
+}
+
+/* Save Status */
+.post-collection-notes-table .post-collection-save-status {
+	font-size: 11px;
+	min-height: 16px;
+}
+
+.post-collection-notes-table .post-collection-save-status.saving {
+	color: #787c82;
+}
+
+.post-collection-notes-table .post-collection-save-status.saved {
+	color: #00a32a;
+}
+
+.post-collection-notes-table .post-collection-save-status.error {
+	color: #d63638;
+}
+
+/* Pagination */
+.post-collection-notes-admin .tablenav-pages {
+	float: right;
+}
+
+.post-collection-notes-admin .displaying-num {
+	margin-right: 10px;
+}
+
+/* Row animations */
+.post-collection-notes-table .post-collection-article-item {
+	transition: opacity 0.3s ease, background-color 0.3s ease;
+}
+
+.post-collection-notes-table .post-collection-article-item.post-collection-moving {
+	opacity: 0.5;
+	background-color: #fffbcc;
+}
