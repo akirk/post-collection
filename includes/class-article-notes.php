@@ -59,6 +59,7 @@ class Article_Notes {
 		add_action( 'before_delete_post', array( $this, 'maybe_delete_note' ) );
 		add_action( 'wp_dashboard_setup', array( $this, 'register_dashboard_widget' ) );
 		add_action( 'admin_menu', array( $this, 'register_admin_menu' ) );
+		add_action( 'friends_post_footer_first', array( $this, 'render_frontend_notes' ) );
 	}
 
 	/**
@@ -100,6 +101,64 @@ class Article_Notes {
 				'status_filter' => $status_filter,
 				'statuses'      => self::get_statuses(),
 				'nonce'         => wp_create_nonce( 'post-collection-article-notes' ),
+			)
+		);
+	}
+
+	/**
+	 * Render the notes UI on the Friends frontend single post view.
+	 */
+	public function render_frontend_notes() {
+		if ( ! is_single() || ! current_user_can( 'edit_posts' ) ) {
+			return;
+		}
+
+		$post = get_post();
+		if ( ! $post ) {
+			return;
+		}
+
+		$article = $this->prepare_article_data( $post );
+		$statuses = self::get_statuses();
+		$nonce = wp_create_nonce( 'post-collection-article-notes' );
+
+		$version = POST_COLLECTION_VERSION;
+		wp_enqueue_style(
+			'post-collection-article-notes',
+			plugins_url( 'assets/css/article-notes.css', dirname( __FILE__ ) ),
+			array(),
+			$version
+		);
+		wp_enqueue_script(
+			'post-collection-article-notes',
+			plugins_url( 'assets/js/article-notes.js', dirname( __FILE__ ) ),
+			array( 'jquery' ),
+			$version,
+			true
+		);
+		wp_localize_script(
+			'post-collection-article-notes',
+			'postCollectionArticleNotes',
+			array(
+				'ajaxurl'  => admin_url( 'admin-ajax.php' ),
+				'nonce'    => $nonce,
+				'statuses' => $statuses,
+				'i18n'     => array(
+					'saving'      => __( 'Saving...', 'post-collection' ),
+					'saved'       => __( 'Saved', 'post-collection' ),
+					'error'       => __( 'Error saving', 'post-collection' ),
+					'showArticle' => __( 'Show article', 'post-collection' ),
+				),
+			)
+		);
+
+		Post_Collection::template_loader()->get_template_part(
+			'frontend/article-notes',
+			null,
+			array(
+				'article'  => $article,
+				'statuses' => $statuses,
+				'nonce'    => $nonce,
 			)
 		);
 	}
