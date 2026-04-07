@@ -59,7 +59,7 @@ class Article_Notes {
 		add_action( 'before_delete_post', array( $this, 'maybe_delete_note' ) );
 		add_action( 'wp_dashboard_setup', array( $this, 'register_dashboard_widget' ) );
 		add_action( 'admin_menu', array( $this, 'register_admin_menu' ) );
-		add_action( 'friends_post_footer_first', array( $this, 'render_frontend_notes' ) );
+		add_action( 'friends_post_after_footer', array( $this, 'render_frontend_notes' ) );
 	}
 
 	/**
