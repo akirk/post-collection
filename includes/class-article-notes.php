@@ -83,7 +83,9 @@ class Article_Notes {
 		$this->enqueue_admin_page_assets();
 
 		// Get current filter.
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only admin page filter, no state change.
 		$status_filter = isset( $_GET['status'] ) ? sanitize_text_field( wp_unslash( $_GET['status'] ) ) : 'all';
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only admin page pagination, no state change.
 		$paged = isset( $_GET['paged'] ) ? max( 1, (int) $_GET['paged'] ) : 1;
 		$per_page = 20;
 
@@ -229,7 +231,7 @@ class Article_Notes {
 		);
 
 		if ( ! empty( $meta_query ) ) {
-			$args['meta_query'] = $meta_query;
+			$args['meta_query'] = $meta_query; // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query -- Required to filter notes by status.
 		}
 
 		$query = new \WP_Query( $args );
@@ -265,7 +267,7 @@ class Article_Notes {
 		);
 
 		if ( ! empty( $meta_query ) ) {
-			$count_args['meta_query'] = $meta_query;
+			$count_args['meta_query'] = $meta_query; // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query -- Required to count notes by status.
 		}
 
 		$total = count( get_posts( $count_args ) );
@@ -499,7 +501,7 @@ class Article_Notes {
 			'posts_per_page' => $limit,
 			'offset'         => $offset,
 			'post_status'    => 'any',
-			'meta_query'     => $meta_query,
+			'meta_query'     => $meta_query, // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query -- Required to filter articles by note status.
 			'orderby'        => 'date',
 			'order'          => 'DESC',
 		);
@@ -507,7 +509,7 @@ class Article_Notes {
 		$queued_meta_key = apply_filters( 'post_collection_article_queued_orderby_meta_key', '' );
 		if ( ! empty( $queued_meta_key ) ) {
 			$args['orderby'] = 'meta_value_num';
-			$args['meta_key'] = $queued_meta_key;
+			$args['meta_key'] = $queued_meta_key; // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key -- Custom ordering by filterable meta key.
 		}
 
 		$posts = get_posts( $args );
@@ -564,7 +566,7 @@ class Article_Notes {
 				'posts_per_page' => -1,
 				'post_status'    => 'publish',
 				'fields'         => 'ids',
-				'meta_query'     => array(
+				'meta_query'     => array( // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query -- Required to find unread articles for dismissal.
 					array(
 						'key'   => self::STATUS_META,
 						'value' => self::STATUS_UNREAD,
@@ -618,7 +620,7 @@ class Article_Notes {
 				'posts_per_page' => -1,
 				'post_status'    => 'publish',
 				'fields'         => 'ids',
-				'meta_query'     => array(
+				'meta_query'     => array( // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query -- Required to find reviewed/skipped articles.
 					array(
 						'key'     => self::STATUS_META,
 						'value'   => array( self::STATUS_READ, self::STATUS_SKIPPED ),
@@ -670,7 +672,7 @@ class Article_Notes {
 				'posts_per_page' => -1,
 				'post_status'    => 'publish',
 				'fields'         => 'ids',
-				'meta_query'     => array(
+				'meta_query'     => array( // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query -- Required to find reviewed/skipped articles.
 					array(
 						'key'     => self::STATUS_META,
 						'value'   => array( self::STATUS_READ, self::STATUS_SKIPPED ),
@@ -1111,7 +1113,7 @@ class Article_Notes {
 			'posts_per_page' => -1,
 			'post_status'    => 'any',
 			'fields'         => 'ids',
-			'meta_query'     => $meta_query,
+			'meta_query'     => $meta_query, // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query -- Required to filter articles for bulk dismissal.
 		);
 
 		$article_ids = get_posts( $args );

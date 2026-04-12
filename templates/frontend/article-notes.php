@@ -9,6 +9,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
+// phpcs:disable WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound -- Template variables extracted from $args.
 $article  = isset( $args['article'] ) ? $args['article'] : array();
 $statuses = isset( $args['statuses'] ) ? $args['statuses'] : array();
 $nonce    = isset( $args['nonce'] ) ? $args['nonce'] : '';
@@ -35,6 +36,7 @@ if ( empty( $article ) ) {
 				<button type="button"
 					class="post-collection-star <?php echo $i <= $article['rating'] ? 'active' : ''; ?>"
 					data-rating="<?php echo esc_attr( $i ); ?>"
+					<?php /* translators: %d: number of stars for rating */ ?>
 					title="<?php echo esc_attr( sprintf( __( '%d stars', 'post-collection' ), $i ) ); ?>">
 					<?php echo $i <= $article['rating'] ? '&#9733;' : '&#9734;'; ?>
 				</button>

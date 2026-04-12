@@ -160,9 +160,9 @@ class Post_Collection {
 			return $this->friends->feed->url_to_postid( $url, $user_id );
 		}
 
-		// Fallback: query by guid field.
+		// Fallback: query by guid field. No WP API exists for guid lookup.
 		global $wpdb;
-		$post_id = $wpdb->get_var(
+		$post_id = $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- One-off guid lookup with no caching API available.
 			$wpdb->prepare(
 				"SELECT ID FROM $wpdb->posts WHERE guid = %s AND post_author = %d AND post_type = %s LIMIT 1",
 				$url,
@@ -495,15 +495,18 @@ class Post_Collection {
 			wp_die( esc_html__( 'Sorry, you are not allowed to edit this user.' ) ); // phpcs:ignore WordPress.WP.I18n.MissingArgDomain
 		}
 
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- This is a read-only admin page load, nonce is verified on form submission.
 		if ( ! isset( $_GET['user'] ) || ! is_numeric( $_GET['user'] ) ) {
 			wp_die( esc_html__( 'Invalid user ID.' ) ); // phpcs:ignore WordPress.WP.I18n.MissingArgDomain
 		}
 
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only page load, user ID from URL.
 		$user = new User( intval( $_GET['user'] ) );
 		if ( ! $user || is_wp_error( $user ) ) {
 			wp_die( esc_html__( 'Invalid user ID.' ) ); // phpcs:ignore WordPress.WP.I18n.MissingArgDomain
 		}
 
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended, WordPress.Security.ValidatedSanitizedInput.MissingUnslash, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Read-only page load; is_super_admin() casts to int internally.
 		if ( is_multisite() && is_super_admin( $_GET['user'] ) ) {
 			wp_die( esc_html__( 'Invalid user ID.' ) ); // phpcs:ignore WordPress.WP.I18n.MissingArgDomain
 		}
@@ -525,21 +528,21 @@ class Post_Collection {
 		$arg       = 'updated';
 		$arg_value = 1;
 
-		if ( isset( $_POST['_wpnonce'] ) && wp_verify_nonce( $_POST['_wpnonce'], 'edit-post-collection-' . $user->ID ) ) {
+		if ( isset( $_POST['_wpnonce'] ) && wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['_wpnonce'] ) ), 'edit-post-collection-' . $user->ID ) ) {
 
-			if ( trim( $_POST['display_name'] ) ) {
-				$user->display_name = trim( $_POST['display_name'] );
+			if ( isset( $_POST['display_name'] ) && trim( sanitize_text_field( wp_unslash( $_POST['display_name'] ) ) ) ) {
+				$user->display_name = trim( sanitize_text_field( wp_unslash( $_POST['display_name'] ) ) );
 			}
-			$user->description = trim( $_POST['description'] );
+			$user->description = isset( $_POST['description'] ) ? sanitize_textarea_field( wp_unslash( $_POST['description'] ) ) : '';
 			wp_update_user( $user );
 
-			if ( isset( $_POST['publish_post_collection'] ) && $_POST['publish_post_collection'] ) {
+			if ( isset( $_POST['publish_post_collection'] ) && sanitize_text_field( wp_unslash( $_POST['publish_post_collection'] ) ) ) {
 				update_user_option( $user->ID, 'friends_publish_post_collection', true );
 			} else {
 				delete_user_option( $user->ID, 'friends_publish_post_collection' );
 			}
 			if ( isset( $_POST['dropdown'] ) ) {
-				switch ( $_POST['dropdown'] ) {
+				switch ( sanitize_text_field( wp_unslash( $_POST['dropdown'] ) ) ) {
 					case 'inactive':
 						update_user_option( $user->ID, 'friends_post_collection_inactive', true );
 						break;
@@ -558,9 +561,9 @@ class Post_Collection {
 		}
 
 		if ( isset( $_GET['wp_http_referer'] ) ) {
-			wp_safe_redirect( $_GET['wp_http_referer'] );
+			wp_safe_redirect( esc_url_raw( wp_unslash( $_GET['wp_http_referer'] ) ) );
 		} else {
-			wp_safe_redirect( add_query_arg( $arg, $arg_value, remove_query_arg( array( 'wp_http_referer', '_wpnonce' ), wp_unslash( $_SERVER['REQUEST_URI'] ) ) ) );
+			wp_safe_redirect( add_query_arg( $arg, $arg_value, remove_query_arg( array( 'wp_http_referer', '_wpnonce' ), wp_unslash( $_SERVER['REQUEST_URI'] ) ) ) ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotValidated, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- REQUEST_URI is server-set and sanitized by add_query_arg/remove_query_arg.
 		}
 		exit;
 	}
@@ -587,11 +590,11 @@ class Post_Collection {
 		<h1><?php echo esc_html( $user->user_login ); ?></h1>
 		<?php
 
-		if ( isset( $_GET['updated'] ) ) {
+		if ( isset( $_GET['updated'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only status message display after redirect.
 			?>
 			<div id="message" class="updated notice is-dismissible"><p><?php esc_html_e( 'User was updated.', 'post-collection' ); ?></p></div>
 			<?php
-		} elseif ( isset( $_GET['error'] ) ) {
+		} elseif ( isset( $_GET['error'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only status message display after redirect.
 			?>
 			<div id="message" class="updated error is-dismissible"><p><?php esc_html_e( 'An error occurred.', 'post-collection' ); ?></p></div>
 			<?php
@@ -612,12 +615,14 @@ class Post_Collection {
 			'user_login'   => null,
 			'display_name' => null,
 		);
+		// phpcs:disable WordPress.Security.NonceVerification.Missing -- Nonce is verified below when processing the form submission.
 		if ( isset( $_POST['display_name'] ) ) {
-			$user->display_name = sanitize_text_field( $_POST['display_name'] );
+			$user->display_name = sanitize_text_field( wp_unslash( $_POST['display_name'] ) );
 		}
 
 		if ( isset( $_POST['user_login'] ) ) {
-			$user->user_login = sanitize_user( $_POST['user_login'] );
+			$user->user_login = sanitize_user( wp_unslash( $_POST['user_login'] ) );
+		// phpcs:enable WordPress.Security.NonceVerification.Missing
 			if ( ! $user->user_login && $user->display_name ) {
 				$user->user_login = User::sanitize_username( $user->display_name );
 			}
@@ -663,7 +668,7 @@ class Post_Collection {
 		$user     = $this->check_create_post_collection();
 
 		if ( ! empty( $_POST ) ) {
-			if ( ! wp_verify_nonce( $_POST['_wpnonce'], 'create-post-collection' ) ) {
+			if ( ! isset( $_POST['_wpnonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['_wpnonce'] ) ), 'create-post-collection' ) ) {
 				$response = new \WP_Error( 'invalid-nonce', __( 'For security reasons, please verify the URL and click next if you want to proceed.', 'post-collection' ) );
 			} else {
 				$response = $this->process_create_post_collection();
@@ -709,7 +714,14 @@ class Post_Collection {
 		}
 
 		if ( $this->is_on_friends_frontend() ) {
-			wp_enqueue_script( 'post-collection', plugins_url( 'post-collection.js', __FILE__ ), array( 'friends' ), 1.0 );
+			wp_enqueue_script( 'post-collection', plugins_url( 'post-collection.js', __FILE__ ), array( 'friends' ), 1.0, true );
+			wp_localize_script(
+				'post-collection',
+				'postCollectionData',
+				array(
+					'nonce' => wp_create_nonce( 'post-collection' ),
+				)
+			);
 		}
 	}
 
@@ -946,18 +958,19 @@ class Post_Collection {
 	}
 
 	public function save_url_endpoint() {
+		// phpcs:disable WordPress.Security.NonceVerification.Recommended, WordPress.Security.NonceVerification.Missing -- This is a bookmarklet/browser extension endpoint; auth is handled by current_user_can() below.
 		$delimiter = '===BODY===';
 		$url = false;
 		if ( isset( $_REQUEST['collect-post'] ) && isset( $_REQUEST['user'] ) ) {
-			if ( ! intval( $_REQUEST['user'] ) ) {
+			if ( ! intval( $_REQUEST['user'] ) ) { // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.MissingUnslash, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Sanitized by intval().
 				return;
 			}
-			$saved_body = get_user_option( 'post-collection_last_save', $_REQUEST['user'] );
+			$saved_body = get_user_option( 'post-collection_last_save', intval( $_REQUEST['user'] ) );
 			list( $last_url, $last_body ) = explode( $delimiter, $saved_body ? $saved_body : $delimiter, 2 );
-			$url = wp_unslash( $_REQUEST['collect-post'] );
+			$url = esc_url_raw( wp_unslash( $_REQUEST['collect-post'] ) );
 			$body = false;
 			if ( isset( $_POST['body'] ) ) {
-				$body = wp_unslash( $_POST['body'] );
+				$body = wp_kses_post( wp_unslash( $_POST['body'] ) );
 			} elseif ( rawurldecode( $last_url ) === rawurldecode( $url ) ) {
 				$body = $last_body;
 			}
@@ -966,13 +979,13 @@ class Post_Collection {
 		if ( ! $url ) {
 			return;
 		}
-		if ( 'POST' !== $_SERVER['REQUEST_METHOD'] && isset( $_REQUEST['post-only'] ) ) {
+		if ( 'POST' !== ( isset( $_SERVER['REQUEST_METHOD'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REQUEST_METHOD'] ) ) : '' ) && isset( $_REQUEST['post-only'] ) ) {
 			$friend_user = new User( intval( $_REQUEST['user'] ) );
 			$post_id = $this->url_to_postid( $url, $friend_user->ID );
 			if ( ! $post_id ) {
 				$_REQUEST['post-only'] += 1;
-				if ( $_REQUEST['post-only'] <= 3 ) {
-					sleep( 3 - $_REQUEST['post-only'] );
+				if ( intval( $_REQUEST['post-only'] ) <= 3 ) {
+					sleep( 3 - intval( $_REQUEST['post-only'] ) );
 					wp_safe_redirect( add_query_arg( $_REQUEST, home_url( '/' ) ) );
 					exit;
 				} else {
@@ -986,7 +999,7 @@ class Post_Collection {
 		}
 
 		if ( $body ) {
-			update_user_option( $_REQUEST['user'], 'post-collection_last_save', $url . $delimiter . $body );
+			update_user_option( intval( $_REQUEST['user'] ), 'post-collection_last_save', $url . $delimiter . $body );
 		}
 
 		if ( ! current_user_can( $this->get_required_role() ) ) {
@@ -994,12 +1007,11 @@ class Post_Collection {
 		}
 
 		$friend_user = new User( intval( $_REQUEST['user'] ) );
+		// phpcs:enable WordPress.Security.NonceVerification.Recommended, WordPress.Security.NonceVerification.Missing
 		if ( ! is_wp_error( $friend_user ) || ! $friend_user->has_cap( 'post_collection' ) ) {
 			$error = $this->save_url( $url, $friend_user, $body );
 			if ( is_wp_error( $error ) ) {
-				echo '<pre>';
-				print_r( $error );
-				exit;
+				wp_die( esc_html( $error->get_error_message() ) );
 			}
 		}
 	}
@@ -1791,11 +1803,15 @@ class Post_Collection {
 	}
 
 	function wp_ajax_mark_private() {
+		check_ajax_referer( 'post-collection' );
 		if ( ! current_user_can( $this->get_required_role() ) ) {
 			wp_send_json_error( 'error' );
 		}
 
-		$post = get_post( $_POST['id'] );
+		if ( ! isset( $_POST['id'] ) ) {
+			wp_send_json_error( 'error' );
+		}
+		$post = get_post( intval( $_POST['id'] ) );
 		$post->post_status = 'private';
 		wp_update_post( $post );
 
@@ -1807,11 +1823,15 @@ class Post_Collection {
 	}
 
 	function wp_ajax_mark_publish() {
+		check_ajax_referer( 'post-collection' );
 		if ( ! current_user_can( $this->get_required_role() ) ) {
 			wp_send_json_error( 'error' );
 		}
 
-		$post = get_post( $_POST['id'] );
+		if ( ! isset( $_POST['id'] ) ) {
+			wp_send_json_error( 'error' );
+		}
+		$post = get_post( intval( $_POST['id'] ) );
 		$post->post_status = 'publish';
 		wp_update_post( $post );
 
@@ -1823,11 +1843,15 @@ class Post_Collection {
 	}
 
 	function wp_ajax_change_author() {
+		check_ajax_referer( 'post-collection' );
 		if ( ! current_user_can( $this->get_required_role() ) ) {
 			wp_send_json_error( 'error' );
 		}
 
-		$new_author = new User( $_POST['author'] );
+		if ( ! isset( $_POST['author'] ) || ! isset( $_POST['originalauthor'] ) || ! isset( $_POST['id'] ) ) {
+			wp_send_json_error( 'error' );
+		}
+		$new_author = new User( intval( $_POST['author'] ) );
 		if ( is_wp_error( $new_author ) ) {
 			wp_send_json_error( 'error' );
 		}
@@ -1835,10 +1859,10 @@ class Post_Collection {
 			wp_send_json_error( 'error' );
 		}
 
-		$originalauthor = User::get_user_by_id( $_POST['originalauthor'] );
+		$originalauthor = User::get_user_by_id( intval( $_POST['originalauthor'] ) );
 		$new_text = __( 'Undo' ); // phpcs:ignore WordPress.WP.I18n.MissingArgDomain
 
-		$post = get_post( $_POST['id'] );
+		$post = get_post( intval( $_POST['id'] ) );
 
 		$old_author = User::get_post_author( $post );
 
@@ -1874,11 +1898,16 @@ class Post_Collection {
 	}
 
 	function wp_ajax_fetch_full_content() {
+		check_ajax_referer( 'post-collection' );
 		if ( ! current_user_can( $this->get_required_role() ) ) {
 			wp_send_json_error( __( 'Sorry, you are not allowed to do that' ) ); // phpcs:ignore WordPress.WP.I18n.MissingArgDomain
 			exit;
 		}
-		$post = get_post( $_POST['id'] );
+		if ( ! isset( $_POST['id'] ) ) {
+			wp_send_json_error( 'error' );
+			exit;
+		}
+		$post = get_post( intval( $_POST['id'] ) );
 		if ( ! $post ) {
 			wp_send_json_error( __( 'That post does not exist.' ) ); // phpcs:ignore WordPress.WP.I18n.MissingArgDomain
 			exit;
@@ -1945,11 +1974,16 @@ class Post_Collection {
 	}
 
 	function wp_ajax_download_images() {
+		check_ajax_referer( 'post-collection' );
 		if ( ! current_user_can( $this->get_required_role() ) ) {
 			wp_send_json_error( __( 'Sorry, you are not allowed to do that' ) ); // phpcs:ignore WordPress.WP.I18n.MissingArgDomain
 			exit;
 		}
-		$post = get_post( $_POST['id'] );
+		if ( ! isset( $_POST['id'] ) ) {
+			wp_send_json_error( 'error' );
+			exit;
+		}
+		$post = get_post( intval( $_POST['id'] ) );
 		if ( ! $post ) {
 			wp_send_json_error( __( 'That post does not exist.' ) ); // phpcs:ignore WordPress.WP.I18n.MissingArgDomain
 			exit;
@@ -2032,12 +2066,17 @@ class Post_Collection {
 	 * Re-extract content from the original HTML stored in revisions.
 	 */
 	function wp_ajax_re_extract() {
+		check_ajax_referer( 'post-collection' );
 		if ( ! current_user_can( $this->get_required_role() ) ) {
 			wp_send_json_error( __( 'Sorry, you are not allowed to do that' ) ); // phpcs:ignore WordPress.WP.I18n.MissingArgDomain
 			exit;
 		}
 
-		$post = get_post( $_POST['id'] );
+		if ( ! isset( $_POST['id'] ) ) {
+			wp_send_json_error( 'error' );
+			exit;
+		}
+		$post = get_post( intval( $_POST['id'] ) );
 		if ( ! $post ) {
 			wp_send_json_error( __( 'That post does not exist.' ) ); // phpcs:ignore WordPress.WP.I18n.MissingArgDomain
 			exit;

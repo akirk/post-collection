@@ -8,7 +8,8 @@
  *
  * Description: Collect posts from around the web.
  *
- * License: GPL2
+ * License: GPLv2 or later
+ * License URI: https://www.gnu.org/licenses/gpl-2.0.html
  * Text Domain: post-collection
  * Domain Path: /languages/
  *

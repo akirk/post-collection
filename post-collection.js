@@ -1,5 +1,6 @@
 jQuery( function ( $ ) {
 	var $document = $( document );
+	var nonce = ( typeof postCollectionData !== 'undefined' ) ? postCollectionData.nonce : '';
 
 	wp = wp || {};
 	$document.on( 'click', 'a.post-collection-mark-publish', function () {
@@ -7,6 +8,7 @@ jQuery( function ( $ ) {
 		wp.ajax.send( 'post-collection-mark-publish', {
 			data: {
 				id: $this.data( 'id' ),
+				_ajax_nonce: nonce,
 			},
 			success: function ( response ) {
 				$this.text( response.new_text ).removeClass( 'post-collection-mark-publish' ).addClass( 'post-collection-mark-private' );
@@ -19,6 +21,7 @@ jQuery( function ( $ ) {
 		wp.ajax.send( 'post-collection-mark-private', {
 			data: {
 				id: $this.data( 'id' ),
+				_ajax_nonce: nonce,
 			},
 			success: function ( response ) {
 				$this.text( response.new_text ).removeClass( 'post-collection-mark-private' ).addClass( 'post-collection-mark-publish' );
@@ -32,7 +35,8 @@ jQuery( function ( $ ) {
 			data: {
 				id: $this.data( 'id' ),
 				author: $this.data( 'author' ),
-				originalauthor: $this.data( 'originalauthor' )
+				originalauthor: $this.data( 'originalauthor' ),
+				_ajax_nonce: nonce,
 			},
 			success: function ( response ) {
 				$this.text( response.new_text ).data( 'author', response.old_author );
@@ -49,7 +53,8 @@ jQuery( function ( $ ) {
 		wp.ajax.send( 'post-collection-fetch-full-content', {
 			data: {
 				id: $this.data( 'id' ),
-				author: $this.data( 'author' )
+				author: $this.data( 'author' ),
+				_ajax_nonce: nonce,
 			},
 			beforeSend: function () {
 				search_indicator.addClass( 'form-icon loading' );
@@ -75,7 +80,8 @@ jQuery( function ( $ ) {
 		wp.ajax.send( 'post-collection-download-images', {
 			data: {
 				id: $this.data( 'id' ),
-				author: $this.data( 'author' )
+				author: $this.data( 'author' ),
+				_ajax_nonce: nonce,
 			},
 			beforeSend: function () {
 				search_indicator.addClass( 'form-icon loading' );
@@ -100,7 +106,8 @@ jQuery( function ( $ ) {
 		}
 		wp.ajax.send( 'post-collection-re-extract', {
 			data: {
-				id: $this.data( 'id' )
+				id: $this.data( 'id' ),
+				_ajax_nonce: nonce,
 			},
 			beforeSend: function () {
 				search_indicator.addClass( 'form-icon loading' );
