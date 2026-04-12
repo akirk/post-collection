@@ -7,6 +7,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
+// phpcs:disable WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound -- Template variables extracted from $args.
 $pending_articles   = isset( $args['pending_articles'] ) ? $args['pending_articles'] : array();
 $has_more_pending   = isset( $args['has_more_pending'] ) ? $args['has_more_pending'] : false;
 $reviewed_articles  = isset( $args['reviewed_articles'] ) ? $args['reviewed_articles'] : array();

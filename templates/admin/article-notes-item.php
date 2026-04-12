@@ -9,6 +9,8 @@
  */
 
 defined( 'ABSPATH' ) || exit;
+
+// phpcs:disable WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound -- Template variables from parent scope.
 ?>
 <div class="post-collection-article-header">
 	<label class="post-collection-select-article">
@@ -34,7 +36,7 @@ defined( 'ABSPATH' ) || exit;
 	<details class="post-collection-article-preview">
 		<summary><?php esc_html_e( 'Show article', 'post-collection' ); ?></summary>
 		<div class="post-collection-article-preview-content">
-			<?php echo $article['content']; ?>
+			<?php echo wp_kses_post( $article['content'] ); ?>
 		</div>
 	</details>
 <?php endif; ?>
@@ -56,6 +58,7 @@ defined( 'ABSPATH' ) || exit;
 			<button type="button"
 				class="post-collection-star <?php echo $i <= $article['rating'] ? 'active' : ''; ?>"
 				data-rating="<?php echo esc_attr( $i ); ?>"
+				<?php /* translators: %d: number of stars for rating */ ?>
 				title="<?php echo esc_attr( sprintf( __( '%d stars', 'post-collection' ), $i ) ); ?>">
 				<?php echo $i <= $article['rating'] ? '&#9733;' : '&#9734;'; ?>
 			</button>

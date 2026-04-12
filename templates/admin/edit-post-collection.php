@@ -8,6 +8,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
+// phpcs:disable WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound -- Template variables from parent scope.
 ?><form method="post">
 	<?php wp_nonce_field( 'edit-post-collection-' . $args['user']->ID ); ?>
 	<table class="form-table">
