@@ -7,6 +7,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
+// phpcs:disable WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound -- Template variables extracted from $args.
 $notes = isset( $args['notes'] ) ? $args['notes'] : array();
 $total = isset( $args['total'] ) ? $args['total'] : 0;
 $paged = isset( $args['paged'] ) ? $args['paged'] : 1;
@@ -96,7 +97,8 @@ $base_url = admin_url( 'edit.php?post_type=post_collection&page=post-collection-
 									<button type="button"
 										class="post-collection-star <?php echo $i <= $note['rating'] ? 'active' : ''; ?>"
 										data-rating="<?php echo esc_attr( $i ); ?>"
-										title="<?php echo esc_attr( sprintf( __( '%d stars', 'post-collection' ), $i ) ); ?>">
+										<?php /* translators: %d: number of stars for rating */ ?>
+								title="<?php echo esc_attr( sprintf( __( '%d stars', 'post-collection' ), $i ) ); ?>">
 										<?php echo $i <= $note['rating'] ? '&#9733;' : '&#9734;'; ?>
 									</button>
 								<?php endfor; ?>

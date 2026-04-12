@@ -8,6 +8,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
+// phpcs:disable WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound -- Template variables from parent scope.
 ?>
 <div class="card">
 	<h2 class="title"><?php esc_html_e( 'Friends Post Collection', 'post-collection' ); ?></h2>

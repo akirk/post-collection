@@ -8,6 +8,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
+// phpcs:disable WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound -- Template variables from parent scope.
 ?>
 <form method="post">
 	<table class="widefat fixed striped">

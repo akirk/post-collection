@@ -8,6 +8,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
+// phpcs:disable WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound -- Template variables from parent scope.
 ?><div class="friends-dropdown">
 	<a class="btn btn-link ml-1 friends-dropdown-toggle" tabindex="0" title="<?php echo esc_attr_x( 'Share', 'button', 'post-collection' ); ?>">
 		<i class="dashicons dashicons-share"></i> <span class="text"><?php echo esc_html_x( 'Share', 'button', 'post-collection' ); ?></span>
