@@ -114,7 +114,7 @@ class Article_Notes {
 		}
 
 		$post = get_post();
-		if ( ! $post ) {
+		if ( ! $post || Post_Collection::CPT !== $post->post_type ) {
 			return;
 		}
 
