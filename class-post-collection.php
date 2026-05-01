@@ -209,7 +209,7 @@ class Post_Collection {
 		add_action( 'wp_ajax_post-collection-download-images', array( $this, 'wp_ajax_download_images' ) );
 		add_action( 'wp_ajax_post-collection-re-extract', array( $this, 'wp_ajax_re_extract' ) );
 		add_filter( 'friends_search_autocomplete', array( $this, 'friends_search_autocomplete' ), 20, 2 );
-		add_filter( 'friends_browser_extension_rest_info', array( $this, 'friends_browser_extension_rest_info' ) );
+		add_filter( 'friends_browser_extension_actions', array( $this, 'friends_browser_extension_actions' ), 10, 2 );
 	}
 
 	public function register_site_config( SiteConfig\SiteConfig $config ) {
@@ -1533,25 +1533,24 @@ class Post_Collection {
 		return $results;
 	}
 
-	public function friends_browser_extension_rest_info( $info ) {
-		$post_collections = array();
+	public function friends_browser_extension_actions( $actions ) {
 		foreach ( $this->get_post_collection_users()->get_results() as $user ) {
 			if ( get_user_option( 'friends_post_collection_inactive', $user->ID ) ) {
 				continue;
 			}
-			$post_collections[] = array(
-				'id'   => $user->ID,
-				'name' => $user->display_name,
-				'url'  => $user->get_local_friends_page_url(),
-
+			$actions[] = array(
+				'name'     => $user->display_name,
+				'url'      => home_url( '/' ),
+				'method'   => 'POST',
+				'fields'   => array(
+					'collect-post' => '{current_url}',
+					'user'         => $user->ID,
+					'body'         => '{page_html}',
+				),
+				'category' => __( 'Post Collections', 'post-collection' ),
 			);
-
 		}
-		if ( ! empty( $post_collections ) ) {
-			$info['post_collections'] = $post_collections;
-		}
-
-		return $info;
+		return $actions;
 	}
 
 	/**
