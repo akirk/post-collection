@@ -1545,7 +1545,7 @@ class Post_Collection {
 				'url'    => home_url( '/?user=' . $user->ID . '&post-only=1&collect-post={current_url}' ),
 				'method' => 'POST',
 				'fields' => array( 'body' => '{page_html}' ),
-				'category' => __( 'Post Collections', 'post-collection' ),
+				'category' => __( 'Collect Post', 'post-collection' ),
 			);
 		}
 
