@@ -2,7 +2,7 @@
 /**
  * Plugin name: Post Collection
  * Plugin author: Alex Kirk
- * Plugin URI: https://github.com/akirk/friends-post-collection
+ * Plugin URI: https://github.com/akirk/post-collection
  * Version: 2.0.0
  *
  * Description: Collect posts from around the web.

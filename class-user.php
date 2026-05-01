@@ -9,6 +9,8 @@
 
 namespace PostCollection;
 
+defined( 'ABSPATH' ) || exit;
+
 /**
  * User class for the Post Collection plugin.
  *
@@ -104,5 +106,28 @@ class User extends \WP_User {
 	 */
 	protected function get_user_login_for_url( $user_login ) {
 		return sanitize_title( $user_login );
+	}
+
+	/**
+	 * Insert a post as this user.
+	 *
+	 * @param array $postarr           The post data.
+	 * @param bool  $wp_error          Whether to return a WP_Error on failure.
+	 * @param bool  $fire_after_hooks  Whether to fire after insert hooks.
+	 * @return int|\WP_Error The post ID or error.
+	 */
+	public function insert_post( array $postarr, $wp_error = false, $fire_after_hooks = true ) {
+		$current_user = wp_get_current_user();
+
+		// Posts and revisions should be associated with this user.
+		wp_set_current_user( $this->ID );
+
+		$post = wp_insert_post( $postarr, $wp_error, $fire_after_hooks );
+
+		if ( $current_user ) {
+			wp_set_current_user( $current_user->ID );
+		}
+
+		return $post;
 	}
 }

@@ -6,11 +6,13 @@
  * @package Friends_Post_Collection
  */
 
+defined( 'ABSPATH' ) || exit;
+
 ?><div class="friends-dropdown">
-	<a class="btn btn-link ml-1 friends-dropdown-toggle" tabindex="0" title="<?php echo esc_attr_x( 'Share', 'button', 'friends' ); ?>">
-		<i class="dashicons dashicons-share"></i> <span class="text"><?php echo esc_html_x( 'Share', 'button', 'friends' ); ?></span>
+	<a class="btn btn-link ml-1 friends-dropdown-toggle" tabindex="0" title="<?php echo esc_attr_x( 'Share', 'button', 'post-collection' ); ?>">
+		<i class="dashicons dashicons-share"></i> <span class="text"><?php echo esc_html_x( 'Share', 'button', 'post-collection' ); ?></span>
 	</a>
-	<ul class="menu" style="min-width: <?php echo esc_attr( intval( _x( '250', 'dropdown-menu-width', 'friends' ) ) ); ?>px">
+	<ul class="menu" style="min-width: <?php echo esc_attr( intval( _x( '250', 'dropdown-menu-width', 'post-collection' ) ) ); ?>px">
 	<?php
 	foreach ( $args['post-collections'] as $user ) {
 		if ( 10000 === intval( $user->ID ) ) {
@@ -22,7 +24,7 @@
 			echo esc_html(
 				sprintf(
 				// translators: %s is the name of a post collection.
-					_x( 'Move to %s', 'post-collection', 'friends' ),
+					_x( 'Move to %s', 'post-collection', 'post-collection' ),
 					$user->display_name
 				)
 			);

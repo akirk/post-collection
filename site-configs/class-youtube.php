@@ -1,6 +1,8 @@
 <?php
 namespace PostCollection\SiteConfig;
 
+defined( 'ABSPATH' ) || exit;
+
 use PostCollection\ExtractedPage;
 
 class Youtube extends SiteConfig {
