@@ -235,6 +235,7 @@ class Post_Collection {
 		add_action( 'friends_modify_feed_item', array( $this, 'modify_feed_item' ), 10, 4 );
 		add_filter( 'friends_can_update_modified_feed_posts', array( $this, 'can_update_modified_feed_posts' ), 10, 5 );
 		add_action( 'friends_after_register_feed_taxonomy', array( $this, 'after_register_feed_taxonomy' ) );
+		add_filter( 'my_apps_plugins', array( $this, 'my_apps_plugins' ) );
 		add_action( 'wp_ajax_post-collection-mark-publish', array( $this, 'wp_ajax_mark_publish' ) );
 		add_action( 'wp_ajax_post-collection-mark-private', array( $this, 'wp_ajax_mark_private' ) );
 		add_action( 'wp_ajax_post-collection-change-author', array( $this, 'wp_ajax_change_author' ) );
@@ -1581,6 +1582,24 @@ class Post_Collection {
 		}
 
 		return $actions;
+	}
+
+	/**
+	 * Register post collections as My Apps launcher entries.
+	 *
+	 * @param array $apps The registered My Apps entries.
+	 * @return array The filtered My Apps entries.
+	 */
+	public function my_apps_plugins( $apps ) {
+		foreach ( $this->get_post_collection_users()->get_results() as $user ) {
+			$apps[ 'post-collection-' . $user->ID ] = array(
+				'name'     => $user->display_name,
+				'url'      => $user->get_local_friends_page_url(),
+				'dashicon' => 'dashicons-book',
+			);
+		}
+
+		return $apps;
 	}
 
 	/**
