@@ -52,13 +52,41 @@ defined( 'ABSPATH' ) || exit;
 				<th><label><?php /* phpcs:ignore WordPress.WP.I18n.MissingArgDomain */ esc_html_e( 'Posts' ); ?></label></th>
 				<td>
 					<fieldset>
-					<a href="<?php echo esc_url( $args['user']->get_local_friends_page_url() ); ?>">
+					<a href="<?php echo esc_url( $args['frontend_url'] ? $args['frontend_url'] : $args['user']->get_local_friends_page_url() ); ?>">
 						<?php
 						// translators: %d is the number of posts.
 						echo esc_html( sprintf( _n( 'View %d post', 'View %d posts', $args['posts']->found_posts, 'post-collection' ), $args['posts']->found_posts ) );
 						?>
 					</a>
 					</fieldset>
+				</td>
+			</tr>
+			<tr>
+				<th><label for="frontend_mode"><?php esc_html_e( 'Frontend View', 'post-collection' ); ?></label></th>
+				<td>
+					<select name="frontend_mode" id="frontend_mode">
+						<option value="auto"<?php selected( ! $args['frontend_mode'] ); ?>><?php esc_html_e( 'Auto-detect', 'post-collection' ); ?></option>
+						<option value="bookmarks"<?php selected( 'bookmarks', $args['frontend_mode'] ); ?>><?php esc_html_e( 'Bookmarks', 'post-collection' ); ?></option>
+						<option value="posts"<?php selected( 'posts', $args['frontend_mode'] ); ?>><?php esc_html_e( 'Posts', 'post-collection' ); ?></option>
+					</select>
+					<p class="description"><?php esc_html_e( 'Choose whether this collection behaves like saved links or collected articles.', 'post-collection' ); ?></p>
+				</td>
+			</tr>
+			<tr>
+				<th><label for="frontend_view"><?php esc_html_e( 'Default Layout', 'post-collection' ); ?></label></th>
+				<td>
+					<select name="frontend_view" id="frontend_view">
+						<option value="auto"<?php selected( ! $args['frontend_view'] ); ?>><?php esc_html_e( 'Auto', 'post-collection' ); ?></option>
+						<option value="board"<?php selected( 'board', $args['frontend_view'] ); ?>><?php esc_html_e( 'Board', 'post-collection' ); ?></option>
+						<option value="links"<?php selected( 'links', $args['frontend_view'] ); ?>><?php esc_html_e( 'Compact links', 'post-collection' ); ?></option>
+						<option value="reader"<?php selected( 'reader', $args['frontend_view'] ); ?>><?php esc_html_e( 'Reader list', 'post-collection' ); ?></option>
+					</select>
+					<p class="description"><?php esc_html_e( 'Bookmark collections default to the compact links layout, inspired by Pinboard and Delicious.', 'post-collection' ); ?></p>
+					<?php if ( $args['frontend_url'] ) : ?>
+						<p class="description">
+							<a href="<?php echo esc_url( $args['frontend_url'] ); ?>"><?php echo esc_html( $args['frontend_url'] ); ?></a>
+						</p>
+					<?php endif; ?>
 				</td>
 			</tr>
 			<tr>
@@ -144,5 +172,3 @@ defined( 'ABSPATH' ) || exit;
 		<a href="<?php echo esc_url( self_admin_url( 'admin.php?page=post-collection' ) ); ?>"><?php esc_html_e( 'Back to the Post Collection overview', 'post-collection' ); ?></a></p>
 
 </form>
-
-

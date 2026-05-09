@@ -78,6 +78,9 @@ class Post_Collection {
 			$this->abilities = new Post_Collection_Abilities( $this );
 		}
 		$this->register_hooks();
+		if ( class_exists( __NAMESPACE__ . '\Post_Collection_App' ) ) {
+			Post_Collection_App::boot( $this );
+		}
 	}
 
 	/**
@@ -550,6 +553,22 @@ class Post_Collection {
 			} else {
 				delete_user_option( $user->ID, 'friends_publish_post_collection' );
 			}
+			$frontend_mode = isset( $_POST['frontend_mode'] ) ? sanitize_key( wp_unslash( $_POST['frontend_mode'] ) ) : 'auto';
+			if ( in_array( $frontend_mode, array( 'auto', 'bookmarks', 'posts' ), true ) ) {
+				if ( 'auto' === $frontend_mode ) {
+					delete_user_option( $user->ID, 'post_collection_frontend_mode' );
+				} else {
+					update_user_option( $user->ID, 'post_collection_frontend_mode', $frontend_mode );
+				}
+			}
+			$frontend_view = isset( $_POST['frontend_view'] ) ? sanitize_key( wp_unslash( $_POST['frontend_view'] ) ) : 'auto';
+			if ( in_array( $frontend_view, array( 'auto', 'board', 'links', 'reader' ), true ) ) {
+				if ( 'auto' === $frontend_view ) {
+					delete_user_option( $user->ID, 'post_collection_frontend_view' );
+				} else {
+					update_user_option( $user->ID, 'post_collection_frontend_view', $frontend_view );
+				}
+			}
 			if ( isset( $_POST['dropdown'] ) ) {
 				switch ( $_POST['dropdown'] ) {
 					case 'inactive':
@@ -592,7 +611,9 @@ class Post_Collection {
 			),
 			'post_collection_url' => home_url( '/?user=' . $user->ID ),
 			'bookmarklet_js'      => $this->get_bookmarklet_js(),
-
+			'frontend_mode'       => get_user_option( 'post_collection_frontend_mode', $user->ID ),
+			'frontend_view'       => get_user_option( 'post_collection_frontend_view', $user->ID ),
+			'frontend_url'        => class_exists( __NAMESPACE__ . '\Post_Collection_App' ) && Post_Collection_App::instance() ? Post_Collection_App::instance()->get_collection_url( $user ) : '',
 		);
 
 		?>

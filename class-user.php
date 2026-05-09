@@ -79,6 +79,9 @@ class User extends \WP_User {
 	 */
 	public function get_local_friends_page_url( $post_id = null ) {
 		if ( ! class_exists( 'Friends\Friends' ) ) {
+			if ( class_exists( __NAMESPACE__ . '\Post_Collection_App' ) && Post_Collection_App::instance() ) {
+				return Post_Collection_App::instance()->get_collection_url( $this, $post_id );
+			}
 			if ( $post_id && ! is_wp_error( $post_id ) ) {
 				return get_permalink( $post_id );
 			}
