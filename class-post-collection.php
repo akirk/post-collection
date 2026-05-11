@@ -78,6 +78,17 @@ class Post_Collection {
 			$this->abilities = new Post_Collection_Abilities( $this );
 		}
 		$this->register_hooks();
+		if ( did_action( 'init' ) ) {
+			$this->boot_app();
+		} else {
+			add_action( 'init', array( $this, 'boot_app' ), 0 );
+		}
+	}
+
+	/**
+	 * Initialize the standalone frontend app.
+	 */
+	public function boot_app() {
 		if ( class_exists( __NAMESPACE__ . '\Post_Collection_App' ) ) {
 			Post_Collection_App::boot( $this );
 		}
