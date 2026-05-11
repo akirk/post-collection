@@ -796,6 +796,24 @@ class Post_Collection {
 			'post-collection-settings',
 			array( $this, 'render_settings_page' )
 		);
+
+		add_submenu_page(
+			'',
+			__( 'Create Post Collection', 'post-collection' ),
+			__( 'Create Post Collection', 'post-collection' ),
+			$this->get_required_role(),
+			'create-post-collection',
+			array( $this, 'render_create_post_collection' )
+		);
+
+		add_submenu_page(
+			'',
+			__( 'Edit Post Collection', 'post-collection' ),
+			__( 'Edit Post Collection', 'post-collection' ),
+			$this->get_required_role(),
+			'edit-post-collection',
+			array( $this, 'render_edit_post_collection' )
+		);
 	}
 
 
@@ -805,31 +823,40 @@ class Post_Collection {
 	public function render_settings_page() {
 		$post_collections = $this->get_post_collection_users()->get_results();
 		$bookmarklet_js = $this->get_bookmarklet_js();
+		$create_post_collection_url = self_admin_url( 'admin.php?page=create-post-collection' );
 		?>
 		<div class="wrap">
-			<h1><?php esc_html_e( 'Post Collection Settings', 'post-collection' ); ?></h1>
+			<h1>
+				<?php esc_html_e( 'Post Collection Settings', 'post-collection' ); ?>
+				<a href="<?php echo esc_url( $create_post_collection_url ); ?>" class="page-title-action"><?php esc_html_e( 'Create Post Collection', 'post-collection' ); ?></a>
+			</h1>
 
 			<p><?php esc_html_e( 'The Post Collection plugin allows you to save external posts to your WordPress, either for just collecting them for yourself as a searchable archive, or to syndicate those posts into new feeds.', 'post-collection' ); ?></p>
 
-			<h2><?php esc_html_e( 'Bookmarklet', 'post-collection' ); ?></h2>
-			<p><?php esc_html_e( 'Drag this bookmarklet to your bookmarks bar to save articles from any webpage:', 'post-collection' ); ?></p>
-			<p>
-			<?php foreach ( $post_collections as $user ) : ?>
-				<a href="javascript:<?php echo rawurlencode( trim( str_replace( "window.document.getElementById( 'post-collection-script' ).getAttribute( 'data-post-url' )", "'" . esc_url( home_url() ) . "/?user=" . $user->ID . "'", $bookmarklet_js ), ';' ) ); ?>" style="display: inline-block; padding: .5em; border: 1px solid #999; border-radius: 4px; background-color: #ddd; text-decoration: none; margin-right: 1em;">
-					<?php
-					echo esc_html( sprintf(
-						/* translators: %s is the name of a Post Collection user. */
-						__( 'Save to %s', 'post-collection' ),
-						$user->display_name
-					) );
-					?>
-				</a>
-			<?php endforeach; ?>
-			</p>
+			<?php if ( ! empty( $post_collections ) ) : ?>
+				<h2><?php esc_html_e( 'Bookmarklet', 'post-collection' ); ?></h2>
+				<p><?php esc_html_e( 'Drag this bookmarklet to your bookmarks bar to save articles from any webpage:', 'post-collection' ); ?></p>
+				<p>
+				<?php foreach ( $post_collections as $user ) : ?>
+					<a href="javascript:<?php echo rawurlencode( trim( str_replace( "window.document.getElementById( 'post-collection-script' ).getAttribute( 'data-post-url' )", "'" . esc_url( home_url() ) . "/?user=" . $user->ID . "'", $bookmarklet_js ), ';' ) ); ?>" style="display: inline-block; padding: .5em; border: 1px solid #999; border-radius: 4px; background-color: #ddd; text-decoration: none; margin-right: 1em;">
+						<?php
+						echo esc_html( sprintf(
+							/* translators: %s is the name of a Post Collection user. */
+							__( 'Save to %s', 'post-collection' ),
+							$user->display_name
+						) );
+						?>
+					</a>
+				<?php endforeach; ?>
+				</p>
+			<?php endif; ?>
 
 			<h2><?php esc_html_e( 'Post Collections', 'post-collection' ); ?></h2>
 			<?php if ( empty( $post_collections ) ) : ?>
-				<p><?php esc_html_e( 'No post collections found. Create a user with the "Post Collection" role to get started.', 'post-collection' ); ?></p>
+				<p>
+					<?php esc_html_e( 'No post collections found.', 'post-collection' ); ?>
+					<a href="<?php echo esc_url( $create_post_collection_url ); ?>"><?php esc_html_e( 'Create a Post Collection to get started.', 'post-collection' ); ?></a>
+				</p>
 			<?php else : ?>
 				<table class="widefat striped">
 					<thead>
@@ -2024,6 +2051,14 @@ class Post_Collection {
 	 * @return array The filtered My Apps entries.
 	 */
 	public function my_apps_plugins( $apps ) {
+		if ( current_user_can( $this->get_required_role() ) ) {
+			$apps['post-collection-configure'] = array(
+				'name'     => __( 'Configure Post Collections', 'post-collection' ),
+				'url'      => self_admin_url( 'edit.php?post_type=' . self::CPT . '&page=post-collection-settings' ),
+				'dashicon' => 'dashicons-admin-settings',
+			);
+		}
+
 		foreach ( $this->get_post_collection_users()->get_results() as $user ) {
 			$apps[ 'post-collection-' . $user->ID ] = array(
 				'name'     => $user->display_name,

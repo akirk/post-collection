@@ -62,7 +62,7 @@ defined( 'ABSPATH' ) || exit;
 	<?php endforeach; ?>
 </table>
 <p class="description">
-	<a href="<?php echo esc_url( self_admin_url( 'admin.php?page=create-post-collection' ) ); ?>"><?php esc_html_e( 'Create another user', 'post-collection' ); ?></a></p>
+	<a href="<?php echo esc_url( self_admin_url( 'admin.php?page=create-post-collection' ) ); ?>"><?php esc_html_e( 'Create Post Collection', 'post-collection' ); ?></a></p>
 
 </form>
 
