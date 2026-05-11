@@ -60,6 +60,13 @@ class Post_Collection {
 	private $article_notes;
 
 	/**
+	 * Stores request context for browser extension action generation.
+	 *
+	 * @var array
+	 */
+	private $browser_extension_request_context = array();
+
+	/**
 	 * Constructor
 	 *
 	 * @param Friends|null $friends A reference to the Friends object (optional).
@@ -216,6 +223,8 @@ class Post_Collection {
 		add_action( 'admin_bar_menu', array( $this, 'admin_bar_new_content' ), 72 );
 		add_action( 'wp_enqueue_scripts', array( $this, 'enqueue_scripts' ), 99999 );
 		add_action( 'wp_loaded', array( $this, 'save_url_endpoint' ), 100 );
+		add_action( 'rest_api_init', array( $this, 'register_rest_routes' ) );
+		add_filter( 'rest_pre_dispatch', array( $this, 'capture_browser_extension_request_context' ), 10, 3 );
 		add_filter( 'get_edit_user_link', array( $this, 'edit_post_collection_link' ), 10, 2 );
 		add_action( 'friend_post_edit_link', array( $this, 'allow_post_editing' ), 10, 2 );
 		add_action( 'friends_show_author_edit', array( $this, 'friends_show_author_edit' ), 10, 2 );
@@ -243,7 +252,69 @@ class Post_Collection {
 		add_action( 'wp_ajax_post-collection-download-images', array( $this, 'wp_ajax_download_images' ) );
 		add_action( 'wp_ajax_post-collection-re-extract', array( $this, 'wp_ajax_re_extract' ) );
 		add_filter( 'friends_search_autocomplete', array( $this, 'friends_search_autocomplete' ), 20, 2 );
-		add_filter( 'friends_browser_extension_actions', array( $this, 'friends_browser_extension_actions' ) );
+		add_filter( 'friends_browser_extension_actions', array( $this, 'friends_browser_extension_actions' ), 10, 2 );
+	}
+
+	/**
+	 * Register REST routes for the Friends browser extension.
+	 */
+	public function register_rest_routes() {
+		register_rest_route(
+			'friends/v1',
+			'extension/action/save',
+			array(
+				'methods'             => 'POST',
+				'callback'            => array( $this, 'rest_extension_action_save' ),
+				'permission_callback' => '__return_true',
+				'args'                => array(
+					'key'           => array(
+						'type'     => 'string',
+						'required' => true,
+					),
+					'collection_id' => array(
+						'type'     => 'integer',
+						'required' => true,
+					),
+					'url'           => array(
+						'type'     => 'string',
+						'required' => true,
+					),
+					'html'          => array(
+						'type'     => 'string',
+						'required' => false,
+					),
+					'title'         => array(
+						'type'     => 'string',
+						'required' => false,
+					),
+					'tags'          => array(
+						'type'     => 'string',
+						'required' => false,
+					),
+				),
+			)
+		);
+	}
+
+	/**
+	 * Capture browser extension request data before Friends builds actions.
+	 *
+	 * @param mixed            $result  Response to replace the requested version with.
+	 * @param \WP_REST_Server  $server  Server instance.
+	 * @param \WP_REST_Request $request Request used to generate the response.
+	 * @return mixed Unchanged pre-dispatch result.
+	 */
+	public function capture_browser_extension_request_context( $result, $server, $request ) {
+		if ( ! $request instanceof \WP_REST_Request || '/friends/v1/extension' !== $request->get_route() ) {
+			return $result;
+		}
+
+		$this->browser_extension_request_context = array(
+			'key'     => sanitize_text_field( (string) wp_unslash( $request->get_param( 'key' ) ) ),
+			'version' => sanitize_text_field( (string) wp_unslash( $request->get_param( 'version' ) ) ),
+		);
+
+		return $result;
 	}
 
 	public function register_site_config( SiteConfig\SiteConfig $config ) {
@@ -1014,8 +1085,46 @@ class Post_Collection {
 	 * @return \WP_Error    Potentially an error message.
 	 */
 	public function save_url( $url, User $friend_user, $content = null ) {
+		$post_id = $this->save_url_to_collection( $url, $friend_user, $content );
+		if ( is_wp_error( $post_id ) ) {
+			return $post_id;
+		}
+
+		wp_safe_redirect( $friend_user->get_local_friends_page_url( $post_id ) );
+		exit;
+	}
+
+	/**
+	 * Save a URL to a post collection without redirecting.
+	 *
+	 * @param  string $url         The URL to save.
+	 * @param  User   $friend_user The post collection user.
+	 * @param  string $content     Optional HTML content.
+	 * @param  array  $args        Optional arguments: title and tags.
+	 * @return int|\WP_Error The saved post ID or an error.
+	 */
+	private function save_url_to_collection( $url, User $friend_user, $content = null, $args = array() ) {
 		if ( ! is_string( $url ) || ! $this->check_url( $url ) ) {
 			return new \WP_Error( 'invalid-url', __( 'You entered an invalid URL.', 'post-collection' ) );
+		}
+
+		$title_override = '';
+		if ( isset( $args['title'] ) ) {
+			$title_override = wp_strip_all_tags( trim( sanitize_text_field( $args['title'] ) ) );
+		}
+
+		$tags = array();
+		if ( isset( $args['tags'] ) && is_array( $args['tags'] ) ) {
+			$tags = array_values(
+				array_filter(
+					array_map(
+						function ( $tag ) {
+							return sanitize_text_field( wp_strip_all_tags( trim( $tag ) ) );
+						},
+						$args['tags']
+					)
+				)
+			);
 		}
 
 		$post_id = $this->url_to_postid( $url, $friend_user->ID );
@@ -1034,6 +1143,9 @@ class Post_Collection {
 				$slug = strtr( $slug, '-', ' ' );
 				$title = ucwords( $slug );
 			}
+			if ( $title_override ) {
+				$title = $title_override;
+			}
 
 			$post_data = array(
 				'post_status'  => 'private',
@@ -1045,6 +1157,9 @@ class Post_Collection {
 			);
 
 			$post_id = wp_insert_post( $post_data, true );
+			if ( is_wp_error( $post_id ) ) {
+				return $post_id;
+			}
 
 			if ( ! is_wp_error( $item ) && $item->content ) {
 				$extracted_content = force_balance_tags( trim( wp_kses_post( $item->content ) ) );
@@ -1059,10 +1174,201 @@ class Post_Collection {
 			if ( ! is_wp_error( $item ) && $item->author ) {
 				update_post_meta( $post_id, 'author', $item->author );
 			}
+		} elseif ( $title_override ) {
+			$updated_post = wp_update_post(
+				array(
+					'ID'         => $post_id,
+					'post_title' => $title_override,
+				),
+				true
+			);
+			if ( is_wp_error( $updated_post ) ) {
+				return $updated_post;
+			}
 		}
+
 		wp_untrash_post( $post_id );
-		wp_safe_redirect( $friend_user->get_local_friends_page_url( $post_id ) );
-		exit;
+
+		if ( $tags ) {
+			$terms = wp_set_post_terms( $post_id, $tags, $this->get_tag_taxonomy(), true );
+			if ( is_wp_error( $terms ) ) {
+				return $terms;
+			}
+		}
+
+		return (int) $post_id;
+	}
+
+	/**
+	 * Handle inline save actions from the Friends browser extension.
+	 *
+	 * @param \WP_REST_Request $request The REST request.
+	 * @return \WP_REST_Response The REST response.
+	 */
+	public function rest_extension_action_save( \WP_REST_Request $request ) {
+		$key_user = $this->validate_browser_extension_key( $request->get_param( 'key' ) );
+		if ( is_wp_error( $key_user ) ) {
+			return $this->rest_action_error( $key_user, 401 );
+		}
+
+		$previous_user_id = get_current_user_id();
+		wp_set_current_user( $key_user->ID );
+
+		if ( ! current_user_can( $this->get_required_role() ) ) {
+			wp_set_current_user( $previous_user_id );
+			return $this->rest_action_error(
+				new \WP_Error( 'forbidden', __( 'You are not allowed to save to post collections.', 'post-collection' ) ),
+				403
+			);
+		}
+
+		$collection_id = absint( $request->get_param( 'collection_id' ) );
+		$friend_user   = User::get_user_by_id( $collection_id );
+		if ( ! $friend_user || ! $friend_user->has_cap( 'post_collection' ) ) {
+			wp_set_current_user( $previous_user_id );
+			return $this->rest_action_error(
+				new \WP_Error( 'invalid-collection', __( 'Invalid post collection.', 'post-collection' ) ),
+				404
+			);
+		}
+
+		if ( get_user_option( 'friends_post_collection_inactive', $friend_user->ID ) ) {
+			wp_set_current_user( $previous_user_id );
+			return $this->rest_action_error(
+				new \WP_Error( 'inactive-collection', __( 'This post collection is inactive.', 'post-collection' ) ),
+				403
+			);
+		}
+
+		$url = esc_url_raw( trim( (string) wp_unslash( $request->get_param( 'url' ) ) ) );
+		if ( ! $this->check_url( $url ) ) {
+			wp_set_current_user( $previous_user_id );
+			return $this->rest_action_error(
+				new \WP_Error( 'invalid-url', __( 'You entered an invalid URL.', 'post-collection' ) ),
+				400
+			);
+		}
+
+		$html = $request->get_param( 'html' );
+		if ( null === $html ) {
+			$html = $request->get_param( 'body' );
+		}
+		if ( null !== $html ) {
+			$html = (string) wp_unslash( $html );
+		}
+
+		$title = '';
+		if ( null !== $request->get_param( 'title' ) ) {
+			$title = wp_strip_all_tags( trim( sanitize_text_field( wp_unslash( $request->get_param( 'title' ) ) ) ) );
+		}
+
+		$tags = $this->parse_extension_action_tags( $request->get_param( 'tags' ) );
+
+		$post_id = $this->save_url_to_collection(
+			$url,
+			$friend_user,
+			$html,
+			array(
+				'title' => $title,
+				'tags'  => $tags,
+			)
+		);
+
+		if ( is_wp_error( $post_id ) ) {
+			wp_set_current_user( $previous_user_id );
+			return $this->rest_action_error( $post_id, 400 );
+		}
+
+		$edit_url = get_edit_post_link( $post_id, 'raw' );
+		$item_url = $friend_user->get_local_friends_page_url( $post_id );
+		$message  = sprintf(
+			// translators: %s is the name of a post collection.
+			__( 'Saved to %s.', 'post-collection' ),
+			$friend_user->display_name
+		);
+
+		wp_set_current_user( $previous_user_id );
+
+		return new \WP_REST_Response(
+			array(
+				'success'    => true,
+				'message'    => $message,
+				'edit_url'   => $edit_url ? $edit_url : '',
+				'url'        => $item_url ? $item_url : '',
+				'link_label' => __( 'Open', 'post-collection' ),
+			)
+		);
+	}
+
+	/**
+	 * Validate a Friends browser extension key and return its user.
+	 *
+	 * @param string $key The submitted browser extension key.
+	 * @return \WP_User|\WP_Error The authenticated user or an error.
+	 */
+	private function validate_browser_extension_key( $key ) {
+		$key = sanitize_text_field( (string) wp_unslash( $key ) );
+		if ( ! $key || ! class_exists( '\Friends\Admin' ) || ! \Friends\Admin::check_browser_api_key( $key ) ) {
+			return new \WP_Error( 'invalid-browser-extension-key', __( 'Invalid browser extension key.', 'post-collection' ) );
+		}
+
+		$parts   = explode( '-', $key, 3 );
+		$user_id = isset( $parts[1] ) ? absint( $parts[1] ) : 0;
+		$user    = $user_id ? get_user_by( 'ID', $user_id ) : false;
+		if ( ! $user ) {
+			return new \WP_Error( 'invalid-browser-extension-key', __( 'Invalid browser extension key.', 'post-collection' ) );
+		}
+
+		return $user;
+	}
+
+	/**
+	 * Parse tags submitted by the browser extension.
+	 *
+	 * @param string $raw_tags Comma or newline separated tags.
+	 * @return array Tag names.
+	 */
+	private function parse_extension_action_tags( $raw_tags ) {
+		if ( null === $raw_tags ) {
+			return array();
+		}
+
+		$raw_tags = wp_strip_all_tags( trim( (string) wp_unslash( $raw_tags ) ) );
+		if ( '' === $raw_tags ) {
+			return array();
+		}
+
+		$raw_tags = str_replace( array( "\r\n", "\r" ), "\n", $raw_tags );
+		$tags     = preg_split( '/[,\n]+/', $raw_tags );
+		$tags     = array_values(
+			array_filter(
+				array_map(
+					function ( $tag ) {
+						return sanitize_text_field( trim( $tag ) );
+					},
+					$tags
+				)
+			)
+		);
+
+		return array_values( array_unique( $tags ) );
+	}
+
+	/**
+	 * Format an inline action failure response.
+	 *
+	 * @param \WP_Error $error  The error.
+	 * @param int       $status HTTP status.
+	 * @return \WP_REST_Response The REST response.
+	 */
+	private function rest_action_error( \WP_Error $error, $status ) {
+		return new \WP_REST_Response(
+			array(
+				'success' => false,
+				'message' => $error->get_error_message(),
+			),
+			$status
+		);
 	}
 
 	/**
@@ -1567,21 +1873,148 @@ class Post_Collection {
 		return $results;
 	}
 
-	public function friends_browser_extension_actions( $actions ) {
+	public function friends_browser_extension_actions( $actions, $context = null ) {
+		if ( ! is_array( $actions ) ) {
+			$actions = array();
+		}
+
+		$extension_version = $this->get_browser_extension_version( $context );
+		$browser_key       = $this->get_browser_extension_key( $context );
+		$use_inline        = $browser_key && ( ! $extension_version || version_compare( $extension_version, '1.6.0', '>=' ) );
+
 		foreach ( $this->get_post_collection_users()->get_results() as $user ) {
 			if ( get_user_option( 'friends_post_collection_inactive', $user->ID ) ) {
 				continue;
 			}
-			$actions[] = array(
-				'name'   => $user->display_name,
-				'url'    => home_url( '/?user=' . $user->ID . '&post-only=1&collect-post={current_url}' ),
-				'method' => 'POST',
-				'fields' => array( 'body' => '{page_html}' ),
-				'category' => __( 'Collect Post', 'post-collection' ),
-			);
+
+			if ( $use_inline ) {
+				$actions[] = array(
+					'id'               => 'save-to-post-collection-' . $user->ID,
+					'name'             => sprintf(
+						// translators: %s is the name of a post collection.
+						__( 'Save to %s', 'post-collection' ),
+						$user->display_name
+					),
+					'category'         => __( 'Save', 'post-collection' ),
+					'url'              => rest_url( 'friends/v1/extension/action/save' ),
+					'method'           => 'POST',
+					'run'              => 'inline',
+					'submit_label'     => __( 'Save', 'post-collection' ),
+					'progress_message' => __( 'Saving...', 'post-collection' ),
+					'success_message'  => __( 'Saved.', 'post-collection' ),
+					'fields'           => array(
+						'key'           => $browser_key,
+						'collection_id' => (string) $user->ID,
+						'url'           => '{current_url}',
+						'html'          => '{page_html}',
+					),
+					'inputs'           => array(
+						array(
+							'name'     => 'title',
+							'label'    => __( 'Title', 'post-collection' ),
+							'type'     => 'text',
+							'default'  => '{page_title}',
+							'required' => true,
+						),
+						array(
+							'name'        => 'tags',
+							'label'       => __( 'Tags', 'post-collection' ),
+							'type'        => 'tags',
+							'placeholder' => __( 'tag-one, tag-two', 'post-collection' ),
+						),
+					),
+				);
+				continue;
+			}
+
+			$actions[] = $this->get_legacy_browser_extension_action( $user );
 		}
 
 		return $actions;
+	}
+
+	/**
+	 * Get the legacy browser extension action.
+	 *
+	 * @param User $user The post collection user.
+	 * @return array The action definition.
+	 */
+	private function get_legacy_browser_extension_action( User $user ) {
+		return array(
+			'name'     => $user->display_name,
+			'url'      => home_url( '/?user=' . $user->ID . '&post-only=1&collect-post={current_url}' ),
+			'method'   => 'POST',
+			'fields'   => array( 'body' => '{page_html}' ),
+			'category' => __( 'Collect Post', 'post-collection' ),
+		);
+	}
+
+	/**
+	 * Get the browser extension version from the filter context or request.
+	 *
+	 * @param mixed $context Filter context from Friends.
+	 * @return string The extension version.
+	 */
+	private function get_browser_extension_version( $context = null ) {
+		if ( is_array( $context ) ) {
+			if ( isset( $context['extension_version'] ) ) {
+				return sanitize_text_field( $context['extension_version'] );
+			}
+			if ( isset( $context['version'] ) ) {
+				return sanitize_text_field( $context['version'] );
+			}
+		} elseif ( is_object( $context ) ) {
+			if ( isset( $context->extension_version ) ) {
+				return sanitize_text_field( $context->extension_version );
+			}
+			if ( isset( $context->version ) ) {
+				return sanitize_text_field( $context->version );
+			}
+		}
+
+		if ( isset( $this->browser_extension_request_context['version'] ) ) {
+			return $this->browser_extension_request_context['version'];
+		}
+
+		if ( isset( $_REQUEST['version'] ) ) {
+			return sanitize_text_field( wp_unslash( $_REQUEST['version'] ) );
+		}
+
+		return '';
+	}
+
+	/**
+	 * Get the browser extension key from the filter context or request.
+	 *
+	 * @param mixed $context Filter context from Friends.
+	 * @return string The browser extension key.
+	 */
+	private function get_browser_extension_key( $context = null ) {
+		if ( is_array( $context ) ) {
+			if ( isset( $context['browser_extension_key'] ) ) {
+				return sanitize_text_field( $context['browser_extension_key'] );
+			}
+			if ( isset( $context['key'] ) ) {
+				return sanitize_text_field( $context['key'] );
+			}
+		} elseif ( is_object( $context ) ) {
+			if ( isset( $context->browser_extension_key ) ) {
+				return sanitize_text_field( $context->browser_extension_key );
+			}
+			if ( isset( $context->key ) ) {
+				return sanitize_text_field( $context->key );
+			}
+		}
+
+		if ( isset( $this->browser_extension_request_context['key'] ) ) {
+			return $this->browser_extension_request_context['key'];
+		}
+
+		if ( isset( $_REQUEST['key'] ) ) {
+			return sanitize_text_field( wp_unslash( $_REQUEST['key'] ) );
+		}
+
+		return '';
 	}
 
 	/**
