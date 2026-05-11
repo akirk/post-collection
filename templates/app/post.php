@@ -27,6 +27,7 @@ if ( ! $user || ! $post || ! $app->can_view_collection( $user ) ) {
 $mode       = $app->get_collection_mode( $user );
 $source_url = $app->get_source_url( $post );
 $host       = $app->get_source_host( $post );
+$embed_html = $app->get_post_description_embed_html( $post, 'detail' );
 $terms      = $app->get_post_terms( $post );
 ?>
 <!DOCTYPE html>
@@ -71,7 +72,12 @@ $terms      = $app->get_post_terms( $post );
 
 	<main class="pc-shell pc-detail-layout">
 		<article class="pc-detail-content">
-			<?php echo apply_filters( 'the_content', $post->post_content ); ?>
+			<?php if ( $embed_html ) : ?>
+				<?php echo $embed_html; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+			<?php endif; ?>
+			<?php if ( '' !== trim( $post->post_content ) ) : ?>
+				<?php echo apply_filters( 'the_content', $post->post_content ); ?>
+			<?php endif; ?>
 		</article>
 	</main>
 	<?php wp_app_body_close(); ?>

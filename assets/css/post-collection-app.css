@@ -352,6 +352,10 @@ body.post-collection-app {
 	text-decoration: none;
 }
 
+.pc-card-embed {
+	background: #191b1f;
+}
+
 .pc-card-image img {
 	display: block;
 	width: 100%;
@@ -491,6 +495,11 @@ body.post-collection-app {
 	color: #333;
 	font-size: 0.78rem;
 	line-height: 1.35;
+}
+
+.pc-link-embed {
+	width: min(420px, calc(100% - 16px));
+	margin: 6px 0 0 16px;
 }
 
 .pc-link-meta {
@@ -636,6 +645,10 @@ body.post-collection-app {
 	object-fit: cover;
 }
 
+.pc-post-embed {
+	align-self: start;
+}
+
 .pc-detail-header {
 	max-width: 860px;
 }
@@ -663,6 +676,21 @@ body.post-collection-app {
 .pc-detail-content iframe {
 	max-width: 100%;
 	height: auto;
+}
+
+.pc-youtube-embed {
+	aspect-ratio: 16 / 9;
+	width: 100%;
+	overflow: hidden;
+	border-radius: 6px;
+	background: #191b1f;
+}
+
+.pc-youtube-embed iframe {
+	display: block;
+	width: 100%;
+	height: 100%;
+	border: 0;
 }
 
 .pc-detail-content pre {
@@ -718,6 +746,11 @@ body.post-collection-app {
 	text-decoration: none;
 }
 
+.pc-pagination.is-loading .pc-pagination-next {
+	opacity: 0.68;
+	pointer-events: none;
+}
+
 .screen-reader-text {
 	position: absolute;
 	width: 1px;
@@ -770,6 +803,10 @@ body.post-collection-app {
 
 	.pc-post-thumb {
 		display: block;
+		margin-bottom: 14px;
+	}
+
+	.pc-post-embed {
 		margin-bottom: 14px;
 	}
 

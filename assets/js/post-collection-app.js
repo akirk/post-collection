@@ -78,6 +78,27 @@
 		} );
 	}
 
+	function getCollectionList() {
+		return document.querySelector( '.pc-bookmark-board, .pc-link-list, .pc-post-list' );
+	}
+
+	function getCollectionListSelector( list ) {
+		if ( ! list ) {
+			return '';
+		}
+		if ( list.classList.contains( 'pc-bookmark-board' ) ) {
+			return '.pc-bookmark-board';
+		}
+		if ( list.classList.contains( 'pc-link-list' ) ) {
+			return '.pc-link-list';
+		}
+		if ( list.classList.contains( 'pc-post-list' ) ) {
+			return '.pc-post-list';
+		}
+
+		return '';
+	}
+
 	function updateRow( row, item ) {
 		row.classList.toggle( 'is-private', !! item.is_private );
 
@@ -98,17 +119,35 @@
 			urlLink.textContent = item.display_url;
 		}
 
+		var embed = row.querySelector( '.pc-link-embed' );
+		if ( item.embed_html ) {
+			if ( ! embed ) {
+				embed = document.createElement( 'div' );
+				embed.className = 'pc-link-embed';
+				if ( urlLink ) {
+					urlLink.after( embed );
+				}
+			}
+			embed.innerHTML = item.embed_html;
+			embed.hidden = false;
+		} else if ( embed ) {
+			embed.remove();
+			embed = null;
+		}
+
 		var excerpt = row.querySelector( '.pc-link-excerpt' );
 		if ( ! excerpt && item.excerpt ) {
 			excerpt = document.createElement( 'p' );
 			excerpt.className = 'pc-link-excerpt';
-			if ( urlLink ) {
+			if ( embed ) {
+				embed.after( excerpt );
+			} else if ( urlLink ) {
 				urlLink.after( excerpt );
 			}
 		}
 		if ( excerpt ) {
 			excerpt.textContent = item.excerpt || '';
-			excerpt.hidden = ! item.excerpt;
+			excerpt.hidden = ! item.excerpt || !! item.embed_html;
 		}
 
 		var host = row.querySelector( '.pc-link-host' );
@@ -131,6 +170,105 @@
 
 		updateTags( row, item.terms || [] );
 		closeEditor( row );
+	}
+
+	var infiniteObserver = null;
+	var infiniteLoading = false;
+
+	function setPaginationLoading( pagination, nextLink, isLoading ) {
+		if ( pagination ) {
+			pagination.classList.toggle( 'is-loading', isLoading );
+			if ( isLoading ) {
+				pagination.setAttribute( 'aria-busy', 'true' );
+			} else {
+				pagination.removeAttribute( 'aria-busy' );
+			}
+		}
+		if ( nextLink ) {
+			if ( ! nextLink.dataset.label ) {
+				nextLink.dataset.label = nextLink.textContent;
+			}
+			nextLink.textContent = isLoading ? 'Loading...' : nextLink.dataset.label;
+		}
+	}
+
+	function setupInfiniteScroll() {
+		if ( infiniteObserver ) {
+			infiniteObserver.disconnect();
+			infiniteObserver = null;
+		}
+
+		if ( ! ( 'IntersectionObserver' in window ) || ! window.fetch || ! window.DOMParser ) {
+			return;
+		}
+
+		var nextLink = document.querySelector( '.pc-pagination-next' );
+		if ( ! nextLink ) {
+			return;
+		}
+
+		infiniteObserver = new IntersectionObserver( function ( entries ) {
+			entries.forEach( function ( entry ) {
+				if ( entry.isIntersecting ) {
+					loadNextPage();
+				}
+			} );
+		}, { rootMargin: '360px 0px' } );
+		infiniteObserver.observe( nextLink );
+	}
+
+	function loadNextPage() {
+		var currentList = getCollectionList();
+		var selector = getCollectionListSelector( currentList );
+		var pagination = document.querySelector( '.pc-pagination' );
+		var nextLink = document.querySelector( '.pc-pagination-next' );
+
+		if ( infiniteLoading || ! currentList || ! selector || ! nextLink ) {
+			return;
+		}
+
+		infiniteLoading = true;
+		if ( infiniteObserver ) {
+			infiniteObserver.disconnect();
+		}
+		setPaginationLoading( pagination, nextLink, true );
+
+		fetch( nextLink.href, {
+			credentials: 'same-origin',
+		} )
+			.then( function ( response ) {
+				if ( ! response.ok ) {
+					throw new Error( 'Could not load more items.' );
+				}
+
+				return response.text();
+			} )
+			.then( function ( html ) {
+				var doc = new DOMParser().parseFromString( html, 'text/html' );
+				var nextList = doc.querySelector( selector );
+				if ( ! nextList ) {
+					throw new Error( 'Could not load more items.' );
+				}
+
+				Array.prototype.forEach.call( nextList.children, function ( child ) {
+					currentList.appendChild( document.importNode( child, true ) );
+				} );
+
+				var nextPagination = doc.querySelector( '.pc-pagination' );
+				pagination = document.querySelector( '.pc-pagination' );
+				if ( pagination && nextPagination ) {
+					pagination.replaceWith( document.importNode( nextPagination, true ) );
+				} else if ( pagination ) {
+					pagination.remove();
+				}
+
+				infiniteLoading = false;
+				setupInfiniteScroll();
+			} )
+			.catch( function () {
+				infiniteLoading = false;
+				setPaginationLoading( pagination, nextLink, false );
+			} );
 	}
 
 	document.addEventListener( 'click', function ( event ) {
@@ -204,4 +342,10 @@
 				}
 			} );
 	} );
+
+	if ( document.readyState === 'loading' ) {
+		document.addEventListener( 'DOMContentLoaded', setupInfiniteScroll );
+	} else {
+		setupInfiniteScroll();
+	}
 }() );

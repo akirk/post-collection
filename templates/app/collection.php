@@ -147,11 +147,15 @@ if ( '' !== $active_tag ) {
 				<?php foreach ( $query->posts as $post ) : ?>
 					<?php
 					$image_url  = $app->get_post_image_url( $post );
+					$embed_html = $app->get_post_embed_html( $post, 'board' );
+					$excerpt    = $app->get_post_excerpt( $post, 22 );
 					$source_url = $app->get_source_url( $post );
 					$host       = $app->get_source_host( $post );
 					?>
 					<article class="pc-bookmark-card">
-						<?php if ( $image_url ) : ?>
+						<?php if ( $embed_html ) : ?>
+							<div class="pc-card-embed"><?php echo $embed_html; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?></div>
+						<?php elseif ( $image_url ) : ?>
 							<a class="pc-card-image" href="<?php echo esc_url( $source_url ); ?>" target="_blank" rel="noopener noreferrer">
 								<img src="<?php echo esc_url( $image_url ); ?>" alt="">
 							</a>
@@ -163,7 +167,9 @@ if ( '' !== $active_tag ) {
 						<div class="pc-card-body">
 							<p class="pc-source"><?php echo esc_html( $host ); ?></p>
 							<h2><a href="<?php echo esc_url( $source_url ); ?>" target="_blank" rel="noopener noreferrer"><?php echo esc_html( get_the_title( $post ) ); ?></a></h2>
-							<p><?php echo esc_html( $app->get_post_excerpt( $post, 22 ) ); ?></p>
+							<?php if ( $excerpt ) : ?>
+								<p><?php echo esc_html( $excerpt ); ?></p>
+							<?php endif; ?>
 							<div class="pc-card-actions">
 								<a href="<?php echo esc_url( $app->get_collection_url( $user, $post->ID ) ); ?>"><?php esc_html_e( 'Details', 'post-collection' ); ?></a>
 								<?php if ( 'private' === $post->post_status && $app->can_manage_collections() ) : ?>
@@ -180,6 +186,8 @@ if ( '' !== $active_tag ) {
 					<?php
 					$source_url = $app->get_source_url( $post );
 					$host       = $app->get_source_host( $post );
+					$embed_html = $app->get_post_embed_html( $post, 'links' );
+					$excerpt    = $app->get_post_excerpt( $post, 24 );
 					$post_terms = $app->get_post_terms( $post );
 					$tag_names  = wp_list_pluck( $post_terms, 'name' );
 					$is_editing = $quick_edit && intval( $post->ID ) === intval( $quick_edit_post_id );
@@ -193,8 +201,10 @@ if ( '' !== $active_tag ) {
 								<h2><a class="pc-link-title" href="<?php echo esc_url( $source_url ); ?>" target="_blank" rel="noopener noreferrer"><?php echo esc_html( get_the_title( $post ) ); ?></a></h2>
 							</div>
 							<a class="pc-link-url" href="<?php echo esc_url( $source_url ); ?>" target="_blank" rel="noopener noreferrer"><?php echo esc_html( preg_replace( '#^https?://#', '', $source_url ) ); ?></a>
-							<?php if ( $app->get_post_excerpt( $post, 24 ) ) : ?>
-								<p class="pc-link-excerpt"><?php echo esc_html( $app->get_post_excerpt( $post, 24 ) ); ?></p>
+							<?php if ( $embed_html ) : ?>
+								<div class="pc-link-embed"><?php echo $embed_html; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?></div>
+							<?php elseif ( $excerpt ) : ?>
+								<p class="pc-link-excerpt"><?php echo esc_html( $excerpt ); ?></p>
 							<?php endif; ?>
 						</div>
 						<div class="pc-link-meta">
@@ -237,7 +247,7 @@ if ( '' !== $active_tag ) {
 								</label>
 								<label>
 									<span><?php esc_html_e( 'Description', 'post-collection' ); ?></span>
-									<textarea name="post_excerpt" rows="2"><?php echo esc_textarea( $post->post_excerpt ? $post->post_excerpt : $app->get_post_excerpt( $post, 28 ) ); ?></textarea>
+									<textarea name="post_excerpt" rows="2"><?php echo esc_textarea( $post->post_excerpt ); ?></textarea>
 								</label>
 								<label>
 									<span><?php esc_html_e( 'Tags', 'post-collection' ); ?></span>
@@ -260,11 +270,15 @@ if ( '' !== $active_tag ) {
 			<section class="pc-post-list" aria-label="<?php esc_attr_e( 'Posts', 'post-collection' ); ?>">
 				<?php foreach ( $query->posts as $post ) : ?>
 					<?php
-					$image_url = $app->get_post_image_url( $post );
-					$host      = $app->get_source_host( $post );
+					$image_url  = $app->get_post_image_url( $post );
+					$embed_html = $app->get_post_embed_html( $post, 'reader' );
+					$excerpt    = $app->get_post_excerpt( $post, 38 );
+					$host       = $app->get_source_host( $post );
 					?>
-					<article class="pc-post-row<?php echo $image_url ? ' has-image' : ' is-text-only'; ?>">
-						<?php if ( $image_url ) : ?>
+					<article class="pc-post-row<?php echo $image_url || $embed_html ? ' has-image' : ' is-text-only'; ?>">
+						<?php if ( $embed_html ) : ?>
+							<div class="pc-post-embed"><?php echo $embed_html; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?></div>
+						<?php elseif ( $image_url ) : ?>
 							<a class="pc-post-thumb" href="<?php echo esc_url( $app->get_collection_url( $user, $post->ID ) ); ?>">
 								<img src="<?php echo esc_url( $image_url ); ?>" alt="">
 							</a>
@@ -272,7 +286,9 @@ if ( '' !== $active_tag ) {
 						<div>
 							<p class="pc-source"><?php echo esc_html( $host ); ?></p>
 							<h2><a href="<?php echo esc_url( $app->get_collection_url( $user, $post->ID ) ); ?>"><?php echo esc_html( get_the_title( $post ) ); ?></a></h2>
-							<p><?php echo esc_html( $app->get_post_excerpt( $post, 38 ) ); ?></p>
+							<?php if ( $excerpt ) : ?>
+								<p><?php echo esc_html( $excerpt ); ?></p>
+							<?php endif; ?>
 							<div class="pc-row-meta">
 								<time datetime="<?php echo esc_attr( get_the_date( DATE_W3C, $post ) ); ?>"><?php echo esc_html( get_the_date( '', $post ) ); ?></time>
 								<a href="<?php echo esc_url( $app->get_source_url( $post ) ); ?>" target="_blank" rel="noopener noreferrer"><?php esc_html_e( 'Original', 'post-collection' ); ?></a>
@@ -286,7 +302,7 @@ if ( '' !== $active_tag ) {
 		<?php if ( $query->max_num_pages > 1 ) : ?>
 			<nav class="pc-pagination" aria-label="<?php esc_attr_e( 'Pagination', 'post-collection' ); ?>">
 				<?php if ( $page > 1 ) : ?>
-					<a href="<?php echo esc_url( add_query_arg( array_merge( $page_args, array( 'pc-page' => $page - 1 ) ), $base_url ) ); ?>"><?php esc_html_e( 'Previous', 'post-collection' ); ?></a>
+					<a class="pc-pagination-prev" href="<?php echo esc_url( add_query_arg( array_merge( $page_args, array( 'pc-page' => $page - 1 ) ), $base_url ) ); ?>"><?php esc_html_e( 'Previous', 'post-collection' ); ?></a>
 				<?php endif; ?>
 				<span>
 					<?php
@@ -301,7 +317,7 @@ if ( '' !== $active_tag ) {
 					?>
 				</span>
 				<?php if ( $page < $query->max_num_pages ) : ?>
-					<a href="<?php echo esc_url( add_query_arg( array_merge( $page_args, array( 'pc-page' => $page + 1 ) ), $base_url ) ); ?>"><?php esc_html_e( 'Next', 'post-collection' ); ?></a>
+					<a class="pc-pagination-next" rel="next" href="<?php echo esc_url( add_query_arg( array_merge( $page_args, array( 'pc-page' => $page + 1 ) ), $base_url ) ); ?>"><?php esc_html_e( 'Next', 'post-collection' ); ?></a>
 				<?php endif; ?>
 			</nav>
 		<?php endif; ?>

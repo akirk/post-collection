@@ -89,6 +89,7 @@ class Post_Collection_App {
 	private function init() {
 		add_action( 'wp_loaded', array( $this, 'handle_quick_edit' ) );
 		add_action( 'wp_ajax_post_collection_quick_edit', array( $this, 'wp_ajax_quick_edit' ) );
+		add_filter( 'private_title_format', array( $this, 'filter_private_title_format' ), 10, 2 );
 
 		$this->app->route( '' );
 		$this->app->route( '{username}', 'collection.php' );
@@ -224,6 +225,44 @@ class Post_Collection_App {
 	 */
 	public function can_view_private_posts( $user ) {
 		return $this->can_manage_collections();
+	}
+
+	/**
+	 * Remove WordPress' private title prefix inside the frontend app.
+	 *
+	 * @param string   $format The title format.
+	 * @param \WP_Post $post   The post object.
+	 * @return string
+	 */
+	public function filter_private_title_format( $format, $post = null ) {
+		if ( $this->is_app_request() ) {
+			return '%s';
+		}
+
+		return $format;
+	}
+
+	/**
+	 * Whether the current request is handled by this frontend app.
+	 *
+	 * @return bool
+	 */
+	private function is_app_request() {
+		if ( wp_doing_ajax() ) {
+			$action = isset( $_REQUEST['action'] ) ? wp_unslash( $_REQUEST['action'] ) : '';
+			return is_string( $action ) && 'post_collection_quick_edit' === sanitize_key( $action );
+		}
+
+		if ( empty( $_SERVER['REQUEST_URI'] ) ) {
+			return false;
+		}
+
+		$path = wp_parse_url( wp_unslash( $_SERVER['REQUEST_URI'] ), PHP_URL_PATH );
+		if ( ! $path ) {
+			return false;
+		}
+
+		return (bool) preg_match( '#/(?:index\.php/)?' . preg_quote( self::PATH, '#' ) . '(?:/|$)#', $path );
 	}
 
 	/**
@@ -427,6 +466,7 @@ class Post_Collection_App {
 			'source_url'  => $source_url,
 			'display_url' => preg_replace( '#^https?://#', '', $source_url ),
 			'excerpt'     => $this->get_post_excerpt( $post, 24 ),
+			'embed_html'  => $this->get_post_embed_html( $post, 'links' ),
 			'host'        => $this->get_source_host( $post ),
 			'is_private'  => 'private' === $post->post_status,
 			'status'      => $post->post_status,
@@ -584,6 +624,144 @@ class Post_Collection_App {
 	}
 
 	/**
+	 * Get embeddable media HTML for a post preview.
+	 *
+	 * @param \WP_Post $post    The post.
+	 * @param string   $context Display context for CSS classes.
+	 * @return string
+	 */
+	public function get_post_embed_html( \WP_Post $post, $context = 'collection' ) {
+		$video_id = $this->get_post_youtube_video_id( $post );
+		if ( ! $video_id ) {
+			return '';
+		}
+
+		return $this->render_youtube_embed( $video_id, get_the_title( $post ), $context );
+	}
+
+	/**
+	 * Get embeddable media HTML from the explicit post description.
+	 *
+	 * @param \WP_Post $post    The post.
+	 * @param string   $context Display context for CSS classes.
+	 * @return string
+	 */
+	public function get_post_description_embed_html( \WP_Post $post, $context = 'collection' ) {
+		$video_id = $this->get_youtube_video_id_from_text( $post->post_excerpt );
+		if ( ! $video_id ) {
+			return '';
+		}
+
+		return $this->render_youtube_embed( $video_id, get_the_title( $post ), $context );
+	}
+
+	/**
+	 * Get a YouTube video ID from a post's standalone media URL.
+	 *
+	 * @param \WP_Post $post The post.
+	 * @return string
+	 */
+	private function get_post_youtube_video_id( \WP_Post $post ) {
+		$video_id = $this->get_youtube_video_id_from_text( $post->post_excerpt );
+		if ( $video_id ) {
+			return $video_id;
+		}
+
+		return $this->get_youtube_video_id_from_text( $post->post_content );
+	}
+
+	/**
+	 * Get a YouTube video ID from text that only contains a YouTube URL.
+	 *
+	 * @param string $text Text to inspect.
+	 * @return string
+	 */
+	private function get_youtube_video_id_from_text( $text ) {
+		$url = $this->get_standalone_url_from_text( $text );
+		if ( ! $url ) {
+			return '';
+		}
+
+		return $this->get_youtube_video_id_from_url( $url );
+	}
+
+	/**
+	 * Get a URL from text when it is the only meaningful content.
+	 *
+	 * @param string $text Text to inspect.
+	 * @return string
+	 */
+	private function get_standalone_url_from_text( $text ) {
+		$text = preg_replace( '#<!--.*?-->#s', '', (string) $text );
+		$text = trim( html_entity_decode( wp_strip_all_tags( strip_shortcodes( $text ) ), ENT_QUOTES, 'UTF-8' ) );
+
+		if ( '' === $text || preg_match( '#\s#', $text ) || ! preg_match( '#^https?://#i', $text ) ) {
+			return '';
+		}
+
+		return $text;
+	}
+
+	/**
+	 * Extract a YouTube video ID from a supported URL.
+	 *
+	 * @param string $url The URL.
+	 * @return string
+	 */
+	private function get_youtube_video_id_from_url( $url ) {
+		$url   = html_entity_decode( trim( $url ), ENT_QUOTES, 'UTF-8' );
+		$parts = wp_parse_url( $url );
+
+		if ( ! is_array( $parts ) || empty( $parts['host'] ) ) {
+			return '';
+		}
+
+		$host = preg_replace( '#^www\.#', '', strtolower( $parts['host'] ) );
+		$path = isset( $parts['path'] ) ? $parts['path'] : '';
+		$id   = '';
+
+		if ( 'youtu.be' === $host ) {
+			$path_parts = explode( '/', trim( $path, '/' ) );
+			$id         = reset( $path_parts );
+		} elseif ( in_array( $host, array( 'youtube.com', 'm.youtube.com', 'music.youtube.com', 'youtube-nocookie.com' ), true ) ) {
+			if ( '/watch' === $path && ! empty( $parts['query'] ) ) {
+				$query = array();
+				parse_str( $parts['query'], $query );
+				$id = isset( $query['v'] ) && is_string( $query['v'] ) ? $query['v'] : '';
+			} elseif ( preg_match( '#^/(?:embed|shorts|live)/([^/?#]+)#', $path, $matches ) ) {
+				$id = $matches[1];
+			}
+		}
+
+		$id = is_string( $id ) ? trim( $id ) : '';
+
+		return preg_match( '#^[A-Za-z0-9_-]{11}$#', $id ) ? $id : '';
+	}
+
+	/**
+	 * Render a safe YouTube iframe.
+	 *
+	 * @param string $video_id YouTube video ID.
+	 * @param string $title    Video title.
+	 * @param string $context  Display context for CSS classes.
+	 * @return string
+	 */
+	private function render_youtube_embed( $video_id, $title, $context ) {
+		$context   = sanitize_html_class( $context );
+		$title     = $title ? $title : __( 'YouTube video', 'post-collection' );
+		$embed_url = add_query_arg( 'rel', '0', 'https://www.youtube-nocookie.com/embed/' . rawurlencode( $video_id ) );
+
+		return sprintf(
+			'<div class="pc-youtube-embed pc-youtube-embed-%1$s">' .
+				'<iframe src="%2$s" title="%3$s" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>' .
+			'</div>',
+			esc_attr( $context ),
+			esc_url( $embed_url ),
+			esc_attr( sprintf( __( 'YouTube video: %s', 'post-collection' ), $title ) )
+		);
+	}
+
+	/**
 	 * Get the best image URL for a post card.
 	 *
 	 * @param \WP_Post $post The post.
@@ -616,6 +794,10 @@ class Post_Collection_App {
 	 * @return string
 	 */
 	public function get_post_excerpt( \WP_Post $post, $length = 28 ) {
+		if ( $this->get_post_youtube_video_id( $post ) ) {
+			return '';
+		}
+
 		$text = $post->post_excerpt ? $post->post_excerpt : $post->post_content;
 		$text = wp_strip_all_tags( strip_shortcodes( $text ) );
 
