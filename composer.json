@@ -1,6 +1,6 @@
 {
     "require": {
-        "akirk/wp-app": "^1.1",
+        "akirk/wp-app": "^1.2",
         "andreskrey/readability.php": "^2.1",
         "php": ">=7.4"
     },
