@@ -60,13 +60,6 @@ class Post_Collection {
 	private $article_notes;
 
 	/**
-	 * Stores request context for browser extension action generation.
-	 *
-	 * @var array
-	 */
-	private $browser_extension_request_context = array();
-
-	/**
 	 * Constructor
 	 *
 	 * @param Friends|null $friends A reference to the Friends object (optional).
@@ -223,8 +216,6 @@ class Post_Collection {
 		add_action( 'admin_bar_menu', array( $this, 'admin_bar_new_content' ), 72 );
 		add_action( 'wp_enqueue_scripts', array( $this, 'enqueue_scripts' ), 99999 );
 		add_action( 'wp_loaded', array( $this, 'save_url_endpoint' ), 100 );
-		add_action( 'rest_api_init', array( $this, 'register_rest_routes' ) );
-		add_filter( 'rest_pre_dispatch', array( $this, 'capture_browser_extension_request_context' ), 10, 3 );
 		add_filter( 'get_edit_user_link', array( $this, 'edit_post_collection_link' ), 10, 2 );
 		add_action( 'friend_post_edit_link', array( $this, 'allow_post_editing' ), 10, 2 );
 		add_action( 'friends_show_author_edit', array( $this, 'friends_show_author_edit' ), 10, 2 );
@@ -252,69 +243,8 @@ class Post_Collection {
 		add_action( 'wp_ajax_post-collection-download-images', array( $this, 'wp_ajax_download_images' ) );
 		add_action( 'wp_ajax_post-collection-re-extract', array( $this, 'wp_ajax_re_extract' ) );
 		add_filter( 'friends_search_autocomplete', array( $this, 'friends_search_autocomplete' ), 20, 2 );
-		add_filter( 'friends_browser_extension_actions', array( $this, 'friends_browser_extension_actions' ), 10, 2 );
-	}
-
-	/**
-	 * Register REST routes for the Friends browser extension.
-	 */
-	public function register_rest_routes() {
-		register_rest_route(
-			'friends/v1',
-			'extension/action/save',
-			array(
-				'methods'             => 'POST',
-				'callback'            => array( $this, 'rest_extension_action_save' ),
-				'permission_callback' => '__return_true',
-				'args'                => array(
-					'key'           => array(
-						'type'     => 'string',
-						'required' => true,
-					),
-					'collection_id' => array(
-						'type'     => 'integer',
-						'required' => true,
-					),
-					'url'           => array(
-						'type'     => 'string',
-						'required' => true,
-					),
-					'html'          => array(
-						'type'     => 'string',
-						'required' => false,
-					),
-					'title'         => array(
-						'type'     => 'string',
-						'required' => false,
-					),
-					'tags'          => array(
-						'type'     => 'string',
-						'required' => false,
-					),
-				),
-			)
-		);
-	}
-
-	/**
-	 * Capture browser extension request data before Friends builds actions.
-	 *
-	 * @param mixed            $result  Response to replace the requested version with.
-	 * @param \WP_REST_Server  $server  Server instance.
-	 * @param \WP_REST_Request $request Request used to generate the response.
-	 * @return mixed Unchanged pre-dispatch result.
-	 */
-	public function capture_browser_extension_request_context( $result, $server, $request ) {
-		if ( ! $request instanceof \WP_REST_Request || '/friends/v1/extension' !== $request->get_route() ) {
-			return $result;
-		}
-
-		$this->browser_extension_request_context = array(
-			'key'     => sanitize_text_field( (string) wp_unslash( $request->get_param( 'key' ) ) ),
-			'version' => sanitize_text_field( (string) wp_unslash( $request->get_param( 'version' ) ) ),
-		);
-
-		return $result;
+		add_filter( 'friends_browser_extension_actions', array( $this, 'friends_browser_extension_actions' ), 10, 3 );
+		add_filter( 'friends_browser_extension_action_post_collection_save', array( $this, 'friends_browser_extension_action_save' ), 10, 4 );
 	}
 
 	public function register_site_config( SiteConfig\SiteConfig $config ) {
@@ -1227,52 +1157,51 @@ class Post_Collection {
 	}
 
 	/**
-	 * Handle inline save actions from the Friends browser extension.
+	 * Handle inline save actions relayed by the Friends browser extension.
 	 *
-	 * @param \WP_REST_Request $request The REST request.
-	 * @return \WP_REST_Response The REST response.
+	 * @param mixed            $response     The previous action response.
+	 * @param \WP_REST_Request $request      The REST request.
+	 * @param \WP_User         $current_user The user authenticated by Friends.
+	 * @param array            $context      Browser extension request context.
+	 * @return array|\WP_Error The action response.
 	 */
-	public function rest_extension_action_save( \WP_REST_Request $request ) {
-		$key_user = $this->validate_browser_extension_key( $request->get_param( 'key' ) );
-		if ( is_wp_error( $key_user ) ) {
-			return $this->rest_action_error( $key_user, 401 );
+	public function friends_browser_extension_action_save( $response, \WP_REST_Request $request, \WP_User $current_user, $context ) {
+		if ( null !== $response ) {
+			return $response;
 		}
 
-		$previous_user_id = get_current_user_id();
-		wp_set_current_user( $key_user->ID );
-
 		if ( ! current_user_can( $this->get_required_role() ) ) {
-			wp_set_current_user( $previous_user_id );
-			return $this->rest_action_error(
-				new \WP_Error( 'forbidden', __( 'You are not allowed to save to post collections.', 'post-collection' ) ),
-				403
+			return new \WP_Error(
+				'forbidden',
+				__( 'You are not allowed to save to post collections.', 'post-collection' ),
+				array( 'status' => 403 )
 			);
 		}
 
 		$collection_id = absint( $request->get_param( 'collection_id' ) );
 		$friend_user   = User::get_user_by_id( $collection_id );
 		if ( ! $friend_user || ! $friend_user->has_cap( 'post_collection' ) ) {
-			wp_set_current_user( $previous_user_id );
-			return $this->rest_action_error(
-				new \WP_Error( 'invalid-collection', __( 'Invalid post collection.', 'post-collection' ) ),
-				404
+			return new \WP_Error(
+				'invalid-collection',
+				__( 'Invalid post collection.', 'post-collection' ),
+				array( 'status' => 404 )
 			);
 		}
 
 		if ( get_user_option( 'friends_post_collection_inactive', $friend_user->ID ) ) {
-			wp_set_current_user( $previous_user_id );
-			return $this->rest_action_error(
-				new \WP_Error( 'inactive-collection', __( 'This post collection is inactive.', 'post-collection' ) ),
-				403
+			return new \WP_Error(
+				'inactive-collection',
+				__( 'This post collection is inactive.', 'post-collection' ),
+				array( 'status' => 403 )
 			);
 		}
 
 		$url = esc_url_raw( trim( (string) wp_unslash( $request->get_param( 'url' ) ) ) );
 		if ( ! $this->check_url( $url ) ) {
-			wp_set_current_user( $previous_user_id );
-			return $this->rest_action_error(
-				new \WP_Error( 'invalid-url', __( 'You entered an invalid URL.', 'post-collection' ) ),
-				400
+			return new \WP_Error(
+				'invalid-url',
+				__( 'You entered an invalid URL.', 'post-collection' ),
+				array( 'status' => 400 )
 			);
 		}
 
@@ -1302,8 +1231,7 @@ class Post_Collection {
 		);
 
 		if ( is_wp_error( $post_id ) ) {
-			wp_set_current_user( $previous_user_id );
-			return $this->rest_action_error( $post_id, 400 );
+			return $post_id;
 		}
 
 		$edit_url = get_edit_post_link( $post_id, 'raw' );
@@ -1314,39 +1242,13 @@ class Post_Collection {
 			$friend_user->display_name
 		);
 
-		wp_set_current_user( $previous_user_id );
-
-		return new \WP_REST_Response(
-			array(
-				'success'    => true,
-				'message'    => $message,
-				'edit_url'   => $edit_url ? $edit_url : '',
-				'url'        => $item_url ? $item_url : '',
-				'link_label' => __( 'Open', 'post-collection' ),
-			)
+		return array(
+			'success'    => true,
+			'message'    => $message,
+			'edit_url'   => $edit_url ? $edit_url : '',
+			'url'        => $item_url ? $item_url : '',
+			'link_label' => __( 'Open', 'post-collection' ),
 		);
-	}
-
-	/**
-	 * Validate a Friends browser extension key and return its user.
-	 *
-	 * @param string $key The submitted browser extension key.
-	 * @return \WP_User|\WP_Error The authenticated user or an error.
-	 */
-	private function validate_browser_extension_key( $key ) {
-		$key = sanitize_text_field( (string) wp_unslash( $key ) );
-		if ( ! $key || ! class_exists( '\Friends\Admin' ) || ! \Friends\Admin::check_browser_api_key( $key ) ) {
-			return new \WP_Error( 'invalid-browser-extension-key', __( 'Invalid browser extension key.', 'post-collection' ) );
-		}
-
-		$parts   = explode( '-', $key, 3 );
-		$user_id = isset( $parts[1] ) ? absint( $parts[1] ) : 0;
-		$user    = $user_id ? get_user_by( 'ID', $user_id ) : false;
-		if ( ! $user ) {
-			return new \WP_Error( 'invalid-browser-extension-key', __( 'Invalid browser extension key.', 'post-collection' ) );
-		}
-
-		return $user;
 	}
 
 	/**
@@ -1379,23 +1281,6 @@ class Post_Collection {
 		);
 
 		return array_values( array_unique( $tags ) );
-	}
-
-	/**
-	 * Format an inline action failure response.
-	 *
-	 * @param \WP_Error $error  The error.
-	 * @param int       $status HTTP status.
-	 * @return \WP_REST_Response The REST response.
-	 */
-	private function rest_action_error( \WP_Error $error, $status ) {
-		return new \WP_REST_Response(
-			array(
-				'success' => false,
-				'message' => $error->get_error_message(),
-			),
-			$status
-		);
 	}
 
 	/**
@@ -1900,14 +1785,14 @@ class Post_Collection {
 		return $results;
 	}
 
-	public function friends_browser_extension_actions( $actions, $context = null ) {
+	public function friends_browser_extension_actions( $actions, $current_user = null, $context = null ) {
 		if ( ! is_array( $actions ) ) {
 			$actions = array();
 		}
 
 		$extension_version = $this->get_browser_extension_version( $context );
 		$browser_key       = $this->get_browser_extension_key( $context );
-		$use_inline        = $browser_key && ( ! $extension_version || version_compare( $extension_version, '1.6.0', '>=' ) );
+		$use_inline        = method_exists( '\Friends\REST', 'rest_extension_action' ) && $browser_key && ( ! $extension_version || version_compare( $extension_version, '1.6.0', '>=' ) );
 
 		foreach ( $this->get_post_collection_users()->get_results() as $user ) {
 			if ( get_user_option( 'friends_post_collection_inactive', $user->ID ) ) {
@@ -1923,13 +1808,14 @@ class Post_Collection {
 						$user->display_name
 					),
 					'category'         => __( 'Save', 'post-collection' ),
-					'url'              => rest_url( 'friends/v1/extension/action/save' ),
+					'url'              => rest_url( 'friends/v1/extension/action' ),
 					'method'           => 'POST',
 					'run'              => 'inline',
 					'submit_label'     => __( 'Save', 'post-collection' ),
 					'progress_message' => __( 'Saving...', 'post-collection' ),
 					'success_message'  => __( 'Saved.', 'post-collection' ),
 					'fields'           => array(
+						'action'        => 'post_collection_save',
 						'key'           => $browser_key,
 						'collection_id' => (string) $user->ID,
 						'url'           => '{current_url}',
@@ -1999,10 +1885,6 @@ class Post_Collection {
 			}
 		}
 
-		if ( isset( $this->browser_extension_request_context['version'] ) ) {
-			return $this->browser_extension_request_context['version'];
-		}
-
 		if ( isset( $_REQUEST['version'] ) ) {
 			return sanitize_text_field( wp_unslash( $_REQUEST['version'] ) );
 		}
@@ -2031,10 +1913,6 @@ class Post_Collection {
 			if ( isset( $context->key ) ) {
 				return sanitize_text_field( $context->key );
 			}
-		}
-
-		if ( isset( $this->browser_extension_request_context['key'] ) ) {
-			return $this->browser_extension_request_context['key'];
 		}
 
 		if ( isset( $_REQUEST['key'] ) ) {
