@@ -1369,6 +1369,16 @@ class Post_Collection {
 				),
 				$logger
 			);
+		} catch ( \Throwable $e ) {
+			return new \WP_Error(
+				'could-not-extract-content',
+				sprintf(
+				// translators: $s is an error message.
+					__( 'Error processing HTML: %s', 'post-collection' ),
+					$e->getMessage()
+				),
+				$logger
+			);
 		}
 
 		return $item;
