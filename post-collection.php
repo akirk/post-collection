@@ -30,6 +30,7 @@ require_once __DIR__ . '/vendor/autoload.php';
 require_once __DIR__ . '/class-user.php';
 require_once __DIR__ . '/class-user-query.php';
 require_once __DIR__ . '/class-post-collection.php';
+require_once __DIR__ . '/class-post-collection-abilities.php';
 require_once __DIR__ . '/class-extracted-page.php';
 require_once __DIR__ . '/site-configs/class-site-config.php';
 require_once __DIR__ . '/site-configs/class-youtube.php';
