@@ -1057,14 +1057,15 @@ class Post_Collection {
 	 * @param  string $url         The URL to save.
 	 * @param  User   $friend_user The post collection user.
 	 * @param  string $content     Optional HTML content.
-	 * @param  array  $args        Optional arguments: title and tags.
-	 * @return int|\WP_Error The saved post ID or an error.
+	 * @param  array  $args        Optional arguments: title, tags, and return_details.
+	 * @return int|array|\WP_Error The saved post ID, details, or an error.
 	 */
 	private function save_url_to_collection( $url, User $friend_user, $content = null, $args = array() ) {
 		if ( ! is_string( $url ) || ! $this->check_url( $url ) ) {
 			return new \WP_Error( 'invalid-url', __( 'You entered an invalid URL.', 'post-collection' ) );
 		}
 
+		$return_details = ! empty( $args['return_details'] );
 		$title_override = '';
 		if ( isset( $args['title'] ) ) {
 			$title_override = wp_strip_all_tags( trim( sanitize_text_field( $args['title'] ) ) );
@@ -1085,11 +1086,27 @@ class Post_Collection {
 		}
 
 		$post_id = $this->url_to_postid( $url, $friend_user->ID );
+		$created           = false;
+		$content_extracted = false;
 		if ( is_null( $post_id ) ) {
 			$item = $this->download( $url, $content );
+			if ( is_wp_error( $item ) ) {
+				return $item;
+			}
+
+			if ( ! $item->content ) {
+				return new \WP_Error(
+					'invalid-content',
+					__( 'No content was extracted.', 'post-collection' ),
+					array(
+						'status' => 422,
+						'url'    => $url,
+					)
+				);
+			}
 
 			$title = '';
-			if ( ! is_wp_error( $item ) && $item->title ) {
+			if ( $item->title ) {
 				$title = wp_strip_all_tags( trim( $item->title ) );
 			}
 			if ( ! $title ) {
@@ -1110,7 +1127,7 @@ class Post_Collection {
 				'guid'         => $url,
 				'post_type'    => self::CPT,
 				'post_title'   => $title,
-				'post_content' => ! is_wp_error( $item ) && $item->raw_html ? $item->raw_html : '',
+				'post_content' => ! empty( $item->raw_html ) ? $item->raw_html : '',
 			);
 
 			$post_id = wp_insert_post( $post_data, true );
@@ -1118,7 +1135,7 @@ class Post_Collection {
 				return $post_id;
 			}
 
-			if ( ! is_wp_error( $item ) && $item->content ) {
+			if ( $item->content ) {
 				$extracted_content = force_balance_tags( trim( wp_kses_post( $item->content ) ) );
 				wp_update_post(
 					array(
@@ -1126,11 +1143,13 @@ class Post_Collection {
 						'post_content' => $extracted_content,
 					)
 				);
+				$content_extracted = true;
 			}
 
-			if ( ! is_wp_error( $item ) && $item->author ) {
+			if ( $item->author ) {
 				update_post_meta( $post_id, 'author', $item->author );
 			}
+			$created = true;
 		} elseif ( $title_override ) {
 			$updated_post = wp_update_post(
 				array(
@@ -1151,6 +1170,14 @@ class Post_Collection {
 			if ( is_wp_error( $terms ) ) {
 				return $terms;
 			}
+		}
+
+		if ( $return_details ) {
+			return array(
+				'post_id'           => (int) $post_id,
+				'created'           => $created,
+				'content_extracted' => $content_extracted,
+			);
 		}
 
 		return (int) $post_id;
@@ -1225,8 +1252,9 @@ class Post_Collection {
 			$friend_user,
 			$html,
 			array(
-				'title' => $title,
-				'tags'  => $tags,
+				'title'          => $title,
+				'tags'           => $tags,
+				'return_details' => true,
 			)
 		);
 
@@ -1234,20 +1262,32 @@ class Post_Collection {
 			return $post_id;
 		}
 
+		$save_details = $post_id;
+		$post_id      = $save_details['post_id'];
 		$edit_url = get_edit_post_link( $post_id, 'raw' );
 		$item_url = $friend_user->get_local_friends_page_url( $post_id );
-		$message  = sprintf(
-			// translators: %s is the name of a post collection.
-			__( 'Saved to %s.', 'post-collection' ),
-			$friend_user->display_name
-		);
+		if ( ! empty( $save_details['content_extracted'] ) ) {
+			$message = sprintf(
+				// translators: %s is the name of a post collection.
+				__( 'Saved extracted content to %s.', 'post-collection' ),
+				$friend_user->display_name
+			);
+		} else {
+			$message = sprintf(
+				// translators: %s is the name of a post collection.
+				__( 'Saved to %s. This URL was already in the collection.', 'post-collection' ),
+				$friend_user->display_name
+			);
+		}
 
 		return array(
-			'success'    => true,
-			'message'    => $message,
-			'edit_url'   => $edit_url ? $edit_url : '',
-			'url'        => $item_url ? $item_url : '',
-			'link_label' => __( 'Open', 'post-collection' ),
+			'success'           => true,
+			'message'           => $message,
+			'created'           => ! empty( $save_details['created'] ),
+			'content_extracted' => ! empty( $save_details['content_extracted'] ),
+			'edit_url'          => $edit_url ? $edit_url : '',
+			'url'               => $item_url ? $item_url : '',
+			'link_label'        => __( 'Open', 'post-collection' ),
 		);
 	}
 
@@ -1312,11 +1352,22 @@ class Post_Collection {
 
 		if ( ! $content ) {
 			$response = wp_safe_remote_get( $url, $args );
+			if ( is_wp_error( $response ) ) {
+				$error_data = $response->get_error_data();
+				if ( ! is_array( $error_data ) ) {
+					$error_data = array( 'error_data' => $error_data );
+				}
+				$error_data['status'] = 502;
+				$error_data['url']    = $url;
+				$response->add_data( $error_data );
+				return $response;
+			}
 			if ( 200 !== wp_remote_retrieve_response_code( $response ) ) {
 				return new \WP_Error(
 					'could-not-download',
 					__( 'Could not download the URL.', 'post-collection' ),
 					array(
+						'status'      => 502,
 						'url'         => $url,
 						'http_status' => wp_remote_retrieve_response_code( $response ),
 						'http_body'   => wp_remote_retrieve_body( $response ),
@@ -1327,6 +1378,9 @@ class Post_Collection {
 		}
 
 		$item = $this->extract_content( $content, $url );
+		if ( is_wp_error( $item ) ) {
+			return $item;
+		}
 		$item->raw_html = $content;
 		return $item;
 	}
@@ -1367,7 +1421,10 @@ class Post_Collection {
 					__( 'Error processing HTML: %s', 'post-collection' ),
 					$e->getMessage()
 				),
-				$logger
+				array(
+					'status' => 422,
+					'logger' => $logger,
+				)
 			);
 		} catch ( \Throwable $e ) {
 			return new \WP_Error(
@@ -1377,7 +1434,10 @@ class Post_Collection {
 					__( 'Error processing HTML: %s', 'post-collection' ),
 					$e->getMessage()
 				),
-				$logger
+				array(
+					'status' => 422,
+					'logger' => $logger,
+				)
 			);
 		}
 
