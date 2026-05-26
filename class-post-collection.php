@@ -60,6 +60,13 @@ class Post_Collection {
 	private $article_notes;
 
 	/**
+	 * Contains the abilities integration instance.
+	 *
+	 * @var Post_Collection_Abilities|null
+	 */
+	private $abilities;
+
+	/**
 	 * Constructor
 	 *
 	 * @param Friends|null $friends A reference to the Friends object (optional).
@@ -67,6 +74,9 @@ class Post_Collection {
 	public function __construct( ?Friends $friends = null ) {
 		$this->friends = $friends;
 		$this->article_notes = new Article_Notes( $this );
+		if ( class_exists( __NAMESPACE__ . '\Post_Collection_Abilities' ) ) {
+			$this->abilities = new Post_Collection_Abilities( $this );
+		}
 		$this->register_hooks();
 	}
 
@@ -1181,6 +1191,19 @@ class Post_Collection {
 		}
 
 		return (int) $post_id;
+	}
+
+	/**
+	 * Save a URL to a post collection and return the saved post ID.
+	 *
+	 * @param  string $url         The URL to save.
+	 * @param  User   $friend_user The post collection user.
+	 * @param  string $content     Optional HTML content.
+	 * @param  array  $args        Optional arguments: title and tags.
+	 * @return int|\WP_Error The saved post ID or an error.
+	 */
+	public function save_url_for_collection( $url, User $friend_user, $content = null, $args = array() ) {
+		return $this->save_url_to_collection( $url, $friend_user, $content, $args );
 	}
 
 	/**
