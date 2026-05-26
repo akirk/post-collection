@@ -438,7 +438,7 @@ class Post_Collection_Abilities {
 	 */
 	public function ability_list_collections( $input ) {
 		$input = is_array( $input ) ? $input : array();
-		$include_inactive = ! empty( $input['include_inactive'] );
+		$include_inactive = $this->input_bool( $input, 'include_inactive', false );
 		$collections = array();
 
 		foreach ( $this->plugin->get_post_collection_users()->get_results() as $user ) {
@@ -650,6 +650,23 @@ class Post_Collection_Abilities {
 					'compare' => 'NOT EXISTS',
 				),
 			);
+		} elseif ( Article_Notes::STATUS_UNREAD === $note_status ) {
+			$note_ids = $this->get_note_ids_by_status( $note_status );
+			$args['meta_query'] = array(
+				'relation' => 'OR',
+				array(
+					'key'     => Article_Notes::NOTE_ID_META,
+					'compare' => 'NOT EXISTS',
+				),
+			);
+
+			if ( ! empty( $note_ids ) ) {
+				$args['meta_query'][] = array(
+					'key'     => Article_Notes::NOTE_ID_META,
+					'value'   => $note_ids,
+					'compare' => 'IN',
+				);
+			}
 		} elseif ( 'all' !== $note_status ) {
 			$article_ids = $this->get_article_ids_by_note_status( $note_status );
 			if ( empty( $article_ids ) ) {
@@ -951,7 +968,7 @@ class Post_Collection_Abilities {
 	 */
 	private function apply_collection_settings( User $user, $input ) {
 		if ( array_key_exists( 'publish_feed', $input ) ) {
-			if ( $input['publish_feed'] ) {
+			if ( $this->input_bool( $input, 'publish_feed', false ) ) {
 				update_user_option( $user->ID, 'friends_publish_post_collection', true );
 			} else {
 				delete_user_option( $user->ID, 'friends_publish_post_collection' );
@@ -986,11 +1003,34 @@ class Post_Collection_Abilities {
 	 * @return array Article IDs.
 	 */
 	private function get_article_ids_by_note_status( $status ) {
+		$note_ids = $this->get_note_ids_by_status( $status );
+		if ( empty( $note_ids ) ) {
+			return array();
+		}
+
+		$article_ids = array();
+		foreach ( $note_ids as $note_id ) {
+			$parent_id = wp_get_post_parent_id( $note_id );
+			if ( $parent_id ) {
+				$article_ids[] = (int) $parent_id;
+			}
+		}
+
+		return array_values( array_unique( $article_ids ) );
+	}
+
+	/**
+	 * Get note IDs by status.
+	 *
+	 * @param string $status Note status.
+	 * @return array Note IDs.
+	 */
+	private function get_note_ids_by_status( $status ) {
 		if ( ! in_array( $status, Article_Notes::get_all_status_values(), true ) ) {
 			return array();
 		}
 
-		$note_ids = get_posts(
+		return get_posts(
 			array(
 				'post_type'      => Article_Notes::POST_TYPE,
 				'posts_per_page' => -1,
@@ -1004,16 +1044,26 @@ class Post_Collection_Abilities {
 				),
 			)
 		);
+	}
 
-		$article_ids = array();
-		foreach ( $note_ids as $note_id ) {
-			$parent_id = wp_get_post_parent_id( $note_id );
-			if ( $parent_id ) {
-				$article_ids[] = (int) $parent_id;
-			}
+	/**
+	 * Read a boolean input value.
+	 *
+	 * @param array  $input   Ability input.
+	 * @param string $key     Input key.
+	 * @param bool   $default Default value.
+	 * @return bool Boolean value.
+	 */
+	private function input_bool( array $input, $key, $default = false ) {
+		if ( ! array_key_exists( $key, $input ) ) {
+			return $default;
 		}
 
-		return array_values( array_unique( $article_ids ) );
+		if ( function_exists( 'rest_sanitize_boolean' ) ) {
+			return rest_sanitize_boolean( $input[ $key ] );
+		}
+
+		return filter_var( $input[ $key ], FILTER_VALIDATE_BOOLEAN );
 	}
 
 	/**
