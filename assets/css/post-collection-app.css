@@ -15,7 +15,7 @@ body.post-collection-app {
 	--pc-color-primary-hover: var(--wp-app-color-primary-hover, #00a0d2);
 	--pc-color-accent: var(--wp-app-color-accent, #00a0d2);
 	--pc-color-focus: var(--wp-app-color-focus, #00a0d2);
-	--pc-color-on-primary: var(--wp-app-admin-icon-color-current, #fff);
+	--pc-color-on-primary: var(--wp-app-color-on-primary, #fff);
 	--pc-color-embed-background: var(--wp-app-admin-color-background, #23282d);
 	margin: 0;
 	background: var(--pc-color-background);
@@ -116,9 +116,9 @@ body.post-collection-app {
 	font-size: 0.82rem;
 }
 
-.pc-button,
-.pc-add-form button,
-.pc-filter-bar button {
+.post-collection-app .pc-button,
+.post-collection-app .pc-add-form button,
+.post-collection-app .pc-filter-bar button {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
@@ -133,24 +133,30 @@ body.post-collection-app {
 	cursor: pointer;
 }
 
-.pc-button-primary,
-.pc-add-form button,
-.pc-filter-bar button {
+.post-collection-app .pc-button-primary,
+.post-collection-app .pc-add-form button,
+.post-collection-app .pc-filter-bar button {
 	border-color: var(--pc-color-primary);
 	background: var(--pc-color-primary);
 	color: var(--pc-color-on-primary);
 }
 
-.pc-button:hover,
-.pc-add-form button:hover,
-.pc-filter-bar button:hover {
+.post-collection-app .pc-button:hover,
+.post-collection-app .pc-button:focus,
+.post-collection-app .pc-add-form button:hover,
+.post-collection-app .pc-add-form button:focus,
+.post-collection-app .pc-filter-bar button:hover,
+.post-collection-app .pc-filter-bar button:focus {
 	border-color: var(--pc-color-primary-hover);
 	color: var(--pc-color-primary-hover);
 }
 
-.pc-button-primary:hover,
-.pc-add-form button:hover,
-.pc-filter-bar button:hover {
+.post-collection-app .pc-button-primary:hover,
+.post-collection-app .pc-button-primary:focus,
+.post-collection-app .pc-add-form button:hover,
+.post-collection-app .pc-add-form button:focus,
+.post-collection-app .pc-filter-bar button:hover,
+.post-collection-app .pc-filter-bar button:focus {
 	background: var(--pc-color-primary-hover);
 	color: var(--pc-color-on-primary);
 }
@@ -228,7 +234,7 @@ body.post-collection-app {
 	list-style: none;
 }
 
-.pc-mini-list a {
+.post-collection-app .pc-mini-list a {
 	display: block;
 	overflow: hidden;
 	color: var(--pc-color-muted);
@@ -297,7 +303,7 @@ body.post-collection-app {
 	background: var(--pc-color-surface);
 }
 
-.pc-view-switch a {
+.post-collection-app .pc-view-switch a {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
@@ -310,13 +316,14 @@ body.post-collection-app {
 	text-decoration: none;
 }
 
-.pc-view-switch a:hover,
-.pc-view-switch a.is-active {
+.post-collection-app .pc-view-switch a:hover,
+.post-collection-app .pc-view-switch a:focus,
+.post-collection-app .pc-view-switch a.is-active {
 	background: var(--pc-color-primary);
 	color: var(--pc-color-on-primary);
 }
 
-.pc-tag-strip a {
+.post-collection-app .pc-tag-strip a {
 	display: inline-flex;
 	gap: 6px;
 	align-items: center;
@@ -330,8 +337,9 @@ body.post-collection-app {
 	text-decoration: none;
 }
 
-.pc-tag-strip a.is-active,
-.pc-tag-strip a:hover {
+.post-collection-app .pc-tag-strip a.is-active,
+.post-collection-app .pc-tag-strip a:hover,
+.post-collection-app .pc-tag-strip a:focus {
 	border-color: var(--pc-color-primary);
 	background: var(--pc-color-primary);
 	color: var(--pc-color-on-primary);
@@ -481,14 +489,14 @@ body.post-collection-app {
 	line-height: 1.25;
 }
 
-.pc-link-main h2 a {
+.post-collection-app .pc-link-main h2 a {
 	color: var(--pc-color-link);
 	text-decoration: underline;
 	text-decoration-thickness: 1px;
 	text-underline-offset: 2px;
 }
 
-.pc-link-main h2 a:visited {
+.post-collection-app .pc-link-main h2 a:visited {
 	color: var(--pc-color-link);
 }
 
@@ -533,7 +541,7 @@ body.post-collection-app {
 	margin: 4px 0 0 16px;
 }
 
-.pc-link-tags a {
+.post-collection-app .pc-link-tags a {
 	display: inline-flex;
 	align-items: center;
 	min-height: 18px;
@@ -548,7 +556,8 @@ body.post-collection-app {
 	text-underline-offset: 2px;
 }
 
-.pc-link-tags a:hover {
+.post-collection-app .pc-link-tags a:hover,
+.post-collection-app .pc-link-tags a:focus {
 	background: var(--pc-color-primary);
 	color: var(--pc-color-on-primary);
 }
@@ -749,8 +758,8 @@ body.post-collection-app {
 	padding: 8px 0 64px;
 }
 
-.pc-pagination a,
-.pc-pagination span {
+.post-collection-app .pc-pagination a,
+.post-collection-app .pc-pagination span {
 	display: inline-flex;
 	align-items: center;
 	min-height: 38px;

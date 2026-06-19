@@ -23,7 +23,7 @@ $collections = array_filter( $app->get_collections(), array( $app, 'can_view_col
 	<title><?php echo wp_app_title( __( 'Post Collection', 'post-collection' ) ); ?></title>
 	<?php wp_app_head(); ?>
 </head>
-<body <?php body_class( 'post-collection-app' ); ?>>
+<body <?php body_class( 'wp-app-body post-collection-app' ); ?>>
 	<?php wp_app_body_open(); ?>
 	<header class="pc-shell pc-app-header">
 		<div>

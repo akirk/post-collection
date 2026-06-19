@@ -38,7 +38,7 @@ $terms      = $app->get_post_terms( $post );
 	<title><?php echo wp_app_title( get_the_title( $post ) ); ?></title>
 	<?php wp_app_head(); ?>
 </head>
-<body <?php body_class( 'post-collection-app pc-mode-' . $mode ); ?>>
+<body <?php body_class( 'wp-app-body post-collection-app pc-mode-' . $mode ); ?>>
 	<?php wp_app_body_open(); ?>
 	<header class="pc-shell pc-detail-header">
 		<div class="pc-breadcrumb">

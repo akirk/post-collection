@@ -17,7 +17,7 @@ $app = \PostCollection\Post_Collection_App::instance();
 	<title><?php echo wp_app_title( __( 'Not Found', 'post-collection' ) ); ?></title>
 	<?php wp_app_head(); ?>
 </head>
-<body <?php body_class( 'post-collection-app' ); ?>>
+<body <?php body_class( 'wp-app-body post-collection-app' ); ?>>
 	<?php wp_app_body_open(); ?>
 	<main class="pc-shell">
 		<section class="pc-empty">

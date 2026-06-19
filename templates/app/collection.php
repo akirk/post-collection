@@ -55,7 +55,7 @@ if ( '' !== $active_tag ) {
 	<title><?php echo wp_app_title( $user->display_name ); ?></title>
 	<?php wp_app_head(); ?>
 </head>
-<body <?php body_class( 'post-collection-app pc-mode-' . $mode . ' pc-view-' . $view . ( $quick_edit ? ' pc-quick-edit' : '' ) ); ?>>
+<body <?php body_class( 'wp-app-body post-collection-app pc-mode-' . $mode . ' pc-view-' . $view . ( $quick_edit ? ' pc-quick-edit' : '' ) ); ?>>
 	<?php wp_app_body_open(); ?>
 	<header class="pc-shell pc-collection-header">
 		<div class="pc-breadcrumb"><a href="<?php echo esc_url( $app->get_home_url() ); ?>"><?php esc_html_e( 'Collections', 'post-collection' ); ?></a></div>
