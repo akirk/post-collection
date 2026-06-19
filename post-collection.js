@@ -28,14 +28,23 @@ jQuery( function ( $ ) {
 	} );
 	$document.on( 'click', 'a.post-collection-change-author', function () {
 		var $this = $( this );
+		if ( $this.data( 'loading' ) ) {
+			return false;
+		}
 		wp.ajax.send( 'post-collection-change-author', {
 			data: {
 				id: $this.data( 'id' ),
 				author: $this.data( 'author' ),
 				originalauthor: $this.data( 'originalauthor' )
 			},
+			beforeSend: function () {
+				$this.data( 'loading', true );
+			},
 			success: function ( response ) {
 				$this.text( response.new_text ).data( 'author', response.old_author );
+			},
+			complete: function () {
+				$this.data( 'loading', false );
 			}
 		} );
 		return false;

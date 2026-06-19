@@ -2302,6 +2302,10 @@ class Post_Collection {
 		$old_author = User::get_post_author( $post );
 
 		$post->post_author = $new_author->ID;
+		if ( $new_author->has_cap( 'post_collection' ) ) {
+			$post->post_type   = self::CPT;
+			$post->post_status = 'private';
+		}
 		if ( get_user_option( 'friends_post_collection_copy_mode', $new_author->ID ) ) {
 			unset( $post->ID );
 			$new_author->insert_post( (array) $post );
