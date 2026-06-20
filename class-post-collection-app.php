@@ -88,12 +88,16 @@ class Post_Collection_App {
 	 */
 	private function init() {
 		add_action( 'wp_loaded', array( $this, 'handle_quick_edit' ) );
+		add_action( 'wp_loaded', array( $this, 'handle_collection_settings' ) );
+		add_action( 'wp_loaded', array( $this, 'handle_create_collection' ) );
 		add_action( 'wp_ajax_post_collection_quick_edit', array( $this, 'wp_ajax_quick_edit' ) );
 		add_filter( 'private_title_format', array( $this, 'filter_private_title_format' ), 10, 2 );
 
 		$this->app->route( '' );
-		$this->app->route( '{username}', 'collection.php' );
-		$this->app->route( '{username}/{post_id}', 'post.php' );
+		$this->app->route( 'new', 'new.php' );
+		$this->app->route( '{collection}/settings', 'settings.php' );
+		$this->app->route( '{collection}', 'collection.php' );
+		$this->app->route( '{collection}/{post_id}', 'post.php' );
 
 		$this->app->add_menu_item(
 			'collections',
@@ -105,7 +109,7 @@ class Post_Collection_App {
 			$this->app->add_menu_item(
 				'new-collection',
 				__( 'New Collection', 'post-collection' ),
-				self_admin_url( 'admin.php?page=create-post-collection' )
+				$this->get_new_collection_url()
 			);
 		}
 
@@ -147,14 +151,23 @@ class Post_Collection_App {
 	}
 
 	/**
+	 * Get the app URL for creating a collection.
+	 *
+	 * @return string
+	 */
+	public function get_new_collection_url() {
+		return home_url( '/' . self::PATH . '/new/' );
+	}
+
+	/**
 	 * Get the URL for a collection or a collected post.
 	 *
-	 * @param \WP_User|User $user    The collection user.
+	 * @param \WP_Term $collection The collection term.
 	 * @param int|null      $post_id Optional post ID.
 	 * @return string
 	 */
-	public function get_collection_url( $user, $post_id = null ) {
-		$path = '/' . self::PATH . '/' . rawurlencode( $user->user_login ) . '/';
+	public function get_collection_url( $collection, $post_id = null ) {
+		$path = '/' . self::PATH . '/' . rawurlencode( $collection->slug ) . '/';
 
 		if ( $post_id ) {
 			$path .= absint( $post_id ) . '/';
@@ -164,31 +177,43 @@ class Post_Collection_App {
 	}
 
 	/**
-	 * Get collection users.
+	 * Get the settings URL for a collection.
+	 *
+	 * @param \WP_Term $collection The collection term.
+	 * @return string
+	 */
+	public function get_collection_settings_url( $collection ) {
+		return trailingslashit( $this->get_collection_url( $collection ) . 'settings' );
+	}
+
+	/**
+	 * Get collection terms.
 	 *
 	 * @return array
 	 */
 	public function get_collections() {
-		return $this->post_collection->get_post_collection_users()->get_results();
+		$terms = get_terms(
+			array(
+				'taxonomy'   => Post_Collection::COLLECTION_TAXONOMY,
+				'hide_empty' => false,
+			)
+		);
+
+		return is_wp_error( $terms ) ? array() : $terms;
 	}
 
 	/**
-	 * Find a collection by URL username.
+	 * Find a collection by URL slug.
 	 *
-	 * @param string $username The route username.
-	 * @return User|null
+	 * @param string $collection_slug The route collection slug.
+	 * @return \WP_Term|null
 	 */
-	public function get_collection_by_username( $username ) {
-		$username = sanitize_user( rawurldecode( $username ), true );
+	public function get_collection_by_username( $collection_slug ) {
+		$collection_slug = sanitize_title( rawurldecode( $collection_slug ) );
 
-		foreach ( $this->get_collections() as $user ) {
-			if (
-				$user->user_login === $username ||
-				sanitize_title( $user->user_login ) === sanitize_title( $username ) ||
-				sanitize_title( $user->display_name ) === sanitize_title( $username )
-			) {
-				return $user;
-			}
+		$term = get_term_by( 'slug', $collection_slug, Post_Collection::COLLECTION_TAXONOMY );
+		if ( $term && ! is_wp_error( $term ) ) {
+			return $term;
 		}
 
 		return null;
@@ -206,24 +231,24 @@ class Post_Collection_App {
 	/**
 	 * Whether the current visitor can view a collection.
 	 *
-	 * @param User|\WP_User $user The collection user.
+	 * @param \WP_Term $collection The collection term.
 	 * @return bool
 	 */
-	public function can_view_collection( $user ) {
+	public function can_view_collection( $collection ) {
 		if ( $this->can_manage_collections() ) {
 			return true;
 		}
 
-		return (bool) get_user_option( 'friends_publish_post_collection', $user->ID );
+		return (bool) get_term_meta( $collection->term_id, 'friends_publish_post_collection', true );
 	}
 
 	/**
 	 * Whether private posts should be included for this visitor.
 	 *
-	 * @param User|\WP_User $user The collection user.
+	 * @param \WP_Term $collection The collection term.
 	 * @return bool
 	 */
-	public function can_view_private_posts( $user ) {
+	public function can_view_private_posts( $collection ) {
 		return $this->can_manage_collections();
 	}
 
@@ -268,16 +293,16 @@ class Post_Collection_App {
 	/**
 	 * Get the frontend mode for a collection.
 	 *
-	 * @param User|\WP_User $user The collection user.
+	 * @param \WP_Term $collection The collection term.
 	 * @return string
 	 */
-	public function get_collection_mode( $user ) {
-		$mode = get_user_option( 'post_collection_frontend_mode', $user->ID );
+	public function get_collection_mode( $collection ) {
+		$mode = get_term_meta( $collection->term_id, 'post_collection_frontend_mode', true );
 		if ( in_array( $mode, array( 'bookmarks', 'posts' ), true ) ) {
 			return $mode;
 		}
 
-		if ( $this->is_bookmark_collection( $user ) ) {
+		if ( $this->is_bookmark_collection( $collection ) ) {
 			return 'bookmarks';
 		}
 
@@ -287,16 +312,16 @@ class Post_Collection_App {
 	/**
 	 * Get the default frontend view for a collection.
 	 *
-	 * @param User|\WP_User $user The collection user.
+	 * @param \WP_Term $collection The collection term.
 	 * @return string
 	 */
-	public function get_collection_default_view( $user ) {
-		$view = get_user_option( 'post_collection_frontend_view', $user->ID );
+	public function get_collection_default_view( $collection ) {
+		$view = get_term_meta( $collection->term_id, 'post_collection_frontend_view', true );
 		if ( in_array( $view, array( 'board', 'links', 'reader' ), true ) ) {
 			return $view;
 		}
 
-		if ( 'bookmarks' === $this->get_collection_mode( $user ) ) {
+		if ( 'bookmarks' === $this->get_collection_mode( $collection ) ) {
 			return 'links';
 		}
 
@@ -306,10 +331,10 @@ class Post_Collection_App {
 	/**
 	 * Get the active frontend view for a collection.
 	 *
-	 * @param User|\WP_User $user The collection user.
+	 * @param \WP_Term $collection The collection term.
 	 * @return string
 	 */
-	public function get_collection_view( $user ) {
+	public function get_collection_view( $collection ) {
 		if ( isset( $_GET['pc-view'] ) ) {
 			$view = sanitize_key( wp_unslash( $_GET['pc-view'] ) );
 			if ( in_array( $view, array( 'board', 'links', 'reader' ), true ) ) {
@@ -317,7 +342,141 @@ class Post_Collection_App {
 			}
 		}
 
-		return $this->get_collection_default_view( $user );
+		return $this->get_collection_default_view( $collection );
+	}
+
+	/**
+	 * Handle collection frontend settings submissions.
+	 */
+	public function handle_collection_settings() {
+		if ( wp_doing_ajax() ) {
+			return;
+		}
+
+		if ( ! isset( $_POST['post_collection_action'] ) || 'collection-settings' !== $_POST['post_collection_action'] ) {
+			return;
+		}
+
+		if ( ! $this->can_manage_collections() ) {
+			wp_die( esc_html__( 'Sorry, you are not allowed to edit this collection.', 'post-collection' ), '', array( 'response' => 403 ) );
+		}
+
+		$term_id = isset( $_POST['collection_term_id'] ) ? absint( wp_unslash( $_POST['collection_term_id'] ) ) : 0;
+		if ( ! $term_id || ! isset( $_POST['_wpnonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['_wpnonce'] ) ), 'post-collection-settings-' . $term_id ) ) {
+			wp_die( esc_html__( 'The collection settings request could not be verified.', 'post-collection' ), '', array( 'response' => 403 ) );
+		}
+
+		$collection = get_term( $term_id, Post_Collection::COLLECTION_TAXONOMY );
+		if ( ! $collection || is_wp_error( $collection ) ) {
+			wp_die( esc_html__( 'Invalid post collection.', 'post-collection' ), '', array( 'response' => 404 ) );
+		}
+
+		$frontend_mode = isset( $_POST['frontend_mode'] ) ? sanitize_key( wp_unslash( $_POST['frontend_mode'] ) ) : 'auto';
+		if ( in_array( $frontend_mode, array( 'auto', 'bookmarks', 'posts' ), true ) ) {
+			if ( 'auto' === $frontend_mode ) {
+				delete_term_meta( $collection->term_id, 'post_collection_frontend_mode' );
+			} else {
+				update_term_meta( $collection->term_id, 'post_collection_frontend_mode', $frontend_mode );
+			}
+		}
+
+		$frontend_view = isset( $_POST['frontend_view'] ) ? sanitize_key( wp_unslash( $_POST['frontend_view'] ) ) : 'auto';
+		if ( in_array( $frontend_view, array( 'auto', 'board', 'links', 'reader' ), true ) ) {
+			if ( 'auto' === $frontend_view ) {
+				delete_term_meta( $collection->term_id, 'post_collection_frontend_view' );
+			} else {
+				update_term_meta( $collection->term_id, 'post_collection_frontend_view', $frontend_view );
+			}
+		}
+
+		wp_safe_redirect( add_query_arg( 'pc-settings-updated', '1', $this->get_collection_settings_url( $collection ) ) );
+		exit;
+	}
+
+	/**
+	 * Handle frontend collection creation submissions.
+	 */
+	public function handle_create_collection() {
+		if ( wp_doing_ajax() ) {
+			return;
+		}
+
+		if ( ! isset( $_POST['post_collection_action'] ) || 'create-collection' !== $_POST['post_collection_action'] ) {
+			return;
+		}
+
+		$result = $this->create_collection_from_request( $_POST );
+		if ( is_wp_error( $result ) ) {
+			wp_die( wp_kses_post( $result->get_error_message() ), '', array( 'response' => $result->get_error_data( 'status' ) ? $result->get_error_data( 'status' ) : 400 ) );
+		}
+
+		wp_safe_redirect( $this->get_collection_url( $result ) );
+		exit;
+	}
+
+	/**
+	 * Create a post collection term from request data.
+	 *
+	 * @param array $data Request data.
+	 * @return \WP_Term|\WP_Error
+	 */
+	public function create_collection_from_request( array $data ) {
+		if ( ! $this->can_manage_collections() ) {
+			return new \WP_Error( 'forbidden', __( 'Sorry, you are not allowed to create collections.', 'post-collection' ), array( 'status' => 403 ) );
+		}
+
+		if ( ! isset( $data['_wpnonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $data['_wpnonce'] ) ), 'post-collection-create' ) ) {
+			return new \WP_Error( 'invalid_nonce', __( 'The create collection request could not be verified.', 'post-collection' ), array( 'status' => 403 ) );
+		}
+
+		$display_name = isset( $data['display_name'] ) ? sanitize_text_field( wp_unslash( $data['display_name'] ) ) : '';
+		$user_login   = isset( $data['user_login'] ) ? sanitize_user( wp_unslash( $data['user_login'] ) ) : '';
+		if ( ! $user_login && $display_name ) {
+			$user_login = User::sanitize_username( $display_name );
+		}
+
+		if ( ! $user_login ) {
+			return new \WP_Error( 'invalid_collection_slug', __( 'Please enter a valid collection slug.', 'post-collection' ), array( 'status' => 400 ) );
+		}
+
+		if ( term_exists( $user_login, Post_Collection::COLLECTION_TAXONOMY ) ) {
+			return new \WP_Error( 'existing_collection_slug', __( 'That collection slug already exists. Please choose another one.', 'post-collection' ), array( 'status' => 400 ) );
+		}
+
+		if ( ! $display_name ) {
+			return new \WP_Error( 'invalid_display_name', __( 'Please enter a display name.', 'post-collection' ), array( 'status' => 400 ) );
+		}
+
+		$created = wp_insert_term(
+			$display_name,
+			Post_Collection::COLLECTION_TAXONOMY,
+			array(
+				'slug' => $user_login,
+			)
+		);
+
+		if ( is_wp_error( $created ) ) {
+			return $created;
+		}
+
+		$collection = get_term( $created['term_id'], Post_Collection::COLLECTION_TAXONOMY );
+		if ( ! $collection || is_wp_error( $collection ) ) {
+			return new \WP_Error( 'collection_not_found', __( 'The collection was created but could not be loaded.', 'post-collection' ), array( 'status' => 500 ) );
+		}
+
+		$frontend_mode = isset( $data['frontend_mode'] ) ? sanitize_key( wp_unslash( $data['frontend_mode'] ) ) : 'auto';
+		if ( in_array( $frontend_mode, array( 'bookmarks', 'posts' ), true ) ) {
+			update_term_meta( $collection->term_id, 'post_collection_frontend_mode', $frontend_mode );
+		}
+
+		$frontend_view = isset( $data['frontend_view'] ) ? sanitize_key( wp_unslash( $data['frontend_view'] ) ) : 'auto';
+		if ( in_array( $frontend_view, array( 'board', 'links', 'reader' ), true ) ) {
+			update_term_meta( $collection->term_id, 'post_collection_frontend_view', $frontend_view );
+		}
+
+		update_term_meta( $collection->term_id, 'friends_publish_post_collection', true );
+
+		return $collection;
 	}
 
 	/**
@@ -363,7 +522,8 @@ class Post_Collection_App {
 		$redirect = wp_get_referer();
 		if ( ! $redirect ) {
 			$post = get_post( $post_id );
-			$redirect = $post ? $this->get_collection_url( new User( $post->post_author ) ) : $this->get_home_url();
+			$collection = $post ? $this->get_post_collection_term( $post ) : null;
+			$redirect = $collection ? $this->get_collection_url( $collection ) : $this->get_home_url();
 		}
 
 		wp_safe_redirect( add_query_arg( array( 'pc-view' => 'links', 'pc-edit' => $post_id ), remove_query_arg( array( '_wpnonce' ), $redirect ) ) . '#pc-link-' . $post_id );
@@ -408,10 +568,11 @@ class Post_Collection_App {
 			return new \WP_Error( 'not_found', __( 'That post does not exist.', 'post-collection' ), array( 'status' => 404 ) );
 		}
 
-		$title       = isset( $data['post_title'] ) ? sanitize_text_field( wp_unslash( $data['post_title'] ) ) : $post->post_title;
-		$url         = isset( $data['source_url'] ) ? esc_url_raw( wp_unslash( $data['source_url'] ) ) : $post->guid;
-		$description = isset( $data['post_excerpt'] ) ? sanitize_textarea_field( wp_unslash( $data['post_excerpt'] ) ) : $post->post_excerpt;
-		$status      = isset( $data['post_status'] ) && 'publish' === wp_unslash( $data['post_status'] ) ? 'publish' : 'private';
+		$title          = isset( $data['post_title'] ) ? sanitize_text_field( wp_unslash( $data['post_title'] ) ) : $post->post_title;
+		$url            = isset( $data['source_url'] ) ? esc_url_raw( wp_unslash( $data['source_url'] ) ) : $post->guid;
+		$description    = isset( $data['post_excerpt'] ) ? sanitize_textarea_field( wp_unslash( $data['post_excerpt'] ) ) : $post->post_excerpt;
+		$status         = isset( $data['post_status'] ) && 'publish' === wp_unslash( $data['post_status'] ) ? 'publish' : 'private';
+		$article_status = isset( $data['article_status'] ) ? sanitize_key( wp_unslash( $data['article_status'] ) ) : '';
 
 		$update = array(
 			'ID'           => $post_id,
@@ -429,6 +590,13 @@ class Post_Collection_App {
 			return $updated;
 		}
 
+		if ( $article_status && in_array( $article_status, array_keys( $this->get_article_statuses() ), true ) ) {
+			$note_id = $this->post_collection->get_article_notes()->save_note( $post_id, $article_status );
+			if ( ! $note_id ) {
+				return new \WP_Error( 'note_save_failed', __( 'The reading status could not be saved.', 'post-collection' ), array( 'status' => 500 ) );
+			}
+		}
+
 		$taxonomy = $this->post_collection->get_tag_taxonomy();
 		if ( taxonomy_exists( $taxonomy ) ) {
 			$tags = isset( $data['post_tags'] ) ? sanitize_text_field( wp_unslash( $data['post_tags'] ) ) : '';
@@ -440,9 +608,9 @@ class Post_Collection_App {
 		}
 
 		$post = get_post( $post_id );
-		$user = new User( $post->post_author );
+		$collection = $this->get_post_collection_term( $post );
 		$terms = $this->get_post_terms( $post );
-		$base_url = $this->get_collection_url( $user );
+		$base_url = $collection ? $this->get_collection_url( $collection ) : $this->get_home_url();
 		$term_data = array();
 		foreach ( $terms as $term ) {
 			$term_data[] = array(
@@ -458,7 +626,8 @@ class Post_Collection_App {
 			);
 		}
 
-		$source_url = $this->get_source_url( $post );
+		$source_url   = $this->get_source_url( $post );
+		$read_status = $this->get_article_note_status( $post );
 
 		return array(
 			'id'          => $post->ID,
@@ -470,8 +639,45 @@ class Post_Collection_App {
 			'host'        => $this->get_source_host( $post ),
 			'is_private'  => 'private' === $post->post_status,
 			'status'      => $post->post_status,
+			'read_status' => $read_status,
+			'read_label'  => $this->get_article_note_status_label( $read_status ),
 			'terms'       => $term_data,
 		);
+	}
+
+	/**
+	 * Get available reading statuses.
+	 *
+	 * @return array
+	 */
+	public function get_article_statuses() {
+		return Article_Notes::get_statuses();
+	}
+
+	/**
+	 * Get the current reading status for a collected post.
+	 *
+	 * @param \WP_Post $post The post.
+	 * @return string
+	 */
+	public function get_article_note_status( \WP_Post $post ) {
+		$note = $this->post_collection->get_article_notes()->get_note( $post->ID );
+		if ( $note && ! empty( $note['status'] ) && in_array( $note['status'], array_keys( $this->get_article_statuses() ), true ) ) {
+			return $note['status'];
+		}
+
+		return Article_Notes::STATUS_UNREAD;
+	}
+
+	/**
+	 * Get a label for a reading status.
+	 *
+	 * @param string $status Reading status.
+	 * @return string
+	 */
+	public function get_article_note_status_label( $status ) {
+		$statuses = $this->get_article_statuses();
+		return isset( $statuses[ $status ] ) ? $statuses[ $status ] : $statuses[ Article_Notes::STATUS_UNREAD ];
 	}
 
 	/**
@@ -490,17 +696,17 @@ class Post_Collection_App {
 	/**
 	 * Detect whether a collection should use the bookmark UI.
 	 *
-	 * @param User|\WP_User $user The collection user.
+	 * @param \WP_Term $collection The collection term.
 	 * @return bool
 	 */
-	public function is_bookmark_collection( $user ) {
+	public function is_bookmark_collection( $collection ) {
 		$bookmark_slugs = apply_filters(
 			'post_collection_bookmark_collection_slugs',
 			array( 'bookmark', 'bookmarks' )
 		);
 		$collection_slugs = array(
-			sanitize_title( $user->user_login ),
-			sanitize_title( $user->display_name ),
+			sanitize_title( $collection->slug ),
+			sanitize_title( $collection->name ),
 		);
 
 		foreach ( $collection_slugs as $collection_slug ) {
@@ -518,21 +724,27 @@ class Post_Collection_App {
 	/**
 	 * Query posts for a collection.
 	 *
-	 * @param User|\WP_User $user The collection user.
+	 * @param \WP_Term $collection The collection term.
 	 * @param array         $args Optional query args.
 	 * @return \WP_Query
 	 */
-	public function query_collection_posts( $user, array $args = array() ) {
+	public function query_collection_posts( $collection, array $args = array() ) {
 		$apply_filters = ! isset( $args['post_collection_apply_filters'] ) || $args['post_collection_apply_filters'];
 		unset( $args['post_collection_apply_filters'] );
 
 		$defaults = array(
 			'post_type'           => Post_Collection::CPT,
-			'post_status'         => $this->can_view_private_posts( $user ) ? array( 'publish', 'private' ) : array( 'publish' ),
-			'author'              => $user->ID,
+			'post_status'         => $this->can_view_private_posts( $collection ) ? array( 'publish', 'private' ) : array( 'publish' ),
 			'posts_per_page'      => 24,
 			'paged'               => isset( $_GET['pc-page'] ) ? max( 1, absint( wp_unslash( $_GET['pc-page'] ) ) ) : 1,
 			'ignore_sticky_posts' => true,
+			'tax_query'           => array(
+				array(
+					'taxonomy' => Post_Collection::COLLECTION_TAXONOMY,
+					'field'    => 'term_id',
+					'terms'    => $collection->term_id,
+				),
+			),
 		);
 
 		$query_args = wp_parse_args( $args, $defaults );
@@ -542,12 +754,10 @@ class Post_Collection_App {
 		}
 
 		if ( $apply_filters && isset( $_GET['pc-tag'] ) && taxonomy_exists( $this->post_collection->get_tag_taxonomy() ) ) {
-			$query_args['tax_query'] = array(
-				array(
-					'taxonomy' => $this->post_collection->get_tag_taxonomy(),
-					'field'    => 'slug',
-					'terms'    => sanitize_title( wp_unslash( $_GET['pc-tag'] ) ),
-				),
+			$query_args['tax_query'][] = array(
+				'taxonomy' => $this->post_collection->get_tag_taxonomy(),
+				'field'    => 'slug',
+				'terms'    => sanitize_title( wp_unslash( $_GET['pc-tag'] ) ),
 			);
 		}
 
@@ -558,17 +768,17 @@ class Post_Collection_App {
 	 * Get a visible post from a collection.
 	 *
 	 * @param int           $post_id The post ID.
-	 * @param User|\WP_User $user    The collection user.
+	 * @param \WP_Term      $collection The collection term.
 	 * @return \WP_Post|null
 	 */
-	public function get_visible_post( $post_id, $user ) {
+	public function get_visible_post( $post_id, $collection ) {
 		$post = get_post( $post_id );
 
-		if ( ! $post || Post_Collection::CPT !== $post->post_type || intval( $post->post_author ) !== intval( $user->ID ) ) {
+		if ( ! $post || Post_Collection::CPT !== $post->post_type || ! has_term( $collection->term_id, Post_Collection::COLLECTION_TAXONOMY, $post ) ) {
 			return null;
 		}
 
-		if ( 'publish' !== $post->post_status && ! $this->can_view_private_posts( $user ) ) {
+		if ( 'publish' !== $post->post_status && ! $this->can_view_private_posts( $collection ) ) {
 			return null;
 		}
 
@@ -578,12 +788,12 @@ class Post_Collection_App {
 	/**
 	 * Count visible posts in a collection.
 	 *
-	 * @param User|\WP_User $user The collection user.
+	 * @param \WP_Term $collection The collection term.
 	 * @return int
 	 */
-	public function count_collection_posts( $user ) {
+	public function count_collection_posts( $collection ) {
 		$query = $this->query_collection_posts(
-			$user,
+			$collection,
 			array(
 				'posts_per_page'                 => 1,
 				'fields'                         => 'ids',
@@ -592,6 +802,21 @@ class Post_Collection_App {
 		);
 
 		return intval( $query->found_posts );
+	}
+
+	/**
+	 * Get the collection assigned to a post.
+	 *
+	 * @param \WP_Post $post The post.
+	 * @return \WP_Term|null
+	 */
+	public function get_post_collection_term( \WP_Post $post ) {
+		$terms = get_the_terms( $post, Post_Collection::COLLECTION_TAXONOMY );
+		if ( is_wp_error( $terms ) || empty( $terms ) ) {
+			return null;
+		}
+
+		return reset( $terms );
 	}
 
 	/**
@@ -827,19 +1052,19 @@ class Post_Collection_App {
 	/**
 	 * Get popular terms for the visible collection posts.
 	 *
-	 * @param User|\WP_User $user The collection user.
+	 * @param \WP_Term $collection The collection term.
 	 * @return array
 	 */
-	public function get_collection_terms( $user ) {
+	public function get_collection_terms( $collection ) {
 		$taxonomy = $this->post_collection->get_tag_taxonomy();
 		if ( ! taxonomy_exists( $taxonomy ) ) {
 			return array();
 		}
 
 		$query = $this->query_collection_posts(
-			$user,
+			$collection,
 			array(
-				'posts_per_page'                 => 100,
+				'posts_per_page'                 => -1,
 				'fields'                         => 'ids',
 				'post_collection_apply_filters' => false,
 			)
@@ -849,34 +1074,75 @@ class Post_Collection_App {
 			return array();
 		}
 
-		$terms = get_terms(
-			array(
-				'taxonomy'   => $taxonomy,
-				'object_ids' => $query->posts,
-				'hide_empty' => true,
-				'number'     => 18,
-				'orderby'    => 'count',
-				'order'      => 'DESC',
-			)
-		);
+		global $wpdb;
 
-		if ( is_wp_error( $terms ) || ! $terms ) {
+		$post_ids = array_map( 'absint', $query->posts );
+		$placeholders = implode( ',', array_fill( 0, count( $post_ids ), '%d' ) );
+		$sql = $wpdb->prepare(
+			"SELECT t.term_id, COUNT(*) AS collection_count
+			FROM {$wpdb->terms} t
+			INNER JOIN {$wpdb->term_taxonomy} tt ON t.term_id = tt.term_id
+			INNER JOIN {$wpdb->term_relationships} tr ON tt.term_taxonomy_id = tr.term_taxonomy_id
+			WHERE tt.taxonomy = %s
+				AND tr.object_id IN ($placeholders)
+			GROUP BY t.term_id
+			ORDER BY collection_count DESC, t.name ASC
+			LIMIT 100",
+			array_merge( array( $taxonomy ), $post_ids )
+		);
+		$rows = $wpdb->get_results( $sql );
+
+		if ( ! $rows ) {
 			return array();
+		}
+
+		$terms = array();
+		foreach ( $rows as $row ) {
+			$term = get_term( (int) $row->term_id, $taxonomy );
+			if ( ! $term || is_wp_error( $term ) ) {
+				continue;
+			}
+			if ( $this->is_noisy_tag_term( $term ) ) {
+				continue;
+			}
+			$term->count = (int) $row->collection_count;
+			$terms[] = $term;
+			if ( count( $terms ) >= 18 ) {
+				break;
+			}
 		}
 
 		return $terms;
 	}
 
 	/**
+	 * Determine whether a tag term is likely generated noise.
+	 *
+	 * @param \WP_Term $term The term.
+	 * @return bool Whether to hide it from app tag navigation.
+	 */
+	private function is_noisy_tag_term( \WP_Term $term ) {
+		$name = trim( (string) $term->name );
+		$slug = trim( (string) $term->slug );
+
+		if ( '' === $name || is_numeric( $name ) || is_numeric( $slug ) ) {
+			return true;
+		}
+
+		return (bool) preg_match( '/^(?:[a-f0-9]{3}|[a-f0-9]{6})$/i', $name )
+			|| (bool) preg_match( '/^(?:[a-f0-9]{3}|[a-f0-9]{6})$/i', $slug );
+	}
+
+	/**
 	 * Get an external save URL for the collection.
 	 *
-	 * @param User|\WP_User $user The collection user.
+	 * @param \WP_Term $collection The collection term.
 	 * @return string
 	 */
-	public function get_save_url( $user ) {
+	public function get_save_url( $collection ) {
 		return add_query_arg(
 			array(
-				'user' => $user->ID,
+				'collection' => $collection->term_id,
 			),
 			home_url( '/' )
 		);

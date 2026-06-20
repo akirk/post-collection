@@ -13,25 +13,26 @@ if ( ! $app ) {
 	return;
 }
 
-$username = wp_app_get_route_var( 'username' );
-$user     = $app->get_collection_by_username( $username );
-if ( ! $user || ! $app->can_view_collection( $user ) ) {
+$collection_slug = wp_app_get_route_var( 'collection' );
+$collection      = $app->get_collection_by_username( $collection_slug );
+if ( ! $collection || ! $app->can_view_collection( $collection ) ) {
 	status_header( 404 );
 	include __DIR__ . '/404.php';
 	return;
 }
 
-$mode       = $app->get_collection_mode( $user );
-$view       = $app->get_collection_view( $user );
-$views      = $app->get_available_views();
+$mode             = $app->get_collection_mode( $collection );
+$view             = $app->get_collection_view( $collection );
+$views            = $app->get_available_views();
+$article_statuses = $app->get_article_statuses();
 $quick_edit_post_id = $app->get_quick_edit_post_id();
 $quick_edit = $app->is_quick_edit_mode() && 'links' === $view;
-$query      = $app->query_collection_posts( $user );
-$terms      = $app->get_collection_terms( $user );
+$query      = $app->query_collection_posts( $collection );
+$terms      = $app->get_collection_terms( $collection );
 $search     = isset( $_GET['pc-search'] ) ? sanitize_text_field( wp_unslash( $_GET['pc-search'] ) ) : '';
 $active_tag = isset( $_GET['pc-tag'] ) ? sanitize_title( wp_unslash( $_GET['pc-tag'] ) ) : '';
 $page       = isset( $_GET['pc-page'] ) ? max( 1, absint( wp_unslash( $_GET['pc-page'] ) ) ) : 1;
-$base_url   = $app->get_collection_url( $user );
+$base_url   = $app->get_collection_url( $collection );
 
 $page_args = array();
 if ( $view ) {
@@ -52,7 +53,7 @@ if ( '' !== $active_tag ) {
 <head>
 	<meta charset="<?php bloginfo( 'charset' ); ?>">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
-	<title><?php echo wp_app_title( $user->display_name ); ?></title>
+	<title><?php echo wp_app_title( $collection->name ); ?></title>
 	<?php wp_app_head(); ?>
 </head>
 <body <?php body_class( 'wp-app-body post-collection-app pc-mode-' . $mode . ' pc-view-' . $view . ( $quick_edit ? ' pc-quick-edit' : '' ) ); ?>>
@@ -62,20 +63,23 @@ if ( '' !== $active_tag ) {
 		<div class="pc-collection-title-row">
 			<div>
 				<p class="pc-kicker"><?php echo esc_html( 'bookmarks' === $mode ? __( 'Bookmark collection', 'post-collection' ) : __( 'Post collection', 'post-collection' ) ); ?></p>
-				<h1><?php echo esc_html( $user->display_name ); ?></h1>
-				<?php if ( $user->description ) : ?>
-					<p class="pc-description"><?php echo esc_html( $user->description ); ?></p>
+				<h1><?php echo esc_html( $collection->name ); ?></h1>
+				<?php if ( $collection->description ) : ?>
+					<p class="pc-description"><?php echo esc_html( $collection->description ); ?></p>
 				<?php endif; ?>
 			</div>
 			<div class="pc-collection-stats">
 				<strong><?php echo esc_html( number_format_i18n( $query->found_posts ) ); ?></strong>
 				<span><?php esc_html_e( 'visible items', 'post-collection' ); ?></span>
+				<?php if ( $app->can_manage_collections() ) : ?>
+					<a href="<?php echo esc_url( $app->get_collection_settings_url( $collection ) ); ?>"><?php esc_html_e( 'Settings', 'post-collection' ); ?></a>
+				<?php endif; ?>
 			</div>
 		</div>
 
 		<?php if ( $app->can_manage_collections() ) : ?>
 			<form class="pc-add-form" method="get" action="<?php echo esc_url( home_url( '/' ) ); ?>">
-				<input type="hidden" name="user" value="<?php echo esc_attr( $user->ID ); ?>">
+				<input type="hidden" name="collection" value="<?php echo esc_attr( $collection->term_id ); ?>">
 				<input type="url" name="collect-post" placeholder="https://example.com/article" required>
 				<button type="submit"><?php esc_html_e( 'Save', 'post-collection' ); ?></button>
 			</form>
@@ -134,6 +138,7 @@ if ( '' !== $active_tag ) {
 				<?php endforeach; ?>
 			</nav>
 		<?php endif; ?>
+
 	</header>
 
 	<main class="pc-shell">
@@ -146,11 +151,12 @@ if ( '' !== $active_tag ) {
 			<section class="pc-bookmark-board" aria-label="<?php esc_attr_e( 'Bookmarks', 'post-collection' ); ?>">
 				<?php foreach ( $query->posts as $post ) : ?>
 					<?php
-					$image_url  = $app->get_post_image_url( $post );
-					$embed_html = $app->get_post_embed_html( $post, 'board' );
-					$excerpt    = $app->get_post_excerpt( $post, 22 );
-					$source_url = $app->get_source_url( $post );
-					$host       = $app->get_source_host( $post );
+					$image_url   = $app->get_post_image_url( $post );
+					$embed_html  = $app->get_post_embed_html( $post, 'board' );
+					$excerpt     = $app->get_post_excerpt( $post, 22 );
+					$source_url  = $app->get_source_url( $post );
+					$host        = $app->get_source_host( $post );
+					$read_status = $app->get_article_note_status( $post );
 					?>
 					<article class="pc-bookmark-card">
 						<?php if ( $embed_html ) : ?>
@@ -171,7 +177,10 @@ if ( '' !== $active_tag ) {
 								<p><?php echo esc_html( $excerpt ); ?></p>
 							<?php endif; ?>
 							<div class="pc-card-actions">
-								<a href="<?php echo esc_url( $app->get_collection_url( $user, $post->ID ) ); ?>"><?php esc_html_e( 'Details', 'post-collection' ); ?></a>
+								<a href="<?php echo esc_url( $app->get_collection_url( $collection, $post->ID ) ); ?>"><?php esc_html_e( 'Details', 'post-collection' ); ?></a>
+								<?php if ( $app->can_manage_collections() ) : ?>
+									<span class="pc-read-status pc-read-status-<?php echo esc_attr( $read_status ); ?>"><?php echo esc_html( $app->get_article_note_status_label( $read_status ) ); ?></span>
+								<?php endif; ?>
 								<?php if ( 'private' === $post->post_status && $app->can_manage_collections() ) : ?>
 									<span><?php esc_html_e( 'Private', 'post-collection' ); ?></span>
 								<?php endif; ?>
@@ -184,15 +193,16 @@ if ( '' !== $active_tag ) {
 			<section class="pc-link-list" aria-label="<?php esc_attr_e( 'Links', 'post-collection' ); ?>">
 				<?php foreach ( $query->posts as $post ) : ?>
 					<?php
-					$source_url = $app->get_source_url( $post );
-					$host       = $app->get_source_host( $post );
-					$embed_html = $app->get_post_embed_html( $post, 'links' );
-					$excerpt    = $app->get_post_excerpt( $post, 24 );
-					$post_terms = $app->get_post_terms( $post );
-					$tag_names  = wp_list_pluck( $post_terms, 'name' );
-					$is_editing = $quick_edit && intval( $post->ID ) === intval( $quick_edit_post_id );
-					$edit_url   = add_query_arg( array( 'pc-view' => 'links', 'pc-edit' => $post->ID ) ) . '#pc-link-' . $post->ID;
-					$cancel_url = remove_query_arg( 'pc-edit' ) . '#pc-link-' . $post->ID;
+					$source_url  = $app->get_source_url( $post );
+					$host        = $app->get_source_host( $post );
+					$embed_html  = $app->get_post_embed_html( $post, 'links' );
+					$excerpt     = $app->get_post_excerpt( $post, 24 );
+					$post_terms  = $app->get_post_terms( $post );
+					$tag_names   = wp_list_pluck( $post_terms, 'name' );
+					$read_status = $app->get_article_note_status( $post );
+					$is_editing  = $quick_edit && intval( $post->ID ) === intval( $quick_edit_post_id );
+					$edit_url    = add_query_arg( array( 'pc-view' => 'links', 'pc-edit' => $post->ID ) ) . '#pc-link-' . $post->ID;
+					$cancel_url  = remove_query_arg( 'pc-edit' ) . '#pc-link-' . $post->ID;
 					?>
 					<article id="pc-link-<?php echo esc_attr( $post->ID ); ?>" class="pc-link-row<?php echo 'private' === $post->post_status ? ' is-private' : ''; ?><?php echo $is_editing ? ' is-editing' : ''; ?>">
 						<div class="pc-link-main">
@@ -210,10 +220,13 @@ if ( '' !== $active_tag ) {
 						<div class="pc-link-meta">
 							<time datetime="<?php echo esc_attr( get_the_date( DATE_W3C, $post ) ); ?>"><?php echo esc_html( get_the_date( '', $post ) ); ?></time>
 							<span class="pc-link-host"><?php echo esc_html( $host ); ?></span>
+							<?php if ( $app->can_manage_collections() ) : ?>
+								<span class="pc-read-status pc-read-status-<?php echo esc_attr( $read_status ); ?>"><?php echo esc_html( $app->get_article_note_status_label( $read_status ) ); ?></span>
+							<?php endif; ?>
 							<?php if ( 'private' === $post->post_status && $app->can_manage_collections() ) : ?>
 								<span class="pc-link-private"><?php esc_html_e( 'private', 'post-collection' ); ?></span>
 							<?php endif; ?>
-							<a href="<?php echo esc_url( $app->get_collection_url( $user, $post->ID ) ); ?>"><?php esc_html_e( 'Details', 'post-collection' ); ?></a>
+							<a href="<?php echo esc_url( $app->get_collection_url( $collection, $post->ID ) ); ?>"><?php esc_html_e( 'Details', 'post-collection' ); ?></a>
 							<?php if ( $app->can_manage_collections() ) : ?>
 								<?php if ( $is_editing ) : ?>
 									<a class="pc-quick-edit-cancel" href="<?php echo esc_url( $cancel_url ); ?>" data-edit-url="<?php echo esc_url( $edit_url ); ?>" data-cancel-url="<?php echo esc_url( $cancel_url ); ?>" data-edit-label="<?php esc_attr_e( 'Edit', 'post-collection' ); ?>" data-cancel-label="<?php esc_attr_e( 'Cancel edit', 'post-collection' ); ?>"><?php esc_html_e( 'Cancel edit', 'post-collection' ); ?></a>
@@ -253,6 +266,14 @@ if ( '' !== $active_tag ) {
 									<span><?php esc_html_e( 'Tags', 'post-collection' ); ?></span>
 									<input type="text" name="post_tags" value="<?php echo esc_attr( implode( ', ', $tag_names ) ); ?>">
 								</label>
+								<label>
+									<span><?php esc_html_e( 'Read status', 'post-collection' ); ?></span>
+									<select name="article_status">
+										<?php foreach ( $article_statuses as $status_key => $status_label ) : ?>
+											<option value="<?php echo esc_attr( $status_key ); ?>"<?php selected( $status_key, $read_status ); ?>><?php echo esc_html( $status_label ); ?></option>
+										<?php endforeach; ?>
+									</select>
+								</label>
 								<div class="pc-quick-edit-actions">
 									<label class="pc-quick-edit-public">
 										<input type="checkbox" name="post_status" value="publish" <?php checked( 'publish', $post->post_status ); ?>>
@@ -270,27 +291,31 @@ if ( '' !== $active_tag ) {
 			<section class="pc-post-list" aria-label="<?php esc_attr_e( 'Posts', 'post-collection' ); ?>">
 				<?php foreach ( $query->posts as $post ) : ?>
 					<?php
-					$image_url  = $app->get_post_image_url( $post );
-					$embed_html = $app->get_post_embed_html( $post, 'reader' );
-					$excerpt    = $app->get_post_excerpt( $post, 38 );
-					$host       = $app->get_source_host( $post );
+					$image_url   = $app->get_post_image_url( $post );
+					$embed_html  = $app->get_post_embed_html( $post, 'reader' );
+					$excerpt     = $app->get_post_excerpt( $post, 38 );
+					$host        = $app->get_source_host( $post );
+					$read_status = $app->get_article_note_status( $post );
 					?>
 					<article class="pc-post-row<?php echo $image_url || $embed_html ? ' has-image' : ' is-text-only'; ?>">
 						<?php if ( $embed_html ) : ?>
 							<div class="pc-post-embed"><?php echo $embed_html; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?></div>
 						<?php elseif ( $image_url ) : ?>
-							<a class="pc-post-thumb" href="<?php echo esc_url( $app->get_collection_url( $user, $post->ID ) ); ?>">
+							<a class="pc-post-thumb" href="<?php echo esc_url( $app->get_collection_url( $collection, $post->ID ) ); ?>">
 								<img src="<?php echo esc_url( $image_url ); ?>" alt="">
 							</a>
 						<?php endif; ?>
 						<div>
 							<p class="pc-source"><?php echo esc_html( $host ); ?></p>
-							<h2><a href="<?php echo esc_url( $app->get_collection_url( $user, $post->ID ) ); ?>"><?php echo esc_html( get_the_title( $post ) ); ?></a></h2>
+							<h2><a href="<?php echo esc_url( $app->get_collection_url( $collection, $post->ID ) ); ?>"><?php echo esc_html( get_the_title( $post ) ); ?></a></h2>
 							<?php if ( $excerpt ) : ?>
 								<p><?php echo esc_html( $excerpt ); ?></p>
 							<?php endif; ?>
 							<div class="pc-row-meta">
 								<time datetime="<?php echo esc_attr( get_the_date( DATE_W3C, $post ) ); ?>"><?php echo esc_html( get_the_date( '', $post ) ); ?></time>
+								<?php if ( $app->can_manage_collections() ) : ?>
+									<span class="pc-read-status pc-read-status-<?php echo esc_attr( $read_status ); ?>"><?php echo esc_html( $app->get_article_note_status_label( $read_status ) ); ?></span>
+								<?php endif; ?>
 								<a href="<?php echo esc_url( $app->get_source_url( $post ) ); ?>" target="_blank" rel="noopener noreferrer"><?php esc_html_e( 'Original', 'post-collection' ); ?></a>
 							</div>
 						</div>

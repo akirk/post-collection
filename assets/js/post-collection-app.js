@@ -78,6 +78,16 @@
 		} );
 	}
 
+	function updateReadStatus( row, item ) {
+		var readStatus = row.querySelector( '.pc-read-status' );
+		if ( ! readStatus || ! item.read_status ) {
+			return;
+		}
+
+		readStatus.className = 'pc-read-status pc-read-status-' + item.read_status;
+		readStatus.textContent = item.read_label || item.read_status;
+	}
+
 	function getCollectionList() {
 		return document.querySelector( '.pc-bookmark-board, .pc-link-list, .pc-post-list' );
 	}
@@ -169,6 +179,7 @@
 		}
 
 		updateTags( row, item.terms || [] );
+		updateReadStatus( row, item );
 		closeEditor( row );
 	}
 

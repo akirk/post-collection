@@ -117,6 +117,8 @@ body.post-collection-app {
 }
 
 .post-collection-app .pc-button,
+.post-collection-app .pc-collection-settings button,
+.post-collection-app .pc-create-collection-form button,
 .post-collection-app .pc-add-form button,
 .post-collection-app .pc-filter-bar button {
 	display: inline-flex;
@@ -134,6 +136,8 @@ body.post-collection-app {
 }
 
 .post-collection-app .pc-button-primary,
+.post-collection-app .pc-collection-settings button,
+.post-collection-app .pc-create-collection-form button,
 .post-collection-app .pc-add-form button,
 .post-collection-app .pc-filter-bar button {
 	border-color: var(--pc-color-primary);
@@ -143,6 +147,10 @@ body.post-collection-app {
 
 .post-collection-app .pc-button:hover,
 .post-collection-app .pc-button:focus,
+.post-collection-app .pc-collection-settings button:hover,
+.post-collection-app .pc-collection-settings button:focus,
+.post-collection-app .pc-create-collection-form button:hover,
+.post-collection-app .pc-create-collection-form button:focus,
 .post-collection-app .pc-add-form button:hover,
 .post-collection-app .pc-add-form button:focus,
 .post-collection-app .pc-filter-bar button:hover,
@@ -153,6 +161,10 @@ body.post-collection-app {
 
 .post-collection-app .pc-button-primary:hover,
 .post-collection-app .pc-button-primary:focus,
+.post-collection-app .pc-collection-settings button:hover,
+.post-collection-app .pc-collection-settings button:focus,
+.post-collection-app .pc-create-collection-form button:hover,
+.post-collection-app .pc-create-collection-form button:focus,
 .post-collection-app .pc-add-form button:hover,
 .post-collection-app .pc-add-form button:focus,
 .post-collection-app .pc-filter-bar button:hover,
@@ -242,6 +254,7 @@ body.post-collection-app {
 	white-space: nowrap;
 }
 
+.pc-collection-settings,
 .pc-add-form,
 .pc-filter-bar {
 	display: grid;
@@ -257,10 +270,47 @@ body.post-collection-app {
 	background: var(--pc-color-surface);
 }
 
+.pc-collection-settings {
+	grid-template-columns: minmax(140px, 180px) minmax(160px, 220px) auto;
+	align-items: end;
+	padding: 12px;
+	margin-top: 10px;
+}
+
+.pc-collection-settings-panel {
+	margin-top: 18px;
+	padding-top: 14px;
+	border-top: 1px solid var(--pc-color-border);
+}
+
+.pc-collection-settings-panel summary {
+	width: max-content;
+	color: var(--pc-color-muted);
+	font-size: 0.86rem;
+	font-weight: 700;
+	cursor: pointer;
+}
+
+.pc-collection-settings-panel[open] summary {
+	color: var(--pc-color-primary);
+}
+
 .pc-filter-bar {
 	grid-template-columns: minmax(0, 1fr) auto auto;
 }
 
+.pc-collection-settings label,
+.pc-create-collection-form label {
+	display: grid;
+	gap: 4px;
+	color: var(--pc-color-muted);
+	font-size: 0.78rem;
+	font-weight: 700;
+}
+
+.pc-collection-settings select,
+.pc-create-collection-form input,
+.pc-create-collection-form select,
 .pc-add-form input,
 .pc-filter-bar input {
 	width: 100%;
@@ -273,11 +323,33 @@ body.post-collection-app {
 	font: inherit;
 }
 
+.pc-collection-settings select:focus,
+.pc-create-collection-form input:focus,
+.pc-create-collection-form select:focus,
 .pc-add-form input:focus,
 .pc-filter-bar input:focus {
 	border-color: var(--pc-color-primary);
 	outline: 2px solid var(--pc-color-focus);
 	outline-offset: 1px;
+}
+
+.pc-create-collection-form {
+	display: grid;
+	max-width: 640px;
+	gap: 14px;
+	padding: 18px;
+	border: 1px solid var(--pc-color-border);
+	border-radius: 8px;
+	background: var(--pc-color-surface);
+}
+
+.pc-form-actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 10px;
+	align-items: center;
+	justify-content: flex-end;
+	padding-top: 4px;
 }
 
 .pc-clear-link {
@@ -430,6 +502,26 @@ body.post-collection-app {
 	padding: 3px 7px;
 	border-radius: 999px;
 	background: var(--pc-color-surface-alt);
+	color: var(--pc-color-accent);
+}
+
+.pc-read-status {
+	display: inline-flex;
+	align-items: center;
+	min-height: 20px;
+	padding: 2px 7px;
+	border-radius: 999px;
+	background: var(--pc-color-surface-alt);
+	color: var(--pc-color-muted);
+	font-size: 0.72rem;
+	font-weight: 700;
+}
+
+.pc-read-status-read {
+	color: var(--pc-color-primary);
+}
+
+.pc-read-status-skipped {
 	color: var(--pc-color-accent);
 }
 
@@ -587,6 +679,7 @@ body.post-collection-app {
 
 .pc-quick-edit-form input[type="text"],
 .pc-quick-edit-form input[type="url"],
+.pc-quick-edit-form select,
 .pc-quick-edit-form textarea {
 	width: 100%;
 	min-height: 30px;
@@ -809,6 +902,7 @@ body.post-collection-app {
 		text-align: left;
 	}
 
+	.pc-collection-settings,
 	.pc-add-form,
 	.pc-filter-bar {
 		grid-template-columns: 1fr;

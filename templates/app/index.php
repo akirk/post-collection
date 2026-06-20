@@ -31,7 +31,7 @@ $collections = array_filter( $app->get_collections(), array( $app, 'can_view_col
 			<h1><?php esc_html_e( 'Post Collection', 'post-collection' ); ?></h1>
 		</div>
 		<?php if ( $app->can_manage_collections() ) : ?>
-			<a class="pc-button pc-button-primary" href="<?php echo esc_url( self_admin_url( 'admin.php?page=create-post-collection' ) ); ?>"><?php esc_html_e( 'New Collection', 'post-collection' ); ?></a>
+			<a class="pc-button pc-button-primary" href="<?php echo esc_url( $app->get_new_collection_url() ); ?>"><?php esc_html_e( 'New Collection', 'post-collection' ); ?></a>
 		<?php endif; ?>
 	</header>
 
@@ -43,12 +43,12 @@ $collections = array_filter( $app->get_collections(), array( $app, 'can_view_col
 			</section>
 		<?php else : ?>
 			<section class="pc-collection-grid" aria-label="<?php esc_attr_e( 'Collections', 'post-collection' ); ?>">
-				<?php foreach ( $collections as $collection_user ) : ?>
+				<?php foreach ( $collections as $collection ) : ?>
 					<?php
-					$count = $app->count_collection_posts( $collection_user );
-					$mode  = $app->get_collection_mode( $collection_user );
+					$count = $app->count_collection_posts( $collection );
+					$mode  = $app->get_collection_mode( $collection );
 					$posts = $app->query_collection_posts(
-						$collection_user,
+						$collection,
 						array(
 							'posts_per_page'                => 3,
 							'post_collection_apply_filters' => false,
@@ -57,11 +57,11 @@ $collections = array_filter( $app->get_collections(), array( $app, 'can_view_col
 					);
 					?>
 					<article class="pc-collection-card pc-collection-card-<?php echo esc_attr( $mode ); ?>">
-						<a class="pc-collection-card-main" href="<?php echo esc_url( $app->get_collection_url( $collection_user ) ); ?>">
+						<a class="pc-collection-card-main" href="<?php echo esc_url( $app->get_collection_url( $collection ) ); ?>">
 							<span class="pc-mode-label"><?php echo esc_html( 'bookmarks' === $mode ? __( 'Bookmarks', 'post-collection' ) : __( 'Posts', 'post-collection' ) ); ?></span>
-							<h2><?php echo esc_html( $collection_user->display_name ); ?></h2>
-							<?php if ( $collection_user->description ) : ?>
-								<p><?php echo esc_html( wp_trim_words( $collection_user->description, 18 ) ); ?></p>
+							<h2><?php echo esc_html( $collection->name ); ?></h2>
+							<?php if ( $collection->description ) : ?>
+								<p><?php echo esc_html( wp_trim_words( $collection->description, 18 ) ); ?></p>
 							<?php endif; ?>
 							<span class="pc-count">
 								<?php
@@ -79,7 +79,7 @@ $collections = array_filter( $app->get_collections(), array( $app, 'can_view_col
 							<ul class="pc-mini-list">
 								<?php foreach ( $posts->posts as $post ) : ?>
 									<li>
-										<a href="<?php echo esc_url( $app->get_collection_url( $collection_user, $post->ID ) ); ?>"><?php echo esc_html( get_the_title( $post ) ); ?></a>
+										<a href="<?php echo esc_url( $app->get_collection_url( $collection, $post->ID ) ); ?>"><?php echo esc_html( get_the_title( $post ) ); ?></a>
 									</li>
 								<?php endforeach; ?>
 							</ul>
