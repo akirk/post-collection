@@ -610,7 +610,7 @@ class Article_Notes {
 	 * @param int $limit Maximum number of articles to return.
 	 * @return array Array of post objects with note data.
 	 */
-	public function get_reviewed_articles( $limit = 20 ) {
+	public function get_reviewed_articles( $limit = 20, $offset = 0 ) {
 		// Get note IDs with read or skipped status.
 		$note_ids = get_posts(
 			array(
@@ -648,6 +648,7 @@ class Article_Notes {
 		$args = array(
 			'post_type'      => $this->get_article_post_types(),
 			'posts_per_page' => $limit,
+			'offset'         => $offset,
 			'post_status'    => 'any',
 			'post__in'       => $article_ids,
 			'orderby'        => 'post__in',
@@ -656,6 +657,48 @@ class Article_Notes {
 		$posts = get_posts( $args );
 
 		return array_map( array( $this, 'prepare_article_data' ), $posts );
+	}
+
+	/**
+	 * Get the unified review queue, including pending, unread, read, and skipped articles.
+	 *
+	 * @param int $limit  Maximum number of articles to return.
+	 * @param int $offset Number of articles to skip.
+	 * @return array Array of article data.
+	 */
+	public function get_review_queue_articles( $limit = 20, $offset = 0 ) {
+		$query_limit = max( $limit + $offset, $limit );
+		$articles    = array_merge(
+			$this->get_pending_and_unread_articles( $query_limit ),
+			$this->get_reviewed_articles( $query_limit )
+		);
+
+		$seen   = array();
+		$result = array();
+		foreach ( $articles as $article ) {
+			if ( isset( $seen[ $article['id'] ] ) ) {
+				continue;
+			}
+
+			$seen[ $article['id'] ] = true;
+			$result[] = $article;
+		}
+
+		usort(
+			$result,
+			static function ( $a, $b ) {
+				$a_order = ! empty( $a['sent_timestamp'] ) ? (int) $a['sent_timestamp'] : (int) $a['id'];
+				$b_order = ! empty( $b['sent_timestamp'] ) ? (int) $b['sent_timestamp'] : (int) $b['id'];
+
+				if ( $a_order === $b_order ) {
+					return (int) $b['id'] - (int) $a['id'];
+				}
+
+				return $b_order - $a_order;
+			}
+		);
+
+		return array_slice( $result, $offset, $limit );
 	}
 
 	/**
@@ -721,11 +764,46 @@ class Article_Notes {
 	private function prepare_article_data( $post ) {
 		$note = $this->get_note( $post->ID );
 		$queued_meta_key = apply_filters( 'post_collection_article_queued_orderby_meta_key', '' );
+		$sent_timestamp = 0;
 		$sent_date = '';
+		$sent_datetime = '';
+		$sent_label = '';
 		if ( ! empty( $queued_meta_key ) ) {
-			$timestamp = get_post_meta( $post->ID, $queued_meta_key, true );
-			if ( $timestamp ) {
-				$sent_date = date_i18n( get_option( 'date_format' ), $timestamp );
+			$sent_timestamp = (int) get_post_meta( $post->ID, $queued_meta_key, true );
+		}
+
+		/**
+		 * Filter the timestamp for when an article entered the review queue.
+		 *
+		 * Plugins can use this to supply a more specific source timestamp than
+		 * the generic queued/orderby meta key.
+		 *
+		 * @param int      $sent_timestamp Unix timestamp.
+		 * @param \WP_Post $post           Article post.
+		 * @param string   $queued_meta_key Meta key used for queued articles.
+		 */
+		$sent_timestamp = (int) apply_filters( 'post_collection_article_sent_timestamp', $sent_timestamp, $post, $queued_meta_key );
+		if ( $sent_timestamp ) {
+			$date_format   = get_option( 'date_format' );
+			$time_format   = get_option( 'time_format' );
+			$sent_date     = date_i18n( $date_format, $sent_timestamp );
+			$sent_datetime = date_i18n( 'c', $sent_timestamp );
+			$sent_label    = sprintf(
+				/* translators: %s is a formatted date and time. */
+				__( 'Sent to e-reader %s', 'post-collection' ),
+				date_i18n( $date_format . ' ' . $time_format, $sent_timestamp )
+			);
+
+			/**
+			 * Filter the human-readable sent-to-reader label.
+			 *
+			 * @param string   $sent_label     Human-readable label.
+			 * @param int      $sent_timestamp Unix timestamp.
+			 * @param \WP_Post $post           Article post.
+			 */
+			$sent_label = apply_filters( 'post_collection_article_sent_label', $sent_label, $sent_timestamp, $post );
+			if ( ! is_string( $sent_label ) ) {
+				$sent_label = '';
 			}
 		}
 
@@ -750,6 +828,9 @@ class Article_Notes {
 			'author'      => $author,
 			'collection'  => $user->display_name,
 			'sent_date'   => $sent_date,
+			'sent_datetime' => $sent_datetime,
+			'sent_label'  => $sent_label,
+			'sent_timestamp' => $sent_timestamp,
 			'excerpt'     => get_the_excerpt( $post ),
 			'content'     => wp_kses_post( $content ),
 			'note_id'     => $note ? $note['id'] : 0,
@@ -945,8 +1026,14 @@ class Article_Notes {
 		$type = isset( $_POST['type'] ) ? sanitize_text_field( wp_unslash( $_POST['type'] ) ) : 'pending';
 		$limit = 10;
 
-		if ( 'unread' === $type ) {
+		if ( 'queue' === $type ) {
+			$articles = $this->get_review_queue_articles( $limit + 1, $offset );
+		} elseif ( 'reviewed' === $type ) {
+			$articles = $this->get_reviewed_articles( $limit + 1, $offset );
+		} elseif ( 'unread' === $type ) {
 			$articles = $this->get_unread_articles( $limit + 1, $offset );
+		} elseif ( 'all' === $type ) {
+			$articles = $this->get_pending_and_unread_articles( $limit + 1, $offset );
 		} else {
 			$articles = $this->get_pending_articles( $limit + 1, $offset );
 		}

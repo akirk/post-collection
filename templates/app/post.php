@@ -29,6 +29,13 @@ $source_url = $app->get_source_url( $post );
 $host       = $app->get_source_host( $post );
 $embed_html = $app->get_post_description_embed_html( $post, 'detail' );
 $terms      = $app->get_post_terms( $post );
+$can_edit_notes = current_user_can( 'edit_posts' );
+$note           = $can_edit_notes ? $app->get_post_collection()->get_article_notes()->get_note( $post->ID ) : null;
+$statuses       = $app->get_article_statuses();
+$read_status    = $note && ! empty( $note['status'] ) ? $note['status'] : $app->get_article_note_status( $post );
+$rating         = $note ? (int) $note['rating'] : 0;
+$notes          = $note ? $note['notes'] : '';
+$notes_nonce    = $can_edit_notes ? wp_create_nonce( 'post-collection-article-notes' ) : '';
 $back_label = 'bookmarks' === $mode ? __( 'Back to Bookmarks', 'post-collection' ) : __( 'Back to Collection', 'post-collection' );
 ?>
 <!DOCTYPE html>
@@ -51,6 +58,7 @@ $back_label = 'bookmarks' === $mode ? __( 'Back to Bookmarks', 'post-collection'
 		<h1><?php echo esc_html( get_the_title( $post ) ); ?></h1>
 		<div class="pc-detail-meta">
 			<time datetime="<?php echo esc_attr( get_the_date( DATE_W3C, $post ) ); ?>"><?php echo esc_html( get_the_date( '', $post ) ); ?></time>
+			<?php $app->render_article_note_status_toggle( $post, $read_status ); ?>
 			<?php if ( 'private' === $post->post_status && $app->can_manage_collections() ) : ?>
 				<span><?php esc_html_e( 'Private', 'post-collection' ); ?></span>
 			<?php endif; ?>
@@ -80,6 +88,32 @@ $back_label = 'bookmarks' === $mode ? __( 'Back to Bookmarks', 'post-collection'
 				<?php echo apply_filters( 'the_content', $post->post_content ); ?>
 			<?php endif; ?>
 		</article>
+		<?php if ( $can_edit_notes ) : ?>
+			<section class="pc-article-notes" data-article-id="<?php echo esc_attr( $post->ID ); ?>" data-nonce="<?php echo esc_attr( $notes_nonce ); ?>" data-ajax-action="<?php echo esc_url( admin_url( 'admin-ajax.php' ) ); ?>">
+				<div class="pc-article-notes-controls">
+					<div class="pc-note-statuses" aria-label="<?php esc_attr_e( 'Reading status', 'post-collection' ); ?>">
+						<?php foreach ( $statuses as $status_key => $status_label ) : ?>
+							<button type="button" class="pc-note-status<?php echo $read_status === $status_key ? ' is-active' : ''; ?>" data-status="<?php echo esc_attr( $status_key ); ?>">
+								<?php echo esc_html( $status_label ); ?>
+							</button>
+						<?php endforeach; ?>
+					</div>
+					<div class="pc-note-rating" aria-label="<?php esc_attr_e( 'Rating', 'post-collection' ); ?>" data-rating="<?php echo esc_attr( $rating ); ?>">
+						<?php for ( $i = 1; $i <= 5; $i++ ) : ?>
+							<button type="button" class="pc-note-star<?php echo $i <= $rating ? ' is-active' : ''; ?>" data-rating="<?php echo esc_attr( $i ); ?>" aria-label="<?php echo esc_attr( sprintf( __( '%d stars', 'post-collection' ), $i ) ); ?>">
+								<?php echo $i <= $rating ? '&#9733;' : '&#9734;'; ?>
+							</button>
+						<?php endfor; ?>
+					</div>
+				</div>
+				<label class="screen-reader-text" for="pc-article-notes-<?php echo esc_attr( $post->ID ); ?>"><?php esc_html_e( 'Article notes', 'post-collection' ); ?></label>
+				<textarea id="pc-article-notes-<?php echo esc_attr( $post->ID ); ?>" class="pc-note-text" rows="5" placeholder="<?php esc_attr_e( 'Add your notes...', 'post-collection' ); ?>"><?php echo esc_textarea( $notes ); ?></textarea>
+				<div class="pc-article-notes-actions">
+					<button type="button" class="pc-note-save"><?php esc_html_e( 'Save', 'post-collection' ); ?></button>
+					<span class="pc-note-save-status" aria-live="polite"></span>
+				</div>
+			</section>
+		<?php endif; ?>
 		<nav class="pc-detail-footer-actions" aria-label="<?php esc_attr_e( 'Post navigation', 'post-collection' ); ?>">
 			<a class="pc-button" href="<?php echo esc_url( $app->get_collection_url( $collection ) ); ?>"><?php echo esc_html( $back_label ); ?></a>
 		</nav>

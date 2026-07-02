@@ -178,9 +178,7 @@ if ( '' !== $active_tag ) {
 							<?php endif; ?>
 							<div class="pc-card-actions">
 								<a href="<?php echo esc_url( $app->get_collection_url( $collection, $post->ID ) ); ?>"><?php esc_html_e( 'Details', 'post-collection' ); ?></a>
-								<?php if ( $app->can_manage_collections() ) : ?>
-									<span class="pc-read-status pc-read-status-<?php echo esc_attr( $read_status ); ?>"><?php echo esc_html( $app->get_article_note_status_label( $read_status ) ); ?></span>
-								<?php endif; ?>
+								<?php $app->render_article_note_status_toggle( $post, $read_status ); ?>
 								<?php if ( 'private' === $post->post_status && $app->can_manage_collections() ) : ?>
 									<span><?php esc_html_e( 'Private', 'post-collection' ); ?></span>
 								<?php endif; ?>
@@ -220,9 +218,7 @@ if ( '' !== $active_tag ) {
 						<div class="pc-link-meta">
 							<time datetime="<?php echo esc_attr( get_the_date( DATE_W3C, $post ) ); ?>"><?php echo esc_html( get_the_date( '', $post ) ); ?></time>
 							<span class="pc-link-host"><?php echo esc_html( $host ); ?></span>
-							<?php if ( $app->can_manage_collections() ) : ?>
-								<span class="pc-read-status pc-read-status-<?php echo esc_attr( $read_status ); ?>"><?php echo esc_html( $app->get_article_note_status_label( $read_status ) ); ?></span>
-							<?php endif; ?>
+							<?php $app->render_article_note_status_toggle( $post, $read_status ); ?>
 							<?php if ( 'private' === $post->post_status && $app->can_manage_collections() ) : ?>
 								<span class="pc-link-private"><?php esc_html_e( 'private', 'post-collection' ); ?></span>
 							<?php endif; ?>
@@ -313,9 +309,7 @@ if ( '' !== $active_tag ) {
 							<?php endif; ?>
 							<div class="pc-row-meta">
 								<time datetime="<?php echo esc_attr( get_the_date( DATE_W3C, $post ) ); ?>"><?php echo esc_html( get_the_date( '', $post ) ); ?></time>
-								<?php if ( $app->can_manage_collections() ) : ?>
-									<span class="pc-read-status pc-read-status-<?php echo esc_attr( $read_status ); ?>"><?php echo esc_html( $app->get_article_note_status_label( $read_status ) ); ?></span>
-								<?php endif; ?>
+								<?php $app->render_article_note_status_toggle( $post, $read_status ); ?>
 								<a href="<?php echo esc_url( $app->get_source_url( $post ) ); ?>" target="_blank" rel="noopener noreferrer"><?php esc_html_e( 'Original', 'post-collection' ); ?></a>
 							</div>
 						</div>

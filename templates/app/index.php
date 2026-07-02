@@ -91,7 +91,10 @@ $render_collection_card = static function ( $collection ) use ( $app ) {
 			<h1><?php esc_html_e( 'Post Collection', 'post-collection' ); ?></h1>
 		</div>
 		<?php if ( $app->can_manage_collections() ) : ?>
-			<a class="pc-button pc-button-primary" href="<?php echo esc_url( $app->get_new_collection_url() ); ?>"><?php esc_html_e( 'New Collection', 'post-collection' ); ?></a>
+			<div class="pc-app-header-actions">
+				<a class="pc-button" href="<?php echo esc_url( $app->get_review_url() ); ?>"><?php esc_html_e( 'Review Articles', 'post-collection' ); ?></a>
+				<a class="pc-button pc-button-primary" href="<?php echo esc_url( $app->get_new_collection_url() ); ?>"><?php esc_html_e( 'New Collection', 'post-collection' ); ?></a>
+			</div>
 		<?php endif; ?>
 	</header>
 

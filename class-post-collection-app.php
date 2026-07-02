@@ -91,10 +91,12 @@ class Post_Collection_App {
 		add_action( 'wp_loaded', array( $this, 'handle_collection_settings' ) );
 		add_action( 'wp_loaded', array( $this, 'handle_create_collection' ) );
 		add_action( 'wp_ajax_post_collection_quick_edit', array( $this, 'wp_ajax_quick_edit' ) );
+		add_action( 'wp_ajax_post_collection_toggle_read_status', array( $this, 'wp_ajax_toggle_read_status' ) );
 		add_filter( 'private_title_format', array( $this, 'filter_private_title_format' ), 10, 2 );
 
 		$this->app->route( '' );
 		$this->app->route( 'new', 'new.php' );
+		$this->app->route( 'review', 'review.php' );
 		$this->app->route( '{collection}/settings', 'settings.php' );
 		$this->app->route( '{collection}', 'collection.php' );
 		$this->app->route( '{collection}/{post_id}', 'post.php' );
@@ -106,6 +108,11 @@ class Post_Collection_App {
 		);
 
 		if ( current_user_can( $this->post_collection->get_required_role() ) ) {
+			$this->app->add_menu_item(
+				'review',
+				__( 'Review Articles', 'post-collection' ),
+				$this->get_review_url()
+			);
 			$this->app->add_menu_item(
 				'new-collection',
 				__( 'New Collection', 'post-collection' ),
@@ -157,6 +164,15 @@ class Post_Collection_App {
 	 */
 	public function get_new_collection_url() {
 		return home_url( '/' . self::PATH . '/new/' );
+	}
+
+	/**
+	 * Get the review queue URL.
+	 *
+	 * @return string
+	 */
+	public function get_review_url() {
+		return home_url( '/' . self::PATH . '/review/' );
 	}
 
 	/**
@@ -552,6 +568,60 @@ class Post_Collection_App {
 	}
 
 	/**
+	 * Toggle a collected post between unread and read.
+	 */
+	public function wp_ajax_toggle_read_status() {
+		if ( ! $this->can_manage_collections() ) {
+			wp_send_json_error(
+				array(
+					'message' => __( 'Sorry, you are not allowed to edit this collection.', 'post-collection' ),
+				),
+				403
+			);
+		}
+
+		$post_id = isset( $_POST['post_id'] ) ? absint( wp_unslash( $_POST['post_id'] ) ) : 0;
+		if ( ! $post_id || ! isset( $_POST['_wpnonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['_wpnonce'] ) ), 'post-collection-toggle-read-status-' . $post_id ) ) {
+			wp_send_json_error(
+				array(
+					'message' => __( 'The reading status request could not be verified.', 'post-collection' ),
+				),
+				403
+			);
+		}
+
+		$post = get_post( $post_id );
+		if ( ! $post || Post_Collection::CPT !== $post->post_type ) {
+			wp_send_json_error(
+				array(
+					'message' => __( 'That post does not exist.', 'post-collection' ),
+				),
+				404
+			);
+		}
+
+		$current_status = $this->get_article_note_status( $post );
+		$next_status    = Article_Notes::STATUS_READ === $current_status ? Article_Notes::STATUS_UNREAD : Article_Notes::STATUS_READ;
+		$note_id        = $this->post_collection->get_article_notes()->save_note( $post_id, $next_status );
+		if ( ! $note_id ) {
+			wp_send_json_error(
+				array(
+					'message' => __( 'The reading status could not be saved.', 'post-collection' ),
+				),
+				500
+			);
+		}
+
+		wp_send_json_success(
+			array(
+				'id'          => $post_id,
+				'read_status' => $next_status,
+				'read_label'  => $this->get_article_note_status_label( $next_status ),
+			)
+		);
+	}
+
+	/**
 	 * Update a post from quick edit request data.
 	 *
 	 * @param array $data Request data.
@@ -682,6 +752,32 @@ class Post_Collection_App {
 	public function get_article_note_status_label( $status ) {
 		$statuses = $this->get_article_statuses();
 		return isset( $statuses[ $status ] ) ? $statuses[ $status ] : $statuses[ Article_Notes::STATUS_UNREAD ];
+	}
+
+	/**
+	 * Render an interactive reading status label.
+	 *
+	 * @param \WP_Post $post   The post.
+	 * @param string   $status Optional reading status.
+	 */
+	public function render_article_note_status_toggle( \WP_Post $post, $status = '' ) {
+		if ( ! $this->can_manage_collections() ) {
+			return;
+		}
+
+		$status = $status ? $status : $this->get_article_note_status( $post );
+		$label  = $this->get_article_note_status_label( $status );
+		?>
+		<button
+			type="button"
+			class="pc-read-status pc-read-status-toggle pc-read-status-<?php echo esc_attr( $status ); ?>"
+			data-ajax-action="<?php echo esc_url( admin_url( 'admin-ajax.php' ) ); ?>"
+			data-post-id="<?php echo esc_attr( $post->ID ); ?>"
+			data-nonce="<?php echo esc_attr( wp_create_nonce( 'post-collection-toggle-read-status-' . $post->ID ) ); ?>"
+			data-read-status="<?php echo esc_attr( $status ); ?>"
+			aria-label="<?php echo esc_attr( sprintf( __( 'Toggle reading status for %s', 'post-collection' ), get_the_title( $post ) ) ); ?>"
+		><?php echo esc_html( $label ); ?></button>
+		<?php
 	}
 
 	/**
