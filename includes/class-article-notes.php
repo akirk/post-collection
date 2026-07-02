@@ -477,13 +477,34 @@ class Article_Notes {
 	}
 
 	/**
+	 * Apply optional filters to article queries.
+	 *
+	 * @param array $query_args Query arguments.
+	 * @param array $args       Optional filter arguments.
+	 * @return array Filtered query arguments.
+	 */
+	private function apply_article_query_args( array $query_args, array $args = array() ) {
+		if ( ! empty( $args['collection_id'] ) ) {
+			$query_args['tax_query'] = isset( $query_args['tax_query'] ) ? (array) $query_args['tax_query'] : array();
+			$query_args['tax_query'][] = array(
+				'taxonomy' => Post_Collection::COLLECTION_TAXONOMY,
+				'field'    => 'term_id',
+				'terms'    => absint( $args['collection_id'] ),
+			);
+		}
+
+		return $query_args;
+	}
+
+	/**
 	 * Get articles that have been downloaded but not yet reviewed.
 	 *
 	 * @param int $limit  Maximum number of articles to return.
 	 * @param int $offset Number of articles to skip.
+	 * @param array $args Optional filter arguments.
 	 * @return array Array of post objects with note data.
 	 */
-	public function get_pending_articles( $limit = 20, $offset = 0 ) {
+	public function get_pending_articles( $limit = 20, $offset = 0, array $args = array() ) {
 		$meta_query = apply_filters( 'post_collection_article_queued_meta_query', array() );
 		$meta_query[] = array(
 			'key'     => self::NOTE_ID_META,
@@ -494,7 +515,7 @@ class Article_Notes {
 			array_unshift( $meta_query, array( 'relation' => 'AND' ) );
 		}
 
-		$args = array(
+		$query_args = array(
 			'post_type'      => $this->get_article_post_types(),
 			'posts_per_page' => $limit,
 			'offset'         => $offset,
@@ -506,11 +527,12 @@ class Article_Notes {
 
 		$queued_meta_key = apply_filters( 'post_collection_article_queued_orderby_meta_key', '' );
 		if ( ! empty( $queued_meta_key ) ) {
-			$args['orderby'] = 'meta_value_num';
-			$args['meta_key'] = $queued_meta_key;
+			$query_args['orderby'] = 'meta_value_num';
+			$query_args['meta_key'] = $queued_meta_key;
 		}
 
-		$posts = get_posts( $args );
+		$query_args = $this->apply_article_query_args( $query_args, $args );
+		$posts = get_posts( $query_args );
 
 		return array_map( array( $this, 'prepare_article_data' ), $posts );
 	}
@@ -520,11 +542,12 @@ class Article_Notes {
 	 *
 	 * @param int $limit  Maximum number of articles to return.
 	 * @param int $offset Number of articles to skip.
+	 * @param array $args Optional filter arguments.
 	 * @return array Combined array of pending and unread articles.
 	 */
-	public function get_pending_and_unread_articles( $limit = 20, $offset = 0 ) {
-		$pending = $this->get_pending_articles( $limit, $offset );
-		$unread = $this->get_unread_articles( $limit, $offset );
+	public function get_pending_and_unread_articles( $limit = 20, $offset = 0, array $args = array() ) {
+		$pending = $this->get_pending_articles( $limit, $offset, $args );
+		$unread = $this->get_unread_articles( $limit, $offset, $args );
 
 		$combined = array_merge( $pending, $unread );
 
@@ -554,9 +577,10 @@ class Article_Notes {
 	 *
 	 * @param int $limit  Maximum number of articles to return.
 	 * @param int $offset Number of articles to skip.
+	 * @param array $args Optional filter arguments.
 	 * @return array Array of post objects with note data.
 	 */
-	public function get_unread_articles( $limit = 20, $offset = 0 ) {
+	public function get_unread_articles( $limit = 20, $offset = 0, array $args = array() ) {
 		// Get note IDs with unread status.
 		$note_ids = get_posts(
 			array(
@@ -590,7 +614,7 @@ class Article_Notes {
 			return array();
 		}
 
-		$args = array(
+		$query_args = array(
 			'post_type'      => $this->get_article_post_types(),
 			'posts_per_page' => $limit,
 			'offset'         => $offset,
@@ -599,7 +623,8 @@ class Article_Notes {
 			'orderby'        => 'post__in',
 		);
 
-		$posts = get_posts( $args );
+		$query_args = $this->apply_article_query_args( $query_args, $args );
+		$posts = get_posts( $query_args );
 
 		return array_map( array( $this, 'prepare_article_data' ), $posts );
 	}
@@ -608,9 +633,11 @@ class Article_Notes {
 	 * Get articles that have been reviewed (read or skipped).
 	 *
 	 * @param int $limit Maximum number of articles to return.
+	 * @param int $offset Number of articles to skip.
+	 * @param array $args Optional filter arguments.
 	 * @return array Array of post objects with note data.
 	 */
-	public function get_reviewed_articles( $limit = 20 ) {
+	public function get_reviewed_articles( $limit = 20, $offset = 0, array $args = array() ) {
 		// Get note IDs with read or skipped status.
 		$note_ids = get_posts(
 			array(
@@ -645,17 +672,62 @@ class Article_Notes {
 			return array();
 		}
 
-		$args = array(
+		$query_args = array(
 			'post_type'      => $this->get_article_post_types(),
 			'posts_per_page' => $limit,
+			'offset'         => $offset,
 			'post_status'    => 'any',
 			'post__in'       => $article_ids,
 			'orderby'        => 'post__in',
 		);
 
-		$posts = get_posts( $args );
+		$query_args = $this->apply_article_query_args( $query_args, $args );
+		$posts = get_posts( $query_args );
 
 		return array_map( array( $this, 'prepare_article_data' ), $posts );
+	}
+
+	/**
+	 * Get the unified review queue, including pending, unread, read, and skipped articles.
+	 *
+	 * @param int $limit  Maximum number of articles to return.
+	 * @param int $offset Number of articles to skip.
+	 * @param array $args Optional filter arguments.
+	 * @return array Array of article data.
+	 */
+	public function get_review_queue_articles( $limit = 20, $offset = 0, array $args = array() ) {
+		$query_limit = max( $limit + $offset, $limit );
+		$articles    = array_merge(
+			$this->get_pending_and_unread_articles( $query_limit, 0, $args ),
+			$this->get_reviewed_articles( $query_limit, 0, $args )
+		);
+
+		$seen   = array();
+		$result = array();
+		foreach ( $articles as $article ) {
+			if ( isset( $seen[ $article['id'] ] ) ) {
+				continue;
+			}
+
+			$seen[ $article['id'] ] = true;
+			$result[] = $article;
+		}
+
+		usort(
+			$result,
+			static function ( $a, $b ) {
+				$a_order = ! empty( $a['sent_timestamp'] ) ? (int) $a['sent_timestamp'] : (int) $a['id'];
+				$b_order = ! empty( $b['sent_timestamp'] ) ? (int) $b['sent_timestamp'] : (int) $b['id'];
+
+				if ( $a_order === $b_order ) {
+					return (int) $b['id'] - (int) $a['id'];
+				}
+
+				return $b_order - $a_order;
+			}
+		);
+
+		return array_slice( $result, $offset, $limit );
 	}
 
 	/**
@@ -721,11 +793,46 @@ class Article_Notes {
 	private function prepare_article_data( $post ) {
 		$note = $this->get_note( $post->ID );
 		$queued_meta_key = apply_filters( 'post_collection_article_queued_orderby_meta_key', '' );
+		$sent_timestamp = 0;
 		$sent_date = '';
+		$sent_datetime = '';
+		$sent_label = '';
 		if ( ! empty( $queued_meta_key ) ) {
-			$timestamp = get_post_meta( $post->ID, $queued_meta_key, true );
-			if ( $timestamp ) {
-				$sent_date = date_i18n( get_option( 'date_format' ), $timestamp );
+			$sent_timestamp = (int) get_post_meta( $post->ID, $queued_meta_key, true );
+		}
+
+		/**
+		 * Filter the timestamp for when an article entered the review queue.
+		 *
+		 * Plugins can use this to supply a more specific source timestamp than
+		 * the generic queued/orderby meta key.
+		 *
+		 * @param int      $sent_timestamp Unix timestamp.
+		 * @param \WP_Post $post           Article post.
+		 * @param string   $queued_meta_key Meta key used for queued articles.
+		 */
+		$sent_timestamp = (int) apply_filters( 'post_collection_article_sent_timestamp', $sent_timestamp, $post, $queued_meta_key );
+		if ( $sent_timestamp ) {
+			$date_format   = get_option( 'date_format' );
+			$time_format   = get_option( 'time_format' );
+			$sent_date     = date_i18n( $date_format, $sent_timestamp );
+			$sent_datetime = date_i18n( 'c', $sent_timestamp );
+			$sent_label    = sprintf(
+				/* translators: %s is a formatted date and time. */
+				__( 'Sent to e-reader %s', 'post-collection' ),
+				date_i18n( $date_format . ' ' . $time_format, $sent_timestamp )
+			);
+
+			/**
+			 * Filter the human-readable sent-to-reader label.
+			 *
+			 * @param string   $sent_label     Human-readable label.
+			 * @param int      $sent_timestamp Unix timestamp.
+			 * @param \WP_Post $post           Article post.
+			 */
+			$sent_label = apply_filters( 'post_collection_article_sent_label', $sent_label, $sent_timestamp, $post );
+			if ( ! is_string( $sent_label ) ) {
+				$sent_label = '';
 			}
 		}
 
@@ -733,6 +840,8 @@ class Article_Notes {
 		$content = $post->post_content;
 		$content = preg_replace( '/<img[^>]*>/i', '', $content );
 		$content = preg_replace( '/<figure[^>]*>.*?<\/figure>/is', '', $content );
+		$excerpt = get_the_excerpt( $post );
+		$summary_word_count = str_word_count( wp_strip_all_tags( $excerpt ) );
 
 		// Use the per-post author meta if available.
 		$author = get_post_meta( $post->ID, 'author', true );
@@ -750,7 +859,11 @@ class Article_Notes {
 			'author'      => $author,
 			'collection'  => $user->display_name,
 			'sent_date'   => $sent_date,
-			'excerpt'     => get_the_excerpt( $post ),
+			'sent_datetime' => $sent_datetime,
+			'sent_label'  => $sent_label,
+			'sent_timestamp' => $sent_timestamp,
+			'excerpt'     => $excerpt,
+			'summary_word_count' => $summary_word_count,
 			'content'     => wp_kses_post( $content ),
 			'note_id'     => $note ? $note['id'] : 0,
 			'status'      => $note ? $note['status'] : self::STATUS_UNREAD,
@@ -944,11 +1057,21 @@ class Article_Notes {
 		$offset = isset( $_POST['offset'] ) ? (int) $_POST['offset'] : 0;
 		$type = isset( $_POST['type'] ) ? sanitize_text_field( wp_unslash( $_POST['type'] ) ) : 'pending';
 		$limit = 10;
+		$args = array();
+		if ( ! empty( $_POST['collection_id'] ) ) {
+			$args['collection_id'] = absint( wp_unslash( $_POST['collection_id'] ) );
+		}
 
-		if ( 'unread' === $type ) {
-			$articles = $this->get_unread_articles( $limit + 1, $offset );
+		if ( 'queue' === $type ) {
+			$articles = $this->get_review_queue_articles( $limit + 1, $offset, $args );
+		} elseif ( 'reviewed' === $type ) {
+			$articles = $this->get_reviewed_articles( $limit + 1, $offset, $args );
+		} elseif ( 'unread' === $type ) {
+			$articles = $this->get_unread_articles( $limit + 1, $offset, $args );
+		} elseif ( 'all' === $type ) {
+			$articles = $this->get_pending_and_unread_articles( $limit + 1, $offset, $args );
 		} else {
-			$articles = $this->get_pending_articles( $limit + 1, $offset );
+			$articles = $this->get_pending_articles( $limit + 1, $offset, $args );
 		}
 
 		$has_more = count( $articles ) > $limit;
