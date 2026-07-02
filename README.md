@@ -3,7 +3,7 @@
 **Contributors:** akirk
 **Requires at least:** 5.0
 **Tested up to:** 6.9
-**Requires PHP:** 7.1
+**Requires PHP:** 7.4
 **License:** GPLv2 or later
 **License URI:** http://www.gnu.org/licenses/gpl-2.0.html
 **Stable tag:** 2.0.0
@@ -62,4 +62,3 @@ This plugin provides the facilities to store feed items in a separate post type.
 [#5]: https://github.com/akirk/post-collection/pull/5
 [#4]: https://github.com/akirk/post-collection/pull/4
 [#3]: https://github.com/akirk/post-collection/pull/3
-
