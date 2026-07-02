@@ -1770,6 +1770,7 @@ class Post_Collection {
 	 */
 	public function extract_content( $html, $url ) {
 		$item = new ExtractedPage( $url );
+		$html = $this->prepare_html_for_readability( $html );
 
 		$config = new \andreskrey\Readability\Configuration();
 		$logger = null;
@@ -1818,6 +1819,71 @@ class Post_Collection {
 		}
 
 		return $item;
+	}
+
+	/**
+	 * Remove obvious non-content markup before handing HTML to Readability.
+	 *
+	 * @param string $html HTML to prepare.
+	 * @return string Prepared HTML.
+	 */
+	private function prepare_html_for_readability( $html ) {
+		if ( ! class_exists( '\DOMDocument' ) || ! class_exists( '\DOMXPath' ) ) {
+			return $html;
+		}
+
+		$previous_errors = libxml_use_internal_errors( true );
+		$dom             = new \DOMDocument();
+		$loaded          = $dom->loadHTML( '<?xml encoding="UTF-8">' . $html, LIBXML_NOWARNING | LIBXML_NOERROR );
+
+		if ( ! $loaded ) {
+			libxml_clear_errors();
+			libxml_use_internal_errors( $previous_errors );
+			return $html;
+		}
+
+		$xpath = new \DOMXPath( $dom );
+		$title = '';
+		$title_nodes = $xpath->query( '//title' );
+		if ( $title_nodes && $title_nodes->length ) {
+			$title = trim( $title_nodes->item( 0 )->textContent );
+		}
+
+		$rich_text_blocks = $xpath->query(
+			'//*[contains(concat(" ", normalize-space(@class), " "), " u-rich-text-blog ") and contains(concat(" ", normalize-space(@class), " "), " w-richtext ")]'
+		);
+
+		if ( $rich_text_blocks && $rich_text_blocks->length ) {
+			$body = '';
+			foreach ( $rich_text_blocks as $node ) {
+				$text = trim( preg_replace( '/\s+/', ' ', $node->textContent ) );
+				if ( strlen( $text ) < 100 ) {
+					continue;
+				}
+				$body .= $dom->saveHTML( $node );
+			}
+
+			if ( $body ) {
+				libxml_clear_errors();
+				libxml_use_internal_errors( $previous_errors );
+				return '<html><head><title>' . htmlspecialchars( $title, ENT_QUOTES, 'UTF-8' ) . '</title></head><body><article>' . $body . '</article></body></html>';
+			}
+		}
+
+		$remove_nodes = $xpath->query( '//script|//style|//noscript|//svg|//nav|//header|//footer|//template|//iframe' );
+		if ( $remove_nodes ) {
+			foreach ( iterator_to_array( $remove_nodes ) as $node ) {
+				if ( $node->parentNode ) {
+					$node->parentNode->removeChild( $node );
+				}
+			}
+		}
+
+		$prepared_html = $dom->saveHTML();
+		libxml_clear_errors();
+		libxml_use_internal_errors( $previous_errors );
+
+		return $prepared_html ? $prepared_html : $html;
 	}
 
 	public function remove_artificial_line_breaks( $html ) {
