@@ -72,13 +72,6 @@ body.pc-new-collection-page .pc-detail-header {
 	justify-content: flex-end;
 }
 
-.pc-collection-actions {
-	display: flex;
-	flex-wrap: wrap;
-	gap: 10px;
-	margin-top: 18px;
-}
-
 .pc-kicker,
 .pc-source {
 	margin: 0 0 6px;
@@ -118,7 +111,14 @@ body.pc-new-collection-page .pc-detail-header {
 	display: grid;
 	grid-template-columns: minmax(0, 1fr) auto;
 	gap: 24px;
-	align-items: end;
+	align-items: start;
+}
+
+.pc-collection-header-aside {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-end;
+	gap: 18px;
 }
 
 .pc-collection-stats {
@@ -1346,6 +1346,16 @@ body.pc-new-collection-page .pc-detail-header {
 	.pc-app-header-actions {
 		justify-content: flex-start;
 		margin-top: 18px;
+	}
+
+	.pc-collection-header-aside {
+		align-items: flex-start;
+		margin-top: 18px;
+	}
+
+	.pc-collection-header-aside .pc-app-header-actions,
+	.pc-collection-header-aside .pc-collection-stats {
+		margin-top: 0;
 	}
 
 	.pc-app-header h1,
