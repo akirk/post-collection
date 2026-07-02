@@ -72,6 +72,13 @@ body.pc-new-collection-page .pc-detail-header {
 	justify-content: flex-end;
 }
 
+.pc-collection-actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 10px;
+	margin-top: 18px;
+}
+
 .pc-kicker,
 .pc-source {
 	margin: 0 0 6px;

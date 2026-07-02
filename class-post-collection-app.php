@@ -98,6 +98,7 @@ class Post_Collection_App {
 		$this->app->route( 'new', 'new.php' );
 		$this->app->route( 'review', 'review.php' );
 		$this->app->route( '{collection}/settings', 'settings.php' );
+		$this->app->route( '{collection}/review', 'review.php' );
 		$this->app->route( '{collection}', 'collection.php' );
 		$this->app->route( '{collection}/{post_id}', 'post.php' );
 
@@ -173,6 +174,16 @@ class Post_Collection_App {
 	 */
 	public function get_review_url() {
 		return home_url( '/' . self::PATH . '/review/' );
+	}
+
+	/**
+	 * Get the review queue URL for a collection.
+	 *
+	 * @param \WP_Term $collection The collection term.
+	 * @return string
+	 */
+	public function get_collection_review_url( $collection ) {
+		return trailingslashit( $this->get_collection_url( $collection ) . 'review' );
 	}
 
 	/**

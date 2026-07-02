@@ -67,13 +67,16 @@ if ( '' !== $active_tag ) {
 				<?php if ( $collection->description ) : ?>
 					<p class="pc-description"><?php echo esc_html( $collection->description ); ?></p>
 				<?php endif; ?>
+				<?php if ( $app->can_manage_collections() ) : ?>
+					<div class="pc-collection-actions">
+						<a class="pc-button" href="<?php echo esc_url( $app->get_collection_review_url( $collection ) ); ?>"><?php esc_html_e( 'Review Articles', 'post-collection' ); ?></a>
+						<a class="pc-button" href="<?php echo esc_url( $app->get_collection_settings_url( $collection ) ); ?>"><?php esc_html_e( 'Settings', 'post-collection' ); ?></a>
+					</div>
+				<?php endif; ?>
 			</div>
 			<div class="pc-collection-stats">
 				<strong><?php echo esc_html( number_format_i18n( $query->found_posts ) ); ?></strong>
 				<span><?php echo esc_html( 'bookmarks' === $mode ? __( 'visible saved links', 'post-collection' ) : __( 'visible posts', 'post-collection' ) ); ?></span>
-				<?php if ( $app->can_manage_collections() ) : ?>
-					<a href="<?php echo esc_url( $app->get_collection_settings_url( $collection ) ); ?>"><?php esc_html_e( 'Settings', 'post-collection' ); ?></a>
-				<?php endif; ?>
 			</div>
 		</div>
 

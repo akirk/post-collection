@@ -23,8 +23,17 @@ $article_notes = $app->get_post_collection()->get_article_notes();
 $statuses      = $app->get_article_statuses();
 $nonce         = wp_create_nonce( 'post-collection-article-notes' );
 $limit         = 12;
+$collection_slug = wp_app_get_route_var( 'collection' );
+$collection      = $collection_slug ? $app->get_collection_by_username( $collection_slug ) : null;
 
-$review_articles = $article_notes->get_review_queue_articles( $limit + 1 );
+if ( $collection_slug && ( ! $collection || ! $app->can_view_collection( $collection ) ) ) {
+	status_header( 404 );
+	include __DIR__ . '/404.php';
+	return;
+}
+
+$article_args      = $collection ? array( 'collection_id' => $collection->term_id ) : array();
+$review_articles   = $article_notes->get_review_queue_articles( $limit + 1, 0, $article_args );
 $has_more_articles = count( $review_articles ) > $limit;
 if ( $has_more_articles ) {
 	$review_articles = array_slice( $review_articles, 0, $limit );
@@ -117,12 +126,18 @@ $render_article = static function ( $article ) use ( $statuses, $get_article_url
 <body <?php body_class( 'wp-app-body post-collection-app pc-review-page' ); ?>>
 	<?php wp_app_body_open(); ?>
 	<header class="pc-shell pc-detail-header">
-		<div class="pc-breadcrumb"><a href="<?php echo esc_url( $app->get_home_url() ); ?>"><?php esc_html_e( 'Collections', 'post-collection' ); ?></a></div>
+		<div class="pc-breadcrumb">
+			<a href="<?php echo esc_url( $app->get_home_url() ); ?>"><?php esc_html_e( 'Collections', 'post-collection' ); ?></a>
+			<?php if ( $collection ) : ?>
+				<span>/</span>
+				<a href="<?php echo esc_url( $app->get_collection_url( $collection ) ); ?>"><?php echo esc_html( $collection->name ); ?></a>
+			<?php endif; ?>
+		</div>
 		<p class="pc-kicker"><?php esc_html_e( 'Article notes', 'post-collection' ); ?></p>
-		<h1><?php esc_html_e( 'Review Articles', 'post-collection' ); ?></h1>
+		<h1><?php echo esc_html( $collection ? sprintf( __( 'Review %s', 'post-collection' ), $collection->name ) : __( 'Review Articles', 'post-collection' ) ); ?></h1>
 	</header>
 
-	<main class="pc-shell pc-review-shell" data-nonce="<?php echo esc_attr( $nonce ); ?>" data-ajax-action="<?php echo esc_url( admin_url( 'admin-ajax.php' ) ); ?>" data-statuses="<?php echo esc_attr( wp_json_encode( $statuses ) ); ?>">
+	<main class="pc-shell pc-review-shell" data-nonce="<?php echo esc_attr( $nonce ); ?>" data-ajax-action="<?php echo esc_url( admin_url( 'admin-ajax.php' ) ); ?>" data-statuses="<?php echo esc_attr( wp_json_encode( $statuses ) ); ?>" data-collection-id="<?php echo esc_attr( $collection ? $collection->term_id : 0 ); ?>">
 		<div class="pc-review-list" data-review-list="review">
 			<?php foreach ( $review_articles as $article ) : ?>
 				<?php $render_article( $article ); ?>

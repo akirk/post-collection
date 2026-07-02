@@ -1,13 +1,17 @@
 ( function () {
 	function closest( element, selector ) {
 		while ( element && element !== document ) {
-			if ( element.matches( selector ) ) {
+			if ( matches( element, selector ) ) {
 				return element;
 			}
 			element = element.parentNode;
 		}
 
 		return null;
+	}
+
+	function matches( element, selector ) {
+		return !! ( element && element.matches && element.matches( selector ) );
 	}
 
 	function closeEditors( exceptRow ) {
@@ -295,6 +299,9 @@
 		data.append( '_ajax_nonce', context.nonce || '' );
 		data.append( 'offset', button.dataset.offset || '0' );
 		data.append( 'type', button.dataset.type || 'all' );
+		if ( shell.dataset.collectionId && '0' !== shell.dataset.collectionId ) {
+			data.append( 'collection_id', shell.dataset.collectionId );
+		}
 
 		var originalLabel = button.textContent;
 		button.disabled = true;
@@ -702,7 +709,7 @@
 	} );
 
 	document.addEventListener( 'input', function ( event ) {
-		if ( event.target && event.target.matches( '.pc-note-text' ) ) {
+		if ( matches( event.target, '.pc-note-text' ) ) {
 			queueNoteTextSave( event.target );
 		}
 	} );
@@ -723,7 +730,7 @@
 	} );
 
 	document.addEventListener( 'focusin', function ( event ) {
-		if ( event.target && event.target.matches( '.pc-note-star' ) ) {
+		if ( matches( event.target, '.pc-note-star' ) ) {
 			var ratingContainer = closest( event.target, '.pc-note-rating' );
 			if ( ratingContainer ) {
 				previewNoteStars( ratingContainer, parseInt( event.target.dataset.rating, 10 ) || 0 );
@@ -732,7 +739,7 @@
 	} );
 
 	document.addEventListener( 'focusout', function ( event ) {
-		if ( event.target && event.target.matches( '.pc-note-star' ) ) {
+		if ( matches( event.target, '.pc-note-star' ) ) {
 			var ratingContainer = closest( event.target, '.pc-note-rating' );
 			if ( ratingContainer && ! ratingContainer.contains( event.relatedTarget ) ) {
 				clearNoteStarPreview( ratingContainer );
@@ -741,7 +748,7 @@
 	} );
 
 	document.addEventListener( 'blur', function ( event ) {
-		if ( event.target && event.target.matches( '.pc-note-text' ) ) {
+		if ( matches( event.target, '.pc-note-text' ) ) {
 			var notes = closest( event.target, '.pc-article-notes' );
 			if ( notes ) {
 				saveNoteTextNow( notes );
