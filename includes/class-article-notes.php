@@ -840,6 +840,8 @@ class Article_Notes {
 		$content = $post->post_content;
 		$content = preg_replace( '/<img[^>]*>/i', '', $content );
 		$content = preg_replace( '/<figure[^>]*>.*?<\/figure>/is', '', $content );
+		$excerpt = get_the_excerpt( $post );
+		$summary_word_count = str_word_count( wp_strip_all_tags( $excerpt ) );
 
 		// Use the per-post author meta if available.
 		$author = get_post_meta( $post->ID, 'author', true );
@@ -860,7 +862,8 @@ class Article_Notes {
 			'sent_datetime' => $sent_datetime,
 			'sent_label'  => $sent_label,
 			'sent_timestamp' => $sent_timestamp,
-			'excerpt'     => get_the_excerpt( $post ),
+			'excerpt'     => $excerpt,
+			'summary_word_count' => $summary_word_count,
 			'content'     => wp_kses_post( $content ),
 			'note_id'     => $note ? $note['id'] : 0,
 			'status'      => $note ? $note['status'] : self::STATUS_UNREAD,

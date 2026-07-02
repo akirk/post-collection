@@ -56,6 +56,8 @@ $render_article = static function ( $article ) use ( $statuses, $get_article_url
 	$status = isset( $article['status'] ) ? $article['status'] : \PostCollection\Article_Notes::STATUS_UNREAD;
 	$url    = $get_article_url( $article );
 	$is_collapsed = in_array( $status, array( \PostCollection\Article_Notes::STATUS_READ, \PostCollection\Article_Notes::STATUS_SKIPPED ), true );
+	$summary_word_count = isset( $article['summary_word_count'] ) ? (int) $article['summary_word_count'] : 0;
+	$collapsed_status_label = $is_collapsed && isset( $statuses[ $status ] ) ? $statuses[ $status ] : '';
 	?>
 	<article class="pc-review-item<?php echo $is_collapsed ? ' is-collapsed' : ''; ?> pc-article-notes" data-article-id="<?php echo esc_attr( $article['id'] ); ?>">
 		<div class="pc-review-item-main">
@@ -73,6 +75,20 @@ $render_article = static function ( $article ) use ( $statuses, $get_article_url
 							<?php else : ?>
 								<?php echo esc_html( $article['sent_label'] ); ?>
 							<?php endif; ?>
+						</span>
+					<?php endif; ?>
+					<span class="pc-review-collapsed-meta pc-review-collapsed-status"><?php echo esc_html( $collapsed_status_label ); ?></span>
+					<?php if ( $summary_word_count > 0 ) : ?>
+						<span class="pc-review-collapsed-meta">
+							<?php
+							echo esc_html(
+								sprintf(
+									/* translators: %s is the number of words in the article summary. */
+									_n( '%s summary word', '%s summary words', $summary_word_count, 'post-collection' ),
+									number_format_i18n( $summary_word_count )
+								)
+							);
+							?>
 						</span>
 					<?php endif; ?>
 				</p>

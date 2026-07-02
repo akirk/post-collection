@@ -1157,6 +1157,18 @@ body.pc-new-collection-page .pc-detail-header {
 	pointer-events: none;
 }
 
+.pc-review-collapsed-meta {
+	display: none;
+}
+
+.pc-review-item.is-collapsed .pc-review-collapsed-meta {
+	display: inline;
+}
+
+.pc-review-item.is-collapsed .pc-review-collapsed-meta:empty {
+	display: none;
+}
+
 .pc-review-item.is-collapsed .pc-review-preview,
 .pc-review-item.is-collapsed .pc-review-collapse,
 .pc-review-item.is-collapsed .pc-article-notes-controls,

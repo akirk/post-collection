@@ -189,6 +189,17 @@
 		setReviewItemCollapsed( item, 'read' === status || 'skipped' === status );
 	}
 
+	function getCollapsedStatusLabel( status, label ) {
+		return 'read' === status || 'skipped' === status ? label : '';
+	}
+
+	function updateReviewItemCollapsedStatus( item, label ) {
+		var status = item ? item.querySelector( '.pc-review-collapsed-status' ) : null;
+		if ( status ) {
+			status.textContent = label || '';
+		}
+	}
+
 	function saveArticleNote( notes, data ) {
 		var context = getArticleNotesContext( notes );
 		var postData = new FormData();
@@ -263,6 +274,11 @@
 				html += escapeHtml( article.sent_label );
 			}
 			html += '</span>';
+		}
+		html += '<span class="pc-review-collapsed-meta pc-review-collapsed-status">' + escapeHtml( getCollapsedStatusLabel( status, statuses[ status ] || status ) ) + '</span>';
+		if ( parseInt( article.summary_word_count, 10 ) > 0 ) {
+			var summaryWordCount = parseInt( article.summary_word_count, 10 );
+			html += '<span class="pc-review-collapsed-meta">' + summaryWordCount + ' summary ' + ( 1 === summaryWordCount ? 'word' : 'words' ) + '</span>';
 		}
 		html += '</p></div></div>';
 		if ( article.content ) {
@@ -651,6 +667,7 @@
 							read_status: noteStatus.dataset.status || '',
 							read_label: noteStatus.textContent.trim(),
 						} );
+						updateReviewItemCollapsedStatus( reviewItem, getCollapsedStatusLabel( noteStatus.dataset.status || '', noteStatus.textContent.trim() ) );
 						updateReviewItemCollapseForStatus( reviewItem, noteStatus.dataset.status || '' );
 					} )
 					.catch( function () {} );
