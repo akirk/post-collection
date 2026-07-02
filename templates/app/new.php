@@ -27,7 +27,7 @@ if ( ! $app->can_manage_collections() ) {
 	<title><?php echo wp_app_title( __( 'New Collection', 'post-collection' ) ); ?></title>
 	<?php wp_app_head(); ?>
 </head>
-<body <?php body_class( 'wp-app-body post-collection-app' ); ?>>
+<body <?php body_class( 'wp-app-body post-collection-app pc-new-collection-page' ); ?>>
 	<?php wp_app_body_open(); ?>
 	<header class="pc-shell pc-detail-header">
 		<div class="pc-breadcrumb"><a href="<?php echo esc_url( $app->get_home_url() ); ?>"><?php esc_html_e( 'Collections', 'post-collection' ); ?></a></div>
@@ -50,19 +50,21 @@ if ( ! $app->can_manage_collections() ) {
 			<label>
 				<span><?php esc_html_e( 'Type', 'post-collection' ); ?></span>
 				<select name="frontend_mode">
-					<option value="auto"><?php esc_html_e( 'Auto', 'post-collection' ); ?></option>
-					<option value="bookmarks"><?php esc_html_e( 'Bookmarks', 'post-collection' ); ?></option>
 					<option value="posts"><?php esc_html_e( 'Posts', 'post-collection' ); ?></option>
+					<option value="bookmarks"><?php esc_html_e( 'Bookmarks', 'post-collection' ); ?></option>
 				</select>
 			</label>
 			<label>
 				<span><?php esc_html_e( 'Default layout', 'post-collection' ); ?></span>
 				<select name="frontend_view">
-					<option value="auto"><?php esc_html_e( 'Auto', 'post-collection' ); ?></option>
+					<option value="reader"><?php esc_html_e( 'Reader list', 'post-collection' ); ?></option>
 					<option value="board"><?php esc_html_e( 'Board', 'post-collection' ); ?></option>
 					<option value="links"><?php esc_html_e( 'Compact links', 'post-collection' ); ?></option>
-					<option value="reader"><?php esc_html_e( 'Reader list', 'post-collection' ); ?></option>
 				</select>
+			</label>
+			<label class="pc-checkbox-field">
+				<input type="checkbox" name="hide_from_home" value="1">
+				<span><?php esc_html_e( 'Hide from the default collections view', 'post-collection' ); ?></span>
 			</label>
 			<div class="pc-form-actions">
 				<a class="pc-button" href="<?php echo esc_url( $app->get_home_url() ); ?>"><?php esc_html_e( 'Cancel', 'post-collection' ); ?></a>

@@ -243,6 +243,16 @@ class Post_Collection_App {
 	}
 
 	/**
+	 * Whether a collection should be tucked away on the app home page.
+	 *
+	 * @param \WP_Term $collection The collection term.
+	 * @return bool
+	 */
+	public function is_collection_hidden_from_home( $collection ) {
+		return (bool) get_term_meta( $collection->term_id, 'post_collection_hide_from_home', true );
+	}
+
+	/**
 	 * Whether private posts should be included for this visitor.
 	 *
 	 * @param \WP_Term $collection The collection term.
@@ -298,11 +308,7 @@ class Post_Collection_App {
 	 */
 	public function get_collection_mode( $collection ) {
 		$mode = get_term_meta( $collection->term_id, 'post_collection_frontend_mode', true );
-		if ( in_array( $mode, array( 'bookmarks', 'posts' ), true ) ) {
-			return $mode;
-		}
-
-		if ( $this->is_bookmark_collection( $collection ) ) {
+		if ( 'bookmarks' === $mode ) {
 			return 'bookmarks';
 		}
 
@@ -319,10 +325,6 @@ class Post_Collection_App {
 		$view = get_term_meta( $collection->term_id, 'post_collection_frontend_view', true );
 		if ( in_array( $view, array( 'board', 'links', 'reader' ), true ) ) {
 			return $view;
-		}
-
-		if ( 'bookmarks' === $this->get_collection_mode( $collection ) ) {
-			return 'links';
 		}
 
 		return 'reader';
@@ -371,22 +373,20 @@ class Post_Collection_App {
 			wp_die( esc_html__( 'Invalid post collection.', 'post-collection' ), '', array( 'response' => 404 ) );
 		}
 
-		$frontend_mode = isset( $_POST['frontend_mode'] ) ? sanitize_key( wp_unslash( $_POST['frontend_mode'] ) ) : 'auto';
-		if ( in_array( $frontend_mode, array( 'auto', 'bookmarks', 'posts' ), true ) ) {
-			if ( 'auto' === $frontend_mode ) {
-				delete_term_meta( $collection->term_id, 'post_collection_frontend_mode' );
-			} else {
-				update_term_meta( $collection->term_id, 'post_collection_frontend_mode', $frontend_mode );
-			}
+		$frontend_mode = isset( $_POST['frontend_mode'] ) ? sanitize_key( wp_unslash( $_POST['frontend_mode'] ) ) : 'posts';
+		if ( in_array( $frontend_mode, array( 'bookmarks', 'posts' ), true ) ) {
+			update_term_meta( $collection->term_id, 'post_collection_frontend_mode', $frontend_mode );
 		}
 
-		$frontend_view = isset( $_POST['frontend_view'] ) ? sanitize_key( wp_unslash( $_POST['frontend_view'] ) ) : 'auto';
-		if ( in_array( $frontend_view, array( 'auto', 'board', 'links', 'reader' ), true ) ) {
-			if ( 'auto' === $frontend_view ) {
-				delete_term_meta( $collection->term_id, 'post_collection_frontend_view' );
-			} else {
-				update_term_meta( $collection->term_id, 'post_collection_frontend_view', $frontend_view );
-			}
+		$frontend_view = isset( $_POST['frontend_view'] ) ? sanitize_key( wp_unslash( $_POST['frontend_view'] ) ) : 'reader';
+		if ( in_array( $frontend_view, array( 'board', 'links', 'reader' ), true ) ) {
+			update_term_meta( $collection->term_id, 'post_collection_frontend_view', $frontend_view );
+		}
+
+		if ( isset( $_POST['hide_from_home'] ) && $_POST['hide_from_home'] ) {
+			update_term_meta( $collection->term_id, 'post_collection_hide_from_home', true );
+		} else {
+			delete_term_meta( $collection->term_id, 'post_collection_hide_from_home' );
 		}
 
 		wp_safe_redirect( add_query_arg( 'pc-settings-updated', '1', $this->get_collection_settings_url( $collection ) ) );
@@ -464,14 +464,18 @@ class Post_Collection_App {
 			return new \WP_Error( 'collection_not_found', __( 'The collection was created but could not be loaded.', 'post-collection' ), array( 'status' => 500 ) );
 		}
 
-		$frontend_mode = isset( $data['frontend_mode'] ) ? sanitize_key( wp_unslash( $data['frontend_mode'] ) ) : 'auto';
+		$frontend_mode = isset( $data['frontend_mode'] ) ? sanitize_key( wp_unslash( $data['frontend_mode'] ) ) : 'posts';
 		if ( in_array( $frontend_mode, array( 'bookmarks', 'posts' ), true ) ) {
 			update_term_meta( $collection->term_id, 'post_collection_frontend_mode', $frontend_mode );
 		}
 
-		$frontend_view = isset( $data['frontend_view'] ) ? sanitize_key( wp_unslash( $data['frontend_view'] ) ) : 'auto';
+		$frontend_view = isset( $data['frontend_view'] ) ? sanitize_key( wp_unslash( $data['frontend_view'] ) ) : 'reader';
 		if ( in_array( $frontend_view, array( 'board', 'links', 'reader' ), true ) ) {
 			update_term_meta( $collection->term_id, 'post_collection_frontend_view', $frontend_view );
+		}
+
+		if ( ! empty( $data['hide_from_home'] ) ) {
+			update_term_meta( $collection->term_id, 'post_collection_hide_from_home', true );
 		}
 
 		update_term_meta( $collection->term_id, 'friends_publish_post_collection', true );
@@ -691,34 +695,6 @@ class Post_Collection_App {
 			'links'  => __( 'Links', 'post-collection' ),
 			'reader' => __( 'Reader', 'post-collection' ),
 		);
-	}
-
-	/**
-	 * Detect whether a collection should use the bookmark UI.
-	 *
-	 * @param \WP_Term $collection The collection term.
-	 * @return bool
-	 */
-	public function is_bookmark_collection( $collection ) {
-		$bookmark_slugs = apply_filters(
-			'post_collection_bookmark_collection_slugs',
-			array( 'bookmark', 'bookmarks' )
-		);
-		$collection_slugs = array(
-			sanitize_title( $collection->slug ),
-			sanitize_title( $collection->name ),
-		);
-
-		foreach ( $collection_slugs as $collection_slug ) {
-			foreach ( $bookmark_slugs as $bookmark_slug ) {
-				$bookmark_slug = sanitize_title( $bookmark_slug );
-				if ( $collection_slug === $bookmark_slug || false !== strpos( $collection_slug, $bookmark_slug ) ) {
-					return true;
-				}
-			}
-		}
-
-		return false;
 	}
 
 	/**

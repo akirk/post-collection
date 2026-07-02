@@ -23,6 +23,7 @@ if ( ! $collection || ! $app->can_manage_collections() ) {
 
 $configured_mode = get_term_meta( $collection->term_id, 'post_collection_frontend_mode', true );
 $configured_view = get_term_meta( $collection->term_id, 'post_collection_frontend_view', true );
+$hide_from_home  = get_term_meta( $collection->term_id, 'post_collection_hide_from_home', true );
 ?>
 <!DOCTYPE html>
 <html <?php echo wp_app_language_attributes(); ?>>
@@ -32,7 +33,7 @@ $configured_view = get_term_meta( $collection->term_id, 'post_collection_fronten
 	<title><?php echo wp_app_title( sprintf( __( '%s Settings', 'post-collection' ), $collection->name ) ); ?></title>
 	<?php wp_app_head(); ?>
 </head>
-<body <?php body_class( 'wp-app-body post-collection-app' ); ?>>
+<body <?php body_class( 'wp-app-body post-collection-app pc-settings-page' ); ?>>
 	<?php wp_app_body_open(); ?>
 	<header class="pc-shell pc-detail-header">
 		<div class="pc-breadcrumb">
@@ -52,19 +53,21 @@ $configured_view = get_term_meta( $collection->term_id, 'post_collection_fronten
 			<label>
 				<span><?php esc_html_e( 'Type', 'post-collection' ); ?></span>
 				<select name="frontend_mode">
-					<option value="auto"<?php selected( ! $configured_mode ); ?>><?php esc_html_e( 'Auto', 'post-collection' ); ?></option>
+					<option value="posts"<?php selected( 'posts', $configured_mode ?: 'posts' ); ?>><?php esc_html_e( 'Posts', 'post-collection' ); ?></option>
 					<option value="bookmarks"<?php selected( 'bookmarks', $configured_mode ); ?>><?php esc_html_e( 'Bookmarks', 'post-collection' ); ?></option>
-					<option value="posts"<?php selected( 'posts', $configured_mode ); ?>><?php esc_html_e( 'Posts', 'post-collection' ); ?></option>
 				</select>
 			</label>
 			<label>
 				<span><?php esc_html_e( 'Default layout', 'post-collection' ); ?></span>
 				<select name="frontend_view">
-					<option value="auto"<?php selected( ! $configured_view ); ?>><?php esc_html_e( 'Auto', 'post-collection' ); ?></option>
+					<option value="reader"<?php selected( 'reader', $configured_view ?: 'reader' ); ?>><?php esc_html_e( 'Reader list', 'post-collection' ); ?></option>
 					<option value="board"<?php selected( 'board', $configured_view ); ?>><?php esc_html_e( 'Board', 'post-collection' ); ?></option>
 					<option value="links"<?php selected( 'links', $configured_view ); ?>><?php esc_html_e( 'Compact links', 'post-collection' ); ?></option>
-					<option value="reader"<?php selected( 'reader', $configured_view ); ?>><?php esc_html_e( 'Reader list', 'post-collection' ); ?></option>
 				</select>
+			</label>
+			<label class="pc-checkbox-field">
+				<input type="checkbox" name="hide_from_home" value="1" <?php checked( $hide_from_home ); ?>>
+				<span><?php esc_html_e( 'Hide from the default collections view', 'post-collection' ); ?></span>
 			</label>
 			<div class="pc-form-actions">
 				<a class="pc-button" href="<?php echo esc_url( $app->get_collection_url( $collection ) ); ?>"><?php esc_html_e( 'Back to collection', 'post-collection' ); ?></a>

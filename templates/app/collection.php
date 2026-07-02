@@ -70,7 +70,7 @@ if ( '' !== $active_tag ) {
 			</div>
 			<div class="pc-collection-stats">
 				<strong><?php echo esc_html( number_format_i18n( $query->found_posts ) ); ?></strong>
-				<span><?php esc_html_e( 'visible items', 'post-collection' ); ?></span>
+				<span><?php echo esc_html( 'bookmarks' === $mode ? __( 'visible saved links', 'post-collection' ) : __( 'visible posts', 'post-collection' ) ); ?></span>
 				<?php if ( $app->can_manage_collections() ) : ?>
 					<a href="<?php echo esc_url( $app->get_collection_settings_url( $collection ) ); ?>"><?php esc_html_e( 'Settings', 'post-collection' ); ?></a>
 				<?php endif; ?>

@@ -29,6 +29,7 @@ $source_url = $app->get_source_url( $post );
 $host       = $app->get_source_host( $post );
 $embed_html = $app->get_post_description_embed_html( $post, 'detail' );
 $terms      = $app->get_post_terms( $post );
+$back_label = 'bookmarks' === $mode ? __( 'Back to Bookmarks', 'post-collection' ) : __( 'Back to Collection', 'post-collection' );
 ?>
 <!DOCTYPE html>
 <html <?php echo wp_app_language_attributes(); ?>>
@@ -38,7 +39,7 @@ $terms      = $app->get_post_terms( $post );
 	<title><?php echo wp_app_title( get_the_title( $post ) ); ?></title>
 	<?php wp_app_head(); ?>
 </head>
-<body <?php body_class( 'wp-app-body post-collection-app pc-mode-' . $mode ); ?>>
+<body <?php body_class( 'wp-app-body post-collection-app pc-post-detail-page pc-mode-' . $mode ); ?>>
 	<?php wp_app_body_open(); ?>
 	<header class="pc-shell pc-detail-header">
 		<div class="pc-breadcrumb">
@@ -59,7 +60,7 @@ $terms      = $app->get_post_terms( $post );
 		</div>
 		<div class="pc-detail-actions">
 			<a class="pc-button pc-button-primary" href="<?php echo esc_url( $source_url ); ?>" target="_blank" rel="noopener noreferrer"><?php esc_html_e( 'Open Original', 'post-collection' ); ?></a>
-			<a class="pc-button" href="<?php echo esc_url( $app->get_collection_url( $collection ) ); ?>"><?php esc_html_e( 'Back to Collection', 'post-collection' ); ?></a>
+			<a class="pc-button" href="<?php echo esc_url( $app->get_collection_url( $collection ) ); ?>"><?php echo esc_html( $back_label ); ?></a>
 		</div>
 		<?php if ( ! empty( $terms ) ) : ?>
 			<nav class="pc-tag-strip pc-detail-tags" aria-label="<?php esc_attr_e( 'Tags', 'post-collection' ); ?>">
@@ -79,6 +80,9 @@ $terms      = $app->get_post_terms( $post );
 				<?php echo apply_filters( 'the_content', $post->post_content ); ?>
 			<?php endif; ?>
 		</article>
+		<nav class="pc-detail-footer-actions" aria-label="<?php esc_attr_e( 'Post navigation', 'post-collection' ); ?>">
+			<a class="pc-button" href="<?php echo esc_url( $app->get_collection_url( $collection ) ); ?>"><?php echo esc_html( $back_label ); ?></a>
+		</nav>
 	</main>
 	<?php wp_app_body_close(); ?>
 </body>

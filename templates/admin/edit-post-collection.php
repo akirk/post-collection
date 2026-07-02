@@ -62,12 +62,11 @@ defined( 'ABSPATH' ) || exit;
 				</td>
 			</tr>
 			<tr>
-				<th><label for="frontend_mode"><?php esc_html_e( 'Frontend View', 'post-collection' ); ?></label></th>
+				<th><label for="frontend_mode"><?php esc_html_e( 'Frontend Type', 'post-collection' ); ?></label></th>
 				<td>
 					<select name="frontend_mode" id="frontend_mode">
-						<option value="auto"<?php selected( ! $args['frontend_mode'] ); ?>><?php esc_html_e( 'Auto-detect', 'post-collection' ); ?></option>
+						<option value="posts"<?php selected( 'posts', $args['frontend_mode'] ?: 'posts' ); ?>><?php esc_html_e( 'Posts', 'post-collection' ); ?></option>
 						<option value="bookmarks"<?php selected( 'bookmarks', $args['frontend_mode'] ); ?>><?php esc_html_e( 'Bookmarks', 'post-collection' ); ?></option>
-						<option value="posts"<?php selected( 'posts', $args['frontend_mode'] ); ?>><?php esc_html_e( 'Posts', 'post-collection' ); ?></option>
 					</select>
 					<p class="description"><?php esc_html_e( 'Choose whether this collection behaves like saved links or collected articles.', 'post-collection' ); ?></p>
 				</td>
@@ -76,17 +75,26 @@ defined( 'ABSPATH' ) || exit;
 				<th><label for="frontend_view"><?php esc_html_e( 'Default Layout', 'post-collection' ); ?></label></th>
 				<td>
 					<select name="frontend_view" id="frontend_view">
-						<option value="auto"<?php selected( ! $args['frontend_view'] ); ?>><?php esc_html_e( 'Auto', 'post-collection' ); ?></option>
+						<option value="reader"<?php selected( 'reader', $args['frontend_view'] ?: 'reader' ); ?>><?php esc_html_e( 'Reader list', 'post-collection' ); ?></option>
 						<option value="board"<?php selected( 'board', $args['frontend_view'] ); ?>><?php esc_html_e( 'Board', 'post-collection' ); ?></option>
 						<option value="links"<?php selected( 'links', $args['frontend_view'] ); ?>><?php esc_html_e( 'Compact links', 'post-collection' ); ?></option>
-						<option value="reader"<?php selected( 'reader', $args['frontend_view'] ); ?>><?php esc_html_e( 'Reader list', 'post-collection' ); ?></option>
 					</select>
-					<p class="description"><?php esc_html_e( 'Bookmark collections default to the compact links layout, inspired by Pinboard and Delicious.', 'post-collection' ); ?></p>
+					<p class="description"><?php esc_html_e( 'Choose the layout used when the collection URL has no view parameter.', 'post-collection' ); ?></p>
 					<?php if ( $args['frontend_url'] ) : ?>
 						<p class="description">
 							<a href="<?php echo esc_url( $args['frontend_url'] ); ?>"><?php echo esc_html( $args['frontend_url'] ); ?></a>
 						</p>
 					<?php endif; ?>
+				</td>
+			</tr>
+			<tr>
+				<th><label><?php esc_html_e( 'Home Page', 'post-collection' ); ?></label></th>
+				<td>
+					<label>
+						<input type="checkbox" name="hide_from_home" value="1" <?php checked( $args['hide_from_home'] ); ?> />
+						<?php esc_html_e( 'Hide from the default collections view', 'post-collection' ); ?>
+					</label>
+					<p class="description"><?php esc_html_e( 'Hidden collections are still available from a collapsed section on the app home page.', 'post-collection' ); ?></p>
 				</td>
 			</tr>
 			<tr>
