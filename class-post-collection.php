@@ -40,13 +40,6 @@ class Post_Collection {
 	private $friends;
 
 	/**
-	 * Tracks whether how many items were already fetched for a feed.
-	 *
-	 * @var array
-	 */
-	private $fetched_for_feed = array();
-
-	/**
 	 * Contains the site configs
 	 *
 	 * @var array
@@ -2632,54 +2625,30 @@ class Post_Collection {
 
 	public function modify_feed_item( $item, $user_feed, $friend_user, $post_id ) {
 		if ( $user_feed && $user_feed->get_metadata( 'fetch-full-content' ) ) {
-			$already_fetched = false;
-
 			if ( $post_id ) {
-				$already_fetched = get_post_meta( $post_id, 'full-content-fetched', true );
+				return $item;
 			}
 
-			if ( ! $already_fetched ) {
-				if ( isset( $this->fetched_for_feed[ $user_feed->get_id() ] ) ) {
-					// Only fetch a single item per feed per call.
-					return $item;
-				}
-				if ( $post_id ) {
-					$this->fetched_for_feed[ $user_feed->get_id() ] = $post_id;
-				} else {
-					// This is a new post, we just want to record that we already downloaded something.
-					$this->fetched_for_feed[ $user_feed->get_id() ] = true;
-				}
-
-				$fetched_item = $this->download( $item->permalink );
-				if ( is_wp_error( $fetched_item ) ) {
-					return $item;
-				}
-
-				if ( ! $fetched_item->content && ! $fetched_item->title ) {
-					return $item;
-				}
-
-				$item->title   = wp_strip_all_tags( trim( $fetched_item->title ) );
-				$item->post_content = force_balance_tags( trim( wp_kses_post( $fetched_item->content ) ) );
-				$item->_full_content_fetched = true;
-				if ( $post_id ) {
-					// The post meta needs to be set so that even if we cannot update the article with something meaningful, we won't try it over and over.
-					update_post_meta( $post_id, 'full-content-fetched', true );
-				}
+			$fetched_item = $this->download( $item->permalink );
+			if ( is_wp_error( $fetched_item ) ) {
+				return $item;
 			}
+
+			if ( ! $fetched_item->content && ! $fetched_item->title ) {
+				return $item;
+			}
+
+			$item->title   = wp_strip_all_tags( trim( $fetched_item->title ) );
+			$item->post_content = force_balance_tags( trim( wp_kses_post( $fetched_item->content ) ) );
+			$item->_full_content_fetched = true;
 		}
 		return $item;
 	}
 
 	public function can_update_modified_feed_posts( $can_update, $item, $user_feed, $friend_user, $post_id ) {
-		if ( $user_feed->get_metadata( 'fetch-full-content' ) ) {
-			if ( ! $post_id || ( isset( $this->fetched_for_feed[ $user_feed->get_id() ] ) && $post_id === $this->fetched_for_feed[ $user_feed->get_id() ] ) ) {
-				return true;
-			}
-
-			// Prevent updates to items after they were already fetched.
-			$already_fetched = get_post_meta( $post_id, 'full-content-fetched', true );
-			return ! $already_fetched;
+		if ( $user_feed->get_metadata( 'fetch-full-content' ) && $post_id && get_post_meta( $post_id, 'full-content-fetched', true ) ) {
+			// Prevent later feed refreshes from overwriting extracted full content with shorter feed content.
+			return false;
 		}
 		return $can_update;
 	}
