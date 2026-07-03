@@ -6,7 +6,7 @@
  * Author: Alex Kirk
  * Author URI: https://alex.kirk.at/
  *
- * Description: Collect posts from around the web.
+ * Description: Collect posts from around the web, including their contents and review them in one place.
  * Requires PHP: 7.4
  *
  * License: GPL2
