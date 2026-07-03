@@ -149,8 +149,39 @@ if ( '' !== $active_tag ) {
 	<main class="pc-shell">
 		<?php if ( ! $query->have_posts() ) : ?>
 			<section class="pc-empty">
-				<h2><?php esc_html_e( 'No items found', 'post-collection' ); ?></h2>
-				<p><?php esc_html_e( 'Try another search or tag.', 'post-collection' ); ?></p>
+				<?php if ( '' !== $search || '' !== $active_tag ) : ?>
+					<h2><?php esc_html_e( 'No items found', 'post-collection' ); ?></h2>
+					<p><?php esc_html_e( 'Try another search or tag.', 'post-collection' ); ?></p>
+					<a class="pc-button" href="<?php echo esc_url( add_query_arg( 'pc-view', $view, $base_url ) ); ?>"><?php esc_html_e( 'Clear filters', 'post-collection' ); ?></a>
+				<?php elseif ( $app->can_manage_collections() ) : ?>
+					<h2><?php esc_html_e( 'Start saving to this collection', 'post-collection' ); ?></h2>
+					<p><?php esc_html_e( 'Use the bookmarklet, paste a URL above, or save directly from your browser.', 'post-collection' ); ?></p>
+					<div class="pc-save-tabs" data-pc-tabs>
+						<div class="pc-save-tab-list" role="tablist" aria-label="<?php esc_attr_e( 'Save methods', 'post-collection' ); ?>">
+							<button type="button" class="is-active" role="tab" aria-selected="true" aria-controls="pc-empty-bookmarklet-panel-<?php echo esc_attr( $collection->term_id ); ?>" id="pc-empty-bookmarklet-tab-<?php echo esc_attr( $collection->term_id ); ?>" data-pc-tab="bookmarklet"><?php esc_html_e( 'Bookmarklet', 'post-collection' ); ?></button>
+							<button type="button" role="tab" aria-selected="false" aria-controls="pc-empty-extension-panel-<?php echo esc_attr( $collection->term_id ); ?>" id="pc-empty-extension-tab-<?php echo esc_attr( $collection->term_id ); ?>" data-pc-tab="extension" tabindex="-1"><?php esc_html_e( 'Browser extension', 'post-collection' ); ?></button>
+						</div>
+						<div id="pc-empty-bookmarklet-panel-<?php echo esc_attr( $collection->term_id ); ?>" class="pc-save-tab-panel is-active" role="tabpanel" aria-labelledby="pc-empty-bookmarklet-tab-<?php echo esc_attr( $collection->term_id ); ?>" data-pc-tab-panel="bookmarklet">
+							<p><?php esc_html_e( "Drag this bookmarklet to your bookmarks bar, then click it when you're on an article you want to save.", 'post-collection' ); ?></p>
+							<?php
+							$app->get_post_collection()->render_bookmarklet_link(
+								$app->get_collection_bookmarklet_href( $collection ),
+								sprintf(
+									// translators: %s is the name of a post collection.
+									__( 'Save to %s', 'post-collection' ),
+									$collection->name
+								)
+							);
+							?>
+						</div>
+						<div id="pc-empty-extension-panel-<?php echo esc_attr( $collection->term_id ); ?>" class="pc-save-tab-panel" role="tabpanel" aria-labelledby="pc-empty-extension-tab-<?php echo esc_attr( $collection->term_id ); ?>" data-pc-tab-panel="extension" hidden>
+							<p><?php esc_html_e( 'The Friends browser extension can add a save action for this collection and send the current page content for better article extraction.', 'post-collection' ); ?></p>
+						</div>
+					</div>
+				<?php else : ?>
+					<h2><?php esc_html_e( 'No items yet', 'post-collection' ); ?></h2>
+					<p><?php esc_html_e( 'This collection does not have any visible saved items yet.', 'post-collection' ); ?></p>
+				<?php endif; ?>
 			</section>
 		<?php elseif ( 'board' === $view ) : ?>
 			<section class="pc-bookmark-board" aria-label="<?php esc_attr_e( 'Bookmarks', 'post-collection' ); ?>">

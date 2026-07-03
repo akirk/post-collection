@@ -193,6 +193,47 @@
 		return 'read' === status || 'skipped' === status ? label : '';
 	}
 
+	function activateTab( tabs, tab ) {
+		var tabName = tab.dataset.pcTab || '';
+		if ( ! tabName ) {
+			return;
+		}
+
+		tabs.querySelectorAll( '[data-pc-tab]' ).forEach( function ( button ) {
+			var active = button === tab;
+			button.classList.toggle( 'is-active', active );
+			button.setAttribute( 'aria-selected', active ? 'true' : 'false' );
+			button.tabIndex = active ? 0 : -1;
+		} );
+
+		tabs.querySelectorAll( '[data-pc-tab-panel]' ).forEach( function ( panel ) {
+			var active = panel.dataset.pcTabPanel === tabName;
+			panel.classList.toggle( 'is-active', active );
+			panel.hidden = ! active;
+		} );
+	}
+
+	function focusAdjacentTab( tab, direction ) {
+		var tabs = closest( tab, '[data-pc-tabs]' );
+		var buttons = tabs ? Array.prototype.slice.call( tabs.querySelectorAll( '[data-pc-tab]' ) ) : [];
+		var index = buttons.indexOf( tab );
+		var nextIndex;
+		if ( -1 === index || ! buttons.length ) {
+			return;
+		}
+
+		if ( 'first' === direction ) {
+			nextIndex = 0;
+		} else if ( 'last' === direction ) {
+			nextIndex = buttons.length - 1;
+		} else {
+			nextIndex = ( index + direction + buttons.length ) % buttons.length;
+		}
+
+		activateTab( tabs, buttons[ nextIndex ] );
+		buttons[ nextIndex ].focus();
+	}
+
 	function updateReviewItemCollapsedStatus( item, label ) {
 		var status = item ? item.querySelector( '.pc-review-collapsed-status' ) : null;
 		if ( status ) {
@@ -723,6 +764,15 @@
 				closeEditor( cancelRow );
 			}
 		}
+
+		var tab = closest( event.target, '[data-pc-tab]' );
+		if ( tab ) {
+			var tabs = closest( tab, '[data-pc-tabs]' );
+			if ( tabs ) {
+				event.preventDefault();
+				activateTab( tabs, tab );
+			}
+		}
 	} );
 
 	document.addEventListener( 'input', function ( event ) {
@@ -761,6 +811,26 @@
 			if ( ratingContainer && ! ratingContainer.contains( event.relatedTarget ) ) {
 				clearNoteStarPreview( ratingContainer );
 			}
+		}
+	} );
+
+	document.addEventListener( 'keydown', function ( event ) {
+		if ( ! matches( event.target, '[data-pc-tab]' ) ) {
+			return;
+		}
+
+		if ( 'ArrowLeft' === event.key || 'ArrowUp' === event.key ) {
+			event.preventDefault();
+			focusAdjacentTab( event.target, -1 );
+		} else if ( 'ArrowRight' === event.key || 'ArrowDown' === event.key ) {
+			event.preventDefault();
+			focusAdjacentTab( event.target, 1 );
+		} else if ( 'Home' === event.key ) {
+			event.preventDefault();
+			focusAdjacentTab( event.target, 'first' );
+		} else if ( 'End' === event.key ) {
+			event.preventDefault();
+			focusAdjacentTab( event.target, 'last' );
 		}
 	} );
 
