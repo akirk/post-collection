@@ -6,7 +6,7 @@
  * Author: Alex Kirk
  * Author URI: https://alex.kirk.at/
  *
- * Description: Collect posts from around the web.
+ * Description: Save articles from around the web, extract readable content, organize them into collections, and review them with notes in WordPress.
  * Requires PHP: 7.4
  *
  * License: GPL2
