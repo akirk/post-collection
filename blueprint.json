@@ -1,28 +1,28 @@
 {
-	"$schema": "https://playground.wordpress.net/blueprint-schema.json",
-	"meta": {
-		"title": "Post Collection",
-		"description": "Save articles from around the web, extract readable content, organize them into collections, and review them with notes in WordPress.",
-		"author": "Alex Kirk",
-		"categories": [
-			"Apps",
-			"Education"
-		]
-	},
-	"landingPage": "/post-collection/",
-	"steps": [
-		{
-			"step": "installPlugin",
-			"pluginData": {
-				"resource": "git:directory",
-				"url": "https://github.com/akirk/post-collection",
-				"ref": "dist/main",
-				"refType": "branch"
-			},
-			"options": {
-				"activate": true,
-				"targetFolderName": "post-collection"
-			}
-		}
-	]
+    "$schema": "https://playground.wordpress.net/blueprint-schema.json",
+    "meta": {
+        "title": "Post Collection",
+        "description": "Save articles from around the web, extract readable content, organize them into collections, and review them with notes in WordPress.",
+        "author": "Alex Kirk",
+        "categories": [
+            "Apps",
+            "Education"
+        ]
+    },
+    "landingPage": "/post-collection/",
+    "steps": [
+        {
+            "step": "installPlugin",
+            "pluginData": {
+                "resource": "git:directory",
+                "url": "https://github.com/akirk/post-collection",
+                "ref": "dist/pr-32",
+                "refType": "branch"
+            },
+            "options": {
+                "activate": true,
+                "targetFolderName": "post-collection"
+            }
+        }
+    ]
 }
