@@ -74,6 +74,31 @@ $hide_from_home  = get_term_meta( $collection->term_id, 'post_collection_hide_fr
 				<button type="submit"><?php esc_html_e( 'Save settings', 'post-collection' ); ?></button>
 			</div>
 		</form>
+		<section class="pc-settings-bookmarklet">
+			<h2><?php esc_html_e( 'Save from the web', 'post-collection' ); ?></h2>
+			<div class="pc-save-tabs" data-pc-tabs>
+				<div class="pc-save-tab-list" role="tablist" aria-label="<?php esc_attr_e( 'Save methods', 'post-collection' ); ?>">
+					<button type="button" class="is-active" role="tab" aria-selected="true" aria-controls="pc-settings-bookmarklet-panel-<?php echo esc_attr( $collection->term_id ); ?>" id="pc-settings-bookmarklet-tab-<?php echo esc_attr( $collection->term_id ); ?>" data-pc-tab="bookmarklet"><?php esc_html_e( 'Bookmarklet', 'post-collection' ); ?></button>
+					<button type="button" role="tab" aria-selected="false" aria-controls="pc-settings-extension-panel-<?php echo esc_attr( $collection->term_id ); ?>" id="pc-settings-extension-tab-<?php echo esc_attr( $collection->term_id ); ?>" data-pc-tab="extension" tabindex="-1"><?php esc_html_e( 'Browser extension', 'post-collection' ); ?></button>
+				</div>
+				<div id="pc-settings-bookmarklet-panel-<?php echo esc_attr( $collection->term_id ); ?>" class="pc-save-tab-panel is-active" role="tabpanel" aria-labelledby="pc-settings-bookmarklet-tab-<?php echo esc_attr( $collection->term_id ); ?>" data-pc-tab-panel="bookmarklet">
+					<p><?php esc_html_e( "Drag this bookmarklet to your bookmarks bar and click it when you're on an article you want to save from the web.", 'post-collection' ); ?></p>
+					<?php
+					$app->get_post_collection()->render_bookmarklet_link(
+						$app->get_collection_bookmarklet_href( $collection ),
+						sprintf(
+							// translators: %s is the name of a post collection.
+							__( 'Save to %s', 'post-collection' ),
+							$collection->name
+						)
+					);
+					?>
+				</div>
+				<div id="pc-settings-extension-panel-<?php echo esc_attr( $collection->term_id ); ?>" class="pc-save-tab-panel" role="tabpanel" aria-labelledby="pc-settings-extension-tab-<?php echo esc_attr( $collection->term_id ); ?>" data-pc-tab-panel="extension" hidden>
+					<p><?php esc_html_e( 'The Friends browser extension can add save actions for your collections and send the current page content for better article extraction.', 'post-collection' ); ?></p>
+				</div>
+			</div>
+		</section>
 	</main>
 	<?php wp_app_body_close(); ?>
 </body>

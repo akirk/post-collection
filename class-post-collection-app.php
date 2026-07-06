@@ -150,6 +150,16 @@ class Post_Collection_App {
 	}
 
 	/**
+	 * Build a bookmarklet href for a collection.
+	 *
+	 * @param \WP_Term $collection The collection term.
+	 * @return string Bookmarklet href.
+	 */
+	public function get_collection_bookmarklet_href( $collection ) {
+		return $this->post_collection->get_bookmarklet_href( 'collection', $collection->term_id );
+	}
+
+	/**
 	 * Get the app home URL.
 	 *
 	 * @return string

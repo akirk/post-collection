@@ -860,103 +860,27 @@ class Post_Collection {
 	}
 
 	public function admin_menu() {
-		$parent_menu = 'edit.php?post_type=' . self::CPT;
+		if ( $this->friends ) {
+			add_submenu_page(
+				'',
+				__( 'Create Post Collection', 'post-collection' ),
+				__( 'Create Post Collection', 'post-collection' ),
+				$this->get_required_role(),
+				'create-post-collection',
+				array( $this, 'render_create_post_collection' )
+			);
 
-		add_submenu_page(
-			$parent_menu,
-			__( 'Settings', 'post-collection' ),
-			__( 'Settings', 'post-collection' ),
-			$this->get_required_role(),
-			'post-collection-settings',
-			array( $this, 'render_settings_page' )
-		);
-
-		add_submenu_page(
-			'',
-			__( 'Create Post Collection', 'post-collection' ),
-			__( 'Create Post Collection', 'post-collection' ),
-			$this->get_required_role(),
-			'create-post-collection',
-			array( $this, 'render_create_post_collection' )
-		);
-
-		add_submenu_page(
-			'',
-			__( 'Edit Post Collection', 'post-collection' ),
-			__( 'Edit Post Collection', 'post-collection' ),
-			$this->get_required_role(),
-			'edit-post-collection',
-			array( $this, 'render_edit_post_collection' )
-		);
+			add_submenu_page(
+				'',
+				__( 'Edit Post Collection', 'post-collection' ),
+				__( 'Edit Post Collection', 'post-collection' ),
+				$this->get_required_role(),
+				'edit-post-collection',
+				array( $this, 'render_edit_post_collection' )
+			);
+		}
 	}
 
-
-	/**
-	 * Render the settings page.
-	 */
-	public function render_settings_page() {
-		$post_collections = $this->get_post_collection_users()->get_results();
-		$bookmarklet_js = $this->get_bookmarklet_js();
-		$create_post_collection_url = self_admin_url( 'admin.php?page=create-post-collection' );
-		?>
-		<div class="wrap">
-			<h1>
-				<?php esc_html_e( 'Post Collection Settings', 'post-collection' ); ?>
-				<a href="<?php echo esc_url( $create_post_collection_url ); ?>" class="page-title-action"><?php esc_html_e( 'Create Post Collection', 'post-collection' ); ?></a>
-			</h1>
-
-			<p><?php esc_html_e( 'The Post Collection plugin allows you to save external posts to your WordPress, either for just collecting them for yourself as a searchable archive, or to syndicate those posts into new feeds.', 'post-collection' ); ?></p>
-
-			<?php if ( ! empty( $post_collections ) ) : ?>
-				<h2><?php esc_html_e( 'Bookmarklet', 'post-collection' ); ?></h2>
-				<p><?php esc_html_e( 'Drag this bookmarklet to your bookmarks bar to save articles from any webpage:', 'post-collection' ); ?></p>
-				<p>
-				<?php foreach ( $post_collections as $user ) : ?>
-					<a href="javascript:<?php echo rawurlencode( trim( str_replace( "window.document.getElementById( 'post-collection-script' ).getAttribute( 'data-post-url' )", "'" . esc_url( home_url() ) . "/?user=" . $user->ID . "'", $bookmarklet_js ), ';' ) ); ?>" style="display: inline-block; padding: .5em; border: 1px solid #999; border-radius: 4px; background-color: #ddd; text-decoration: none; margin-right: 1em;">
-						<?php
-						echo esc_html( sprintf(
-							/* translators: %s is the name of a Post Collection user. */
-							__( 'Save to %s', 'post-collection' ),
-							$user->display_name
-						) );
-						?>
-					</a>
-				<?php endforeach; ?>
-				</p>
-			<?php endif; ?>
-
-			<h2><?php esc_html_e( 'Post Collections', 'post-collection' ); ?></h2>
-			<?php if ( empty( $post_collections ) ) : ?>
-				<p>
-					<?php esc_html_e( 'No post collections found.', 'post-collection' ); ?>
-					<a href="<?php echo esc_url( $create_post_collection_url ); ?>"><?php esc_html_e( 'Create a Post Collection to get started.', 'post-collection' ); ?></a>
-				</p>
-			<?php else : ?>
-				<table class="widefat striped">
-					<thead>
-						<tr>
-							<th><?php esc_html_e( 'Name', 'post-collection' ); ?></th>
-							<th><?php esc_html_e( 'Posts', 'post-collection' ); ?></th>
-						</tr>
-					</thead>
-					<tbody>
-					<?php foreach ( $post_collections as $user ) : ?>
-						<tr>
-							<td><a href="<?php echo esc_url( get_edit_user_link( $user->ID ) ); ?>"><?php echo esc_html( $user->display_name ); ?></a></td>
-							<td>
-								<?php
-								$count = count_user_posts( $user->ID, self::CPT );
-								echo esc_html( $count );
-								?>
-							</td>
-						</tr>
-					<?php endforeach; ?>
-					</tbody>
-				</table>
-			<?php endif; ?>
-		</div>
-		<?php
-	}
 
 	/**
 	 * Add a Post Collection entry to the New Content admin section
@@ -970,7 +894,7 @@ class Post_Collection {
 					'id'     => 'new-post-collection',
 					'parent' => 'new-content',
 					'title'  => esc_html__( 'Post Collection', 'post-collection' ),
-					'href'   => self_admin_url( 'admin.php?page=create-post-collection' ),
+					'href'   => home_url( '/post-collection/new/' ),
 				)
 			);
 		}
@@ -1021,15 +945,6 @@ class Post_Collection {
 			<p><?php esc_html_e( 'The Friends Post Collection plugin allows you to save external posts to your WordPress, either for just collecting them for yourself as a searchable archive, or to syndicate those posts into new feeds.', 'post-collection' ); ?></p>
 
 			<?php
-			$this->template_loader()->get_template_part(
-				'admin/settings-post-collection',
-				null,
-				array(
-					'post_collections' => $this->get_post_collection_users()->get_results(),
-					'bookmarklet_js'   => $this->get_bookmarklet_js(),
-				)
-			);
-
 			if ( $display_about_friends ) :
 				?>
 				<p>
@@ -1115,25 +1030,64 @@ class Post_Collection {
 	}
 
 	/**
+	 * Build a bookmarklet href for saving into a collection.
+	 *
+	 * @param string $target_arg The save endpoint query argument.
+	 * @param int    $target_id  The target collection or user ID.
+	 * @return string Bookmarklet href.
+	 */
+	public function get_bookmarklet_href( $target_arg, $target_id ) {
+		$target_url = home_url( '/?' . rawurlencode( $target_arg ) . '=' . rawurlencode( (string) $target_id ) );
+		$js = str_replace(
+			"window.document.getElementById( 'post-collection-script' ).getAttribute( 'data-post-url' )",
+			"'" . esc_url( $target_url ) . "'",
+			$this->get_bookmarklet_js()
+		);
+
+		return 'javascript:' . rawurlencode( trim( $js, ';' ) );
+	}
+
+	/**
+	 * Render a bookmarklet link.
+	 *
+	 * @param string $href  Bookmarklet href.
+	 * @param string $label Bookmarklet label.
+	 */
+	public function render_bookmarklet_link( $href, $label ) {
+		?>
+		<a href="<?php echo esc_attr( $href ); ?>" class="post-collection-bookmarklet">
+			<?php echo esc_html( $label ); ?>
+		</a>
+		<?php
+	}
+
+	/**
 	 * Display the Bookmarklet at the Tools section of wp-admin
 	 */
 	public function toolbox_bookmarklet() {
-		$post_collections = array();
-		foreach ( $this->get_post_collection_terms() as $collection ) {
-			$post_collections[] = array(
-				'term_id'      => $collection->term_id,
-				'display_name' => $collection->name,
-			);
-		}
+		$post_collections = $this->get_post_collection_terms();
+		?>
+		<div class="card">
+			<h2 class="title"><?php esc_html_e( 'Post Collection', 'post-collection' ); ?></h2>
+			<h3><?php esc_html_e( 'Bookmarklets', 'post-collection' ); ?></h3>
 
-		$this->template_loader()->get_template_part(
-			'admin/tools-post-collection',
-			null,
-			array(
-				'post_collections' => $post_collections,
-				'bookmarklet_js'   => $this->get_bookmarklet_js(),
-			)
-		);
+			<p><?php esc_html_e( "Drag one of these bookmarklets to your bookmarks bar and click it when you're on an article you want to save from the web.", 'post-collection' ); ?></p>
+			<p>
+				<?php foreach ( $post_collections as $collection ) : ?>
+					<?php
+					$this->render_bookmarklet_link(
+						$this->get_bookmarklet_href( 'collection', $collection->term_id ),
+						sprintf(
+							// translators: %s is the name of a post collection.
+							__( 'Save to %s', 'post-collection' ),
+							$collection->name
+						)
+					);
+					?>
+				<?php endforeach; ?>
+			</p>
+		</div>
+		<?php
 	}
 
 	public function save_url_endpoint() {
@@ -2437,7 +2391,7 @@ class Post_Collection {
 		if ( current_user_can( $this->get_required_role() ) ) {
 			$apps['post-collection-configure'] = array(
 				'name'     => __( 'Configure Post Collections', 'post-collection' ),
-				'url'      => self_admin_url( 'edit.php?post_type=' . self::CPT . '&page=post-collection-settings' ),
+				'url'      => home_url( '/post-collection/' ),
 				'dashicon' => 'dashicons-admin-settings',
 			);
 		}
