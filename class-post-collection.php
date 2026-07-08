@@ -238,7 +238,7 @@ class Post_Collection {
 		add_filter( 'get_edit_user_link', array( $this, 'edit_post_collection_link' ), 10, 2 );
 		add_action( 'friend_post_edit_link', array( $this, 'allow_post_editing' ), 10, 2 );
 		add_action( 'friends_show_author_edit', array( $this, 'friends_show_author_edit' ), 10, 2 );
-		add_action( 'friends_entry_dropdown_menu', array( $this, 'entry_dropdown_menu' ) );
+		add_action( 'friends_entry_dropdown_menu', array( $this, 'entry_dropdown_menu' ), 10, 2 );
 		add_action( 'friends_friend_feed_viewable', array( $this, 'friends_friend_feed_viewable' ), 10, 2 );
 		add_filter( 'friends_friend_posts_query_viewable', array( $this, 'collection_friend_posts_query_viewable' ), 10, 2 );
 		add_action( 'friend_user_role_name', array( $this, 'friend_user_role_name' ), 10, 2 );
@@ -259,6 +259,7 @@ class Post_Collection {
 		add_action( 'wp_ajax_post-collection-mark-publish', array( $this, 'wp_ajax_mark_publish' ) );
 		add_action( 'wp_ajax_post-collection-mark-private', array( $this, 'wp_ajax_mark_private' ) );
 		add_action( 'wp_ajax_post-collection-change-author', array( $this, 'wp_ajax_change_author' ) );
+		add_action( 'wp_ajax_post-collection-save-to-collection', array( $this, 'wp_ajax_save_to_collection' ) );
 		add_action( 'wp_ajax_post-collection-fetch-full-content', array( $this, 'wp_ajax_fetch_full_content' ) );
 		add_action( 'wp_ajax_post-collection-download-images', array( $this, 'wp_ajax_download_images' ) );
 		add_action( 'wp_ajax_post-collection-re-extract', array( $this, 'wp_ajax_re_extract' ) );
@@ -491,7 +492,7 @@ class Post_Collection {
 		return $show;
 	}
 
-	public function entry_dropdown_menu() {
+	public function entry_dropdown_menu( $post = null, $friend_user = null ) {
 		$divider = '<li class="divider" data-content="' . esc_attr__( 'Post Collection', 'post-collection' ) . '"></li>';
 		$list_tags = array(
 			'li' => array(
@@ -499,8 +500,15 @@ class Post_Collection {
 				'data-content' => true,
 			),
 		);
-		$user_id = get_the_author_meta( 'ID' );
-		if ( $this->is_post_collection_user( $user_id ) ) {
+		$post                    = get_post( $post );
+		$author                  = $friend_user instanceof \WP_User ? $friend_user : $this->get_feed_item_author( $post );
+		$user_id                 = $author ? $author->ID : get_the_author_meta( 'ID' );
+		$user_id                 = (int) $user_id;
+		$author_attr             = $user_id;
+		$is_post_collection_user = $this->is_post_collection_user( $user_id );
+		$is_collected_post       = $post && self::CPT === $post->post_type;
+
+		if ( $is_collected_post && $is_post_collection_user ) {
 			echo wp_kses( $divider, $list_tags );
 			$divider = '';
 			?>
@@ -517,24 +525,24 @@ class Post_Collection {
 			}
 		}
 
-		foreach ( $this->get_post_collection_users()->get_results() as $user ) {
-			if ( intval( $user_id ) === intval( $user->ID ) ) {
+		foreach ( $this->get_post_collection_terms() as $collection ) {
+			if ( $is_collected_post && has_term( (int) $collection->term_id, self::COLLECTION_TAXONOMY, $post ) ) {
 				continue;
 			}
-			if ( get_user_option( 'friends_post_collection_inactive', $user->ID ) ) {
+			if ( get_term_meta( $collection->term_id, 'friends_post_collection_inactive', true ) ) {
 				continue;
 			}
 			echo wp_kses( $divider, $list_tags );
 			$divider = '';
 			?>
-			<li class="menu-item"><a href="#" data-id="<?php echo esc_attr( get_the_ID() ); ?>" data-author="<?php echo esc_attr( $user->ID ); ?>" data-originalauthor="<?php echo esc_attr( $user->ID ); ?>" class="post-collection-change-author has-icon-right<?php echo esc_attr( get_user_option( 'friends_post_collection_copy_mode', $user->ID ) ? ' copy-mode' : '' ); ?>">
+			<li class="menu-item"><a href="#" data-id="<?php echo esc_attr( get_the_ID() ); ?>" data-collection="<?php echo esc_attr( $collection->term_id ); ?>" class="post-collection-save-to-collection has-icon-right<?php echo esc_attr( get_term_meta( $collection->term_id, 'friends_post_collection_copy_mode', true ) ? ' copy-mode' : '' ); ?>">
 				<?php
-				if ( get_user_option( 'friends_post_collection_copy_mode', $user->ID ) ) {
+				if ( get_term_meta( $collection->term_id, 'friends_post_collection_copy_mode', true ) ) {
 					echo esc_html(
 						sprintf(
 							// translators: %s is the name of a post collection.
 							_x( 'Copy to %s', 'post-collection', 'post-collection' ),
-							$user->display_name
+							$collection->name
 						)
 					);
 				} else {
@@ -542,7 +550,7 @@ class Post_Collection {
 						sprintf(
 							// translators: %s is the name of a post collection.
 							_x( 'Move to %s', 'post-collection', 'post-collection' ),
-							$user->display_name
+							$collection->name
 						)
 					);
 				}
@@ -565,13 +573,13 @@ class Post_Collection {
 		}
 
 		?>
-		<li class="menu-item"><a href="#" data-id="<?php echo esc_attr( get_the_ID() ); ?>" data-author="<?php echo esc_attr( get_the_author_meta( 'ID' ) ); ?>" class="post-collection-fetch-full-content has-icon-right">
+		<li class="menu-item"><a href="#" data-id="<?php echo esc_attr( get_the_ID() ); ?>" data-author="<?php echo esc_attr( $author_attr ); ?>" class="post-collection-fetch-full-content has-icon-right">
 			<?php
 				esc_html_e( 'Fetch full content', 'post-collection' );
 			?>
 			<i class="<?php echo esc_attr( $i_classes ); ?>"></i></a>
 		</li>
-		<li class="menu-item"><a href="#" data-id="<?php echo esc_attr( get_the_ID() ); ?>" data-author="<?php echo esc_attr( get_the_author_meta( 'ID' ) ); ?>" class="post-collection-download-images has-icon-right">
+		<li class="menu-item"><a href="#" data-id="<?php echo esc_attr( get_the_ID() ); ?>" data-author="<?php echo esc_attr( $author_attr ); ?>" class="post-collection-download-images has-icon-right">
 			<?php
 				esc_html_e( 'Download external images', 'post-collection' );
 			?>
@@ -589,6 +597,31 @@ class Post_Collection {
 		</li>
 			<?php
 		endif;
+	}
+
+	/**
+	 * Get the author for the current Friends feed item.
+	 *
+	 * Friends can store feed ownership in taxonomy relationships, so template
+	 * author globals and post_author are not always the right source.
+	 *
+	 * @param \WP_Post|null $post The feed item post.
+	 * @return \WP_User|false The resolved feed item author.
+	 */
+	private function get_feed_item_author( $post = null ) {
+		$post = get_post( $post );
+		if ( ! $post ) {
+			return false;
+		}
+
+		if ( class_exists( '\Friends\User' ) && method_exists( '\Friends\User', 'get_post_author' ) ) {
+			$author = \Friends\User::get_post_author( $post );
+			if ( $author && ! is_wp_error( $author ) ) {
+				return $author;
+			}
+		}
+
+		return User::get_post_author( $post );
 	}
 
 	public function edit_post_collection_link( $link, $user_id ) {
@@ -855,7 +888,7 @@ class Post_Collection {
 		}
 
 		if ( $this->is_on_friends_frontend() ) {
-			wp_enqueue_script( 'post-collection', plugins_url( 'post-collection.js', __FILE__ ), array( 'friends' ), 1.0 );
+			wp_enqueue_script( 'post-collection', plugins_url( 'post-collection.js', __FILE__ ), array( 'friends' ), filemtime( __DIR__ . '/post-collection.js' ) );
 		}
 	}
 
@@ -2690,6 +2723,62 @@ class Post_Collection {
 			array(
 				'new_text'   => $new_text,
 				'old_author' => $old_author->ID,
+			)
+		);
+	}
+
+	function wp_ajax_save_to_collection() {
+		if ( ! current_user_can( $this->get_required_role() ) ) {
+			wp_send_json_error( __( 'Sorry, you are not allowed to do that' ) ); // phpcs:ignore WordPress.WP.I18n.MissingArgDomain
+		}
+
+		$post = get_post( isset( $_POST['id'] ) ? absint( $_POST['id'] ) : 0 );
+		if ( ! $post ) {
+			wp_send_json_error( __( 'That post does not exist.' ) ); // phpcs:ignore WordPress.WP.I18n.MissingArgDomain
+		}
+
+		$collection = get_term( isset( $_POST['collection'] ) ? absint( $_POST['collection'] ) : 0, self::COLLECTION_TAXONOMY );
+		if ( ! $collection || is_wp_error( $collection ) ) {
+			wp_send_json_error( __( 'Invalid post collection.', 'post-collection' ) );
+		}
+
+		if ( get_term_meta( $collection->term_id, 'friends_post_collection_inactive', true ) ) {
+			wp_send_json_error( __( 'This post collection is inactive.', 'post-collection' ) );
+		}
+
+		$url = $post->guid;
+		if ( ! $this->check_url( $url ) ) {
+			$url = get_permalink( $post );
+		}
+
+		$post_id = $this->save_url_to_collection_term(
+			$url,
+			$collection,
+			$post->post_content,
+			array(
+				'title'          => $post->post_title,
+				'return_details' => true,
+			)
+		);
+
+		if ( is_wp_error( $post_id ) ) {
+			wp_send_json_error( $post_id->get_error_message() );
+		}
+
+		$save_details = $post_id;
+		$copy_mode    = (bool) get_term_meta( $collection->term_id, 'friends_post_collection_copy_mode', true );
+		if ( ! $copy_mode && self::CPT !== $post->post_type ) {
+			wp_trash_post( $post->ID );
+		}
+
+		wp_send_json_success(
+			array(
+				'post_id'  => $save_details['post_id'],
+				'new_text' => sprintf(
+					// translators: %s is the name of a post collection.
+					$copy_mode ? _x( 'Copied to %s!', 'post-collection', 'post-collection' ) : _x( 'Moved to %s!', 'post-collection', 'post-collection' ),
+					$collection->name
+				),
 			)
 		);
 	}

@@ -21,6 +21,9 @@ namespace {
 	$GLOBALS['wp_test_current_user_id']    = 0;
 	$GLOBALS['wp_test_posts']              = array();
 	$GLOBALS['wp_test_post_meta']          = array();
+	$GLOBALS['wp_test_terms']              = array();
+	$GLOBALS['wp_test_term_meta']          = array();
+	$GLOBALS['wp_test_registered_terms']   = array();
 	$GLOBALS['wp_test_users']              = array();
 	$GLOBALS['wp_test_user_options']       = array();
 
@@ -65,6 +68,10 @@ namespace {
 	}
 
 	function wp_kses_post( $data ) {
+		return $data;
+	}
+
+	function wp_kses( $data, $allowed_html, $allowed_protocols = array() ) {
 		return $data;
 	}
 
@@ -287,6 +294,21 @@ namespace {
 		}
 	}
 
+	class WP_Term {
+		public $term_id = 0;
+		public $name = '';
+		public $slug = '';
+		public $taxonomy = '';
+
+		public function __construct( $term = null ) {
+			if ( is_object( $term ) ) {
+				foreach ( get_object_vars( $term ) as $key => $value ) {
+					$this->$key = $value;
+				}
+			}
+		}
+	}
+
 	class WP_Query {
 		public $posts = array();
 		public $found_posts = 0;
@@ -447,8 +469,21 @@ namespace {
 		if ( $post instanceof WP_Post ) {
 			return $post;
 		}
+		if ( null === $post ) {
+			return $GLOBALS['post'] ?? null;
+		}
 		$post_id = is_object( $post ) ? (int) $post->ID : (int) $post;
 		return $GLOBALS['wp_test_posts'][ $post_id ] ?? null;
+	}
+
+	function get_the_ID() {
+		$post = get_post();
+		return $post ? (int) $post->ID : 0;
+	}
+
+	function get_post_status( $post = null ) {
+		$post = get_post( $post );
+		return $post ? $post->post_status : false;
 	}
 
 	function wp_get_post_parent_id( $post_id ) {
@@ -506,9 +541,83 @@ namespace {
 		return true;
 	}
 
-	function wp_set_post_terms( $post_id, $terms, $taxonomy, $append = false ) {
-		$GLOBALS['wp_test_terms'][ $post_id ][ $taxonomy ] = (array) $terms;
+	function get_terms( $args = array() ) {
+		$taxonomy = $args['taxonomy'] ?? '';
+		$terms = array_values( $GLOBALS['wp_test_registered_terms'][ $taxonomy ] ?? array() );
+
+		if ( isset( $args['orderby'] ) && 'name' === $args['orderby'] ) {
+			usort(
+				$terms,
+				function ( $a, $b ) use ( $args ) {
+					$result = strcasecmp( $a->name, $b->name );
+					return isset( $args['order'] ) && 'DESC' === strtoupper( $args['order'] ) ? -$result : $result;
+				}
+			);
+		}
+
 		return $terms;
+	}
+
+	function get_term( $term_id, $taxonomy = '' ) {
+		$term_id = (int) $term_id;
+		if ( $taxonomy ) {
+			return $GLOBALS['wp_test_registered_terms'][ $taxonomy ][ $term_id ] ?? null;
+		}
+
+		foreach ( $GLOBALS['wp_test_registered_terms'] as $terms ) {
+			if ( isset( $terms[ $term_id ] ) ) {
+				return $terms[ $term_id ];
+			}
+		}
+
+		return null;
+	}
+
+	function get_term_meta( $term_id, $key = '', $single = false ) {
+		if ( '' === $key ) {
+			return $GLOBALS['wp_test_term_meta'][ $term_id ] ?? array();
+		}
+		if ( ! array_key_exists( $term_id, $GLOBALS['wp_test_term_meta'] ) || ! array_key_exists( $key, $GLOBALS['wp_test_term_meta'][ $term_id ] ) ) {
+			return $single ? '' : array();
+		}
+		$value = $GLOBALS['wp_test_term_meta'][ $term_id ][ $key ];
+		return $single ? $value : (array) $value;
+	}
+
+	function update_term_meta( $term_id, $meta_key, $meta_value, $prev_value = '' ) {
+		$GLOBALS['wp_test_term_meta'][ $term_id ][ $meta_key ] = $meta_value;
+		return true;
+	}
+
+	function wp_set_post_terms( $post_id, $terms, $taxonomy, $append = false ) {
+		return wp_set_object_terms( $post_id, $terms, $taxonomy, $append );
+	}
+
+	function wp_set_object_terms( $object_id, $terms, $taxonomy, $append = false ) {
+		if ( $append ) {
+			$GLOBALS['wp_test_terms'][ $object_id ][ $taxonomy ] = array_values(
+				array_unique(
+					array_merge( $GLOBALS['wp_test_terms'][ $object_id ][ $taxonomy ] ?? array(), (array) $terms )
+				)
+			);
+			return $GLOBALS['wp_test_terms'][ $object_id ][ $taxonomy ];
+		}
+		$GLOBALS['wp_test_terms'][ $object_id ][ $taxonomy ] = (array) $terms;
+		return $terms;
+	}
+
+	function has_term( $term = '', $taxonomy = '', $post = null ) {
+		$post = get_post( $post );
+		if ( ! $post ) {
+			return false;
+		}
+
+		$terms = $GLOBALS['wp_test_terms'][ $post->ID ][ $taxonomy ] ?? array();
+		return in_array( (int) $term, array_map( 'intval', $terms ), true );
+	}
+
+	function wp_get_post_revisions( $post_id = 0, $args = null ) {
+		return array();
 	}
 
 	function get_the_title( $post = 0 ) {
@@ -532,6 +641,10 @@ namespace {
 
 	function get_edit_user_link( $user_id = null ) {
 		return 'https://example.com/wp-admin/user-edit.php?user_id=' . (int) $user_id;
+	}
+
+	function self_admin_url( $path = '', $scheme = 'admin' ) {
+		return 'https://example.com/wp-admin/' . ltrim( $path, '/' );
 	}
 
 	function get_user_by( $field, $value ) {
