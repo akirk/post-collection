@@ -93,8 +93,8 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const markerStart = '<!-- cookbook-playground-link:start -->';
-            const markerEnd = '<!-- cookbook-playground-link:end -->';
+            const markerStart = '<!-- playground-link:start -->';
+            const markerEnd = '<!-- playground-link:end -->';
             const playgroundSection = [
               markerStart,
               '## WordPress Playground',
@@ -110,7 +110,7 @@ jobs:
             const { owner, repo } = context.repo;
             const pull_number = context.issue.number;
             const currentBody = context.payload.pull_request.body || '';
-            const existingSection = new RegExp(`${markerStart}[\\s\\S]*?${markerEnd}`);
+            const existingSection = /<!-- (?:[a-z0-9-]+-)?playground-link:start -->[\s\S]*?<!-- (?:[a-z0-9-]+-)?playground-link:end -->/;
             const body = existingSection.test(currentBody)
               ? currentBody.replace(existingSection, playgroundSection)
               : [currentBody.trimEnd(), playgroundSection].filter(Boolean).join('\n\n');
