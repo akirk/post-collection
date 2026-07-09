@@ -49,6 +49,28 @@ jQuery( function ( $ ) {
 		} );
 		return false;
 	} );
+	$document.on( 'click', 'a.post-collection-save-to-collection', function () {
+		var $this = $( this );
+		if ( $this.data( 'loading' ) ) {
+			return false;
+		}
+		wp.ajax.send( 'post-collection-save-to-collection', {
+			data: {
+				id: $this.data( 'id' ),
+				collection: $this.data( 'collection' )
+			},
+			beforeSend: function () {
+				$this.data( 'loading', true );
+			},
+			success: function ( response ) {
+				$this.text( response.new_text );
+			},
+			complete: function () {
+				$this.data( 'loading', false );
+			}
+		} );
+		return false;
+	} );
 	$document.on( 'click', 'a.post-collection-fetch-full-content', function () {
 		var $this = $( this );
 		var search_indicator = $this.find( 'i' );
