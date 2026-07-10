@@ -244,6 +244,7 @@ class Post_Collection {
 		add_action( 'friend_user_role_name', array( $this, 'friend_user_role_name' ), 10, 2 );
 		add_filter( 'friends_plugin_roles', array( $this, 'associate_friend_user_role' ) );
 		add_action( 'friends_override_author_name', array( $this, 'friends_override_author_name' ), 15, 3 );
+		add_filter( 'send_to_e_reader_ebook_author', array( $this, 'filter_ebook_author' ), 10, 2 );
 		add_action( 'friends_widget_friend_list_after', array( $this, 'friends_widget_friend_list_after' ), 10, 2 );
 		add_action( 'friends_author_header', array( $this, 'friends_author_header' ) );
 		add_action( 'friends_author_header', array( $this, 'enter_url_field' ) );
@@ -2466,6 +2467,42 @@ class Post_Collection {
 		$host = wp_parse_url( $post->guid, PHP_URL_HOST );
 
 		return sanitize_text_field( preg_replace( '#^www\.#', '', preg_replace( '#[^a-z0-9.-]+#i', ' ', strtolower( $host ) ) ) );
+	}
+
+	/**
+	 * Prefer assigned post collection names for generated ePub book authors.
+	 *
+	 * @param string $author Current ePub book author.
+	 * @param array  $posts  Posts included in the ePub.
+	 * @return string Filtered ePub book author.
+	 */
+	public function filter_ebook_author( $author, array $posts ) {
+		$collection_names = array();
+
+		foreach ( $posts as $post ) {
+			if ( ! $post instanceof \WP_Post ) {
+				continue;
+			}
+
+			$terms = get_the_terms( $post, self::COLLECTION_TAXONOMY );
+			if ( is_wp_error( $terms ) || empty( $terms ) ) {
+				continue;
+			}
+
+			foreach ( $terms as $term ) {
+				if ( empty( $term->name ) || in_array( $term->name, $collection_names, true ) ) {
+					continue;
+				}
+
+				$collection_names[] = $term->name;
+			}
+		}
+
+		if ( $collection_names ) {
+			return implode( ', ', $collection_names );
+		}
+
+		return $author;
 	}
 
 	/**

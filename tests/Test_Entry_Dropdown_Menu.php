@@ -75,6 +75,33 @@ class Test_Entry_Dropdown_Menu extends TestCase {
 		$this->assertStringContainsString( 'Move to Saved Posts', $output );
 	}
 
+	public function test_ebook_author_filter_prefers_collection_term_names() {
+		$post = $this->create_post(
+			103,
+			Post_Collection::CPT,
+			'Collected Item',
+			'publish'
+		);
+
+		$this->create_collection_term( 205, 'bookmarks', 'Bookmarks' );
+		$this->create_collection_term( 206, 'saved-posts', 'Saved Posts' );
+		wp_set_object_terms( $post->ID, array( 205, 206 ), Post_Collection::COLLECTION_TAXONOMY );
+
+		$this->assertSame(
+			'Bookmarks, Saved Posts',
+			apply_filters( 'send_to_e_reader_ebook_author', 'Original Author', array( $post ), null, null )
+		);
+	}
+
+	public function test_ebook_author_filter_keeps_existing_author_without_collection_terms() {
+		$post = $this->create_post( 104, Post_Collection::CPT, 'Collected Item', 'publish' );
+
+		$this->assertSame(
+			'Original Author',
+			apply_filters( 'send_to_e_reader_ebook_author', 'Original Author', array( $post ), null, null )
+		);
+	}
+
 	private function render_dropdown( \WP_Post $post, \WP_User $friend_user ) {
 		ob_start();
 		$this->plugin->entry_dropdown_menu( $post, $friend_user );
