@@ -233,6 +233,7 @@ class Post_Collection {
 		add_filter( 'user_row_actions', array( $this, 'user_row_actions' ), 10, 2 );
 		add_action( 'admin_menu', array( $this, 'admin_menu' ), 50 );
 		add_action( 'admin_bar_menu', array( $this, 'admin_bar_new_content' ), 72 );
+		add_action( 'enqueue_block_editor_assets', array( $this, 'enqueue_block_editor_assets' ) );
 		add_action( 'wp_enqueue_scripts', array( $this, 'enqueue_scripts' ), 99999 );
 		add_action( 'wp_loaded', array( $this, 'save_url_endpoint' ), 100 );
 		add_filter( 'get_edit_user_link', array( $this, 'edit_post_collection_link' ), 10, 2 );
@@ -891,6 +892,68 @@ class Post_Collection {
 		if ( $this->is_on_friends_frontend() ) {
 			wp_enqueue_script( 'post-collection', plugins_url( 'post-collection.js', __FILE__ ), array( 'friends' ), filemtime( __DIR__ . '/post-collection.js' ) );
 		}
+	}
+
+	/**
+	 * Enqueue block editor assets for collected posts.
+	 */
+	public function enqueue_block_editor_assets() {
+		$screen = function_exists( 'get_current_screen' ) ? get_current_screen() : null;
+		if ( ! $screen || self::CPT !== $screen->post_type ) {
+			return;
+		}
+
+		$post = get_post();
+		if ( ! $post || self::CPT !== $post->post_type ) {
+			return;
+		}
+
+		$source_url = $this->get_post_source_url( $post );
+		if ( ! $source_url ) {
+			return;
+		}
+
+		$handle = 'post-collection-editor';
+		wp_enqueue_script(
+			$handle,
+			plugins_url( 'post-collection-editor.js', __FILE__ ),
+			array( 'wp-components', 'wp-edit-post', 'wp-element', 'wp-i18n', 'wp-plugins' ),
+			filemtime( __DIR__ . '/post-collection-editor.js' ),
+			true
+		);
+
+		wp_localize_script(
+			$handle,
+			'postCollectionEditor',
+			array(
+				'sourceUrl' => $source_url,
+				'i18n'      => array(
+					'panelTitle'        => __( 'Post Archives', 'post-collection' ),
+					'waybackSnapshots'  => __( 'Wayback Snapshots', 'post-collection' ),
+					'archiveIs'         => __( 'Archive.is', 'post-collection' ),
+					'archiveLinksLabel' => __( 'Find archived copies of the original article URL.', 'post-collection' ),
+				),
+			)
+		);
+	}
+
+	/**
+	 * Get the original source URL for a collected post.
+	 *
+	 * @param \WP_Post $post The collected post.
+	 * @return string
+	 */
+	private function get_post_source_url( \WP_Post $post ) {
+		$url = get_post_meta( $post->ID, 'url', true );
+		if ( is_string( $url ) && $this->check_url( $url ) ) {
+			return $url;
+		}
+
+		if ( $this->check_url( $post->guid ) ) {
+			return $post->guid;
+		}
+
+		return '';
 	}
 
 	public function admin_menu() {
