@@ -606,6 +606,24 @@ namespace {
 		return $terms;
 	}
 
+	function get_the_terms( $post, $taxonomy ) {
+		$post = get_post( $post );
+		if ( ! $post ) {
+			return false;
+		}
+
+		$term_ids = $GLOBALS['wp_test_terms'][ $post->ID ][ $taxonomy ] ?? array();
+		$terms = array();
+		foreach ( $term_ids as $term_id ) {
+			$term = get_term( $term_id, $taxonomy );
+			if ( $term ) {
+				$terms[] = $term;
+			}
+		}
+
+		return $terms ?: false;
+	}
+
 	function has_term( $term = '', $taxonomy = '', $post = null ) {
 		$post = get_post( $post );
 		if ( ! $post ) {
