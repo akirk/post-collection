@@ -75,6 +75,10 @@ namespace {
 		return $data;
 	}
 
+	function wp_unslash( $value ) {
+		return is_array( $value ) ? array_map( 'wp_unslash', $value ) : stripslashes( (string) $value );
+	}
+
 	function force_balance_tags( $text ) {
 		return $text;
 	}
@@ -323,6 +327,20 @@ namespace {
 
 		public function get_posts() {
 			return $this->posts;
+		}
+	}
+
+	class WP_REST_Request {
+		private $params = array();
+
+		public function __construct( $method = '', $route = '' ) {}
+
+		public function set_body_params( $params ) {
+			$this->params = (array) $params;
+		}
+
+		public function get_param( $param ) {
+			return $this->params[ $param ] ?? null;
 		}
 	}
 

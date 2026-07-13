@@ -3,7 +3,6 @@
 use PHPUnit\Framework\TestCase;
 use PostCollection\ExtractedPage;
 use PostCollection\Post_Collection;
-use PostCollection\User;
 
 require_once __DIR__ . '/../class-post-collection.php';
 
@@ -44,7 +43,7 @@ class Test_Browser_Extension_Action extends TestCase {
 	}
 
 	public function test_save_response_reports_collected_post_word_count() {
-		$collection = $this->create_collection_user( 1, 'articles', 'Articles' );
+		$collection = $this->create_collection_term( 1, 'articles', 'Articles' );
 		$this->plugin->download_item = new ExtractedPage(
 			'https://source.example/post',
 			'Source Title',
@@ -53,7 +52,7 @@ class Test_Browser_Extension_Action extends TestCase {
 
 		$result = $this->plugin->friends_browser_extension_action_save(
 			null,
-			$this->create_request( $collection->ID ),
+			$this->create_request( $collection->term_id ),
 			new \WP_User( 99 ),
 			array()
 		);
@@ -66,11 +65,11 @@ class Test_Browser_Extension_Action extends TestCase {
 	}
 
 	public function test_existing_url_response_reports_existing_post_word_count() {
-		$collection = $this->create_collection_user( 2, 'saved', 'Saved Articles' );
+		$collection = $this->create_collection_term( 2, 'saved', 'Saved Articles' );
 		$post       = new \WP_Post(
 			(object) array(
 				'ID'           => 42,
-				'post_author'  => $collection->ID,
+				'post_author'  => 99,
 				'post_title'   => 'Existing',
 				'post_content' => '<p>Already saved words here.</p>',
 				'post_status'  => 'private',
@@ -80,11 +79,12 @@ class Test_Browser_Extension_Action extends TestCase {
 		);
 
 		$GLOBALS['wp_test_posts'][ $post->ID ] = $post;
+		$GLOBALS['wp_test_terms'][ $post->ID ][ Post_Collection::COLLECTION_TAXONOMY ] = array( $collection->term_id );
 		$this->plugin->existing_post_id       = $post->ID;
 
 		$result = $this->plugin->friends_browser_extension_action_save(
 			null,
-			$this->create_request( $collection->ID ),
+			$this->create_request( $collection->term_id ),
 			new \WP_User( 99 ),
 			array()
 		);
@@ -96,21 +96,19 @@ class Test_Browser_Extension_Action extends TestCase {
 		$this->assertStringContainsString( 'already in the collection', $result['message'] );
 	}
 
-	private function create_collection_user( $id, $login, $display_name ) {
-		$user = new User(
+	private function create_collection_term( $id, $slug, $name ) {
+		$term = new \WP_Term(
 			(object) array(
-				'ID'           => $id,
-				'user_login'   => $login,
-				'display_name' => $display_name,
-				'description'  => '',
-				'roles'        => array( 'post_collection' ),
-				'caps'         => array( 'post_collection' => true ),
+				'term_id'  => $id,
+				'name'     => $name,
+				'slug'     => $slug,
+				'taxonomy' => Post_Collection::COLLECTION_TAXONOMY,
 			)
 		);
 
-		$GLOBALS['wp_test_users'][ $id ] = $user;
+		$GLOBALS['wp_test_registered_terms'][ Post_Collection::COLLECTION_TAXONOMY ][ $id ] = $term;
 
-		return $user;
+		return $term;
 	}
 
 	private function create_request( $collection_id ) {
