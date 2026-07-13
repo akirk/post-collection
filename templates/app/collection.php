@@ -72,6 +72,7 @@ if ( '' !== $active_tag ) {
 				<?php if ( $app->can_manage_collections() ) : ?>
 					<div class="pc-app-header-actions">
 						<a class="pc-button" href="<?php echo esc_url( $app->get_collection_review_url( $collection ) ); ?>"><?php esc_html_e( 'Review Articles', 'post-collection' ); ?></a>
+						<a class="pc-button" href="<?php echo esc_url( $app->get_collection_import_url( $collection ) ); ?>"><?php esc_html_e( 'Import', 'post-collection' ); ?></a>
 						<a class="pc-button" href="<?php echo esc_url( $app->get_collection_settings_url( $collection ) ); ?>"><?php esc_html_e( 'Settings', 'post-collection' ); ?></a>
 					</div>
 				<?php endif; ?>
@@ -155,13 +156,18 @@ if ( '' !== $active_tag ) {
 					<a class="pc-button" href="<?php echo esc_url( add_query_arg( 'pc-view', $view, $base_url ) ); ?>"><?php esc_html_e( 'Clear filters', 'post-collection' ); ?></a>
 				<?php elseif ( $app->can_manage_collections() ) : ?>
 					<h2><?php esc_html_e( 'Start saving to this collection', 'post-collection' ); ?></h2>
-					<p><?php esc_html_e( 'Use the bookmarklet, paste a URL above, or save directly from your browser.', 'post-collection' ); ?></p>
+					<p><?php esc_html_e( 'Import an existing list, paste a URL above, or save directly from your browser.', 'post-collection' ); ?></p>
 					<div class="pc-save-tabs" data-pc-tabs>
 						<div class="pc-save-tab-list" role="tablist" aria-label="<?php esc_attr_e( 'Save methods', 'post-collection' ); ?>">
-							<button type="button" class="is-active" role="tab" aria-selected="true" aria-controls="pc-empty-bookmarklet-panel-<?php echo esc_attr( $collection->term_id ); ?>" id="pc-empty-bookmarklet-tab-<?php echo esc_attr( $collection->term_id ); ?>" data-pc-tab="bookmarklet"><?php esc_html_e( 'Bookmarklet', 'post-collection' ); ?></button>
+							<button type="button" class="is-active" role="tab" aria-selected="true" aria-controls="pc-empty-import-panel-<?php echo esc_attr( $collection->term_id ); ?>" id="pc-empty-import-tab-<?php echo esc_attr( $collection->term_id ); ?>" data-pc-tab="import"><?php esc_html_e( 'Import', 'post-collection' ); ?></button>
+							<button type="button" role="tab" aria-selected="false" aria-controls="pc-empty-bookmarklet-panel-<?php echo esc_attr( $collection->term_id ); ?>" id="pc-empty-bookmarklet-tab-<?php echo esc_attr( $collection->term_id ); ?>" data-pc-tab="bookmarklet" tabindex="-1"><?php esc_html_e( 'Bookmarklet', 'post-collection' ); ?></button>
 							<button type="button" role="tab" aria-selected="false" aria-controls="pc-empty-extension-panel-<?php echo esc_attr( $collection->term_id ); ?>" id="pc-empty-extension-tab-<?php echo esc_attr( $collection->term_id ); ?>" data-pc-tab="extension" tabindex="-1"><?php esc_html_e( 'Browser extension', 'post-collection' ); ?></button>
 						</div>
-						<div id="pc-empty-bookmarklet-panel-<?php echo esc_attr( $collection->term_id ); ?>" class="pc-save-tab-panel is-active" role="tabpanel" aria-labelledby="pc-empty-bookmarklet-tab-<?php echo esc_attr( $collection->term_id ); ?>" data-pc-tab-panel="bookmarklet">
+						<div id="pc-empty-import-panel-<?php echo esc_attr( $collection->term_id ); ?>" class="pc-save-tab-panel is-active" role="tabpanel" aria-labelledby="pc-empty-import-tab-<?php echo esc_attr( $collection->term_id ); ?>" data-pc-tab-panel="import">
+							<p><?php esc_html_e( 'Paste a list of URLs or a browser bookmark export and Post Collection will add each article here.', 'post-collection' ); ?></p>
+							<a class="pc-button pc-button-primary" href="<?php echo esc_url( $app->get_collection_import_url( $collection ) ); ?>"><?php esc_html_e( 'Import URLs', 'post-collection' ); ?></a>
+						</div>
+						<div id="pc-empty-bookmarklet-panel-<?php echo esc_attr( $collection->term_id ); ?>" class="pc-save-tab-panel" role="tabpanel" aria-labelledby="pc-empty-bookmarklet-tab-<?php echo esc_attr( $collection->term_id ); ?>" data-pc-tab-panel="bookmarklet" hidden>
 							<p><?php esc_html_e( "Drag this bookmarklet to your bookmarks bar, then click it when you're on an article you want to save.", 'post-collection' ); ?></p>
 							<?php
 							$app->get_post_collection()->render_bookmarklet_link(

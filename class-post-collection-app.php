@@ -91,6 +91,8 @@ class Post_Collection_App {
 		add_action( 'wp_loaded', array( $this, 'handle_collection_settings' ) );
 		add_action( 'wp_loaded', array( $this, 'handle_create_collection' ) );
 		add_action( 'wp_ajax_post_collection_quick_edit', array( $this, 'wp_ajax_quick_edit' ) );
+		add_action( 'wp_ajax_post_collection_parse_import', array( $this, 'wp_ajax_parse_import' ) );
+		add_action( 'wp_ajax_post_collection_import_item', array( $this, 'wp_ajax_import_item' ) );
 		add_action( 'wp_ajax_post_collection_toggle_read_status', array( $this, 'wp_ajax_toggle_read_status' ) );
 		add_filter( 'private_title_format', array( $this, 'filter_private_title_format' ), 10, 2 );
 
@@ -98,6 +100,7 @@ class Post_Collection_App {
 		$this->app->route( 'new', 'new.php' );
 		$this->app->route( 'review', 'review.php' );
 		$this->app->route( '{collection}/settings', 'settings.php' );
+		$this->app->route( '{collection}/import', 'import.php' );
 		$this->app->route( '{collection}/review', 'review.php' );
 		$this->app->route( '{collection}', 'collection.php' );
 		$this->app->route( '{collection}/{post_id}', 'post.php' );
@@ -221,6 +224,16 @@ class Post_Collection_App {
 	 */
 	public function get_collection_settings_url( $collection ) {
 		return trailingslashit( $this->get_collection_url( $collection ) . 'settings' );
+	}
+
+	/**
+	 * Get the import URL for a collection.
+	 *
+	 * @param \WP_Term $collection The collection term.
+	 * @return string
+	 */
+	public function get_collection_import_url( $collection ) {
+		return trailingslashit( $this->get_collection_url( $collection ) . 'import' );
 	}
 
 	/**
@@ -428,6 +441,152 @@ class Post_Collection_App {
 
 		wp_safe_redirect( add_query_arg( 'pc-settings-updated', '1', $this->get_collection_settings_url( $collection ) ) );
 		exit;
+	}
+
+	/**
+	 * Read an uploaded import file.
+	 *
+	 * @param array $file Uploaded file data.
+	 * @return array|\WP_Error Import source or error.
+	 */
+	private function get_import_upload_source( array $file ) {
+		if ( UPLOAD_ERR_OK !== (int) $file['error'] ) {
+			return new \WP_Error( 'upload_error', __( 'The import file could not be uploaded.', 'post-collection' ), array( 'status' => 400 ) );
+		}
+
+		$filename  = isset( $file['name'] ) ? sanitize_file_name( wp_unslash( $file['name'] ) ) : '';
+		$extension = strtolower( pathinfo( $filename, PATHINFO_EXTENSION ) );
+		if ( ! in_array( $extension, array( 'csv', 'html', 'htm', 'xml', 'rss', 'atom', 'txt' ), true ) ) {
+			return new \WP_Error( 'unsupported_import_file', __( 'Please upload a CSV, bookmarks HTML, RSS, Atom, XML, or text file.', 'post-collection' ), array( 'status' => 400 ) );
+		}
+
+		$max_size = (int) apply_filters( 'post_collection_import_upload_size_limit', 5 * 1024 * 1024 );
+		$size     = isset( $file['size'] ) ? (int) $file['size'] : 0;
+		if ( $max_size > 0 && $size > $max_size ) {
+			return new \WP_Error( 'import_file_too_large', __( 'The import file is too large.', 'post-collection' ), array( 'status' => 413 ) );
+		}
+
+		$tmp_name = isset( $file['tmp_name'] ) ? $file['tmp_name'] : '';
+		if ( ! $tmp_name || ! is_uploaded_file( $tmp_name ) ) {
+			return new \WP_Error( 'invalid_import_upload', __( 'The import file upload is invalid.', 'post-collection' ), array( 'status' => 400 ) );
+		}
+
+		$content = file_get_contents( $tmp_name );
+		if ( false === $content ) {
+			return new \WP_Error( 'import_file_unreadable', __( 'The import file could not be read.', 'post-collection' ), array( 'status' => 400 ) );
+		}
+
+		return array(
+			'content'  => $content,
+			'filename' => $filename,
+		);
+	}
+
+	/**
+	 * Parse an import source for the client-side importer.
+	 */
+	public function wp_ajax_parse_import() {
+		$collection = $this->get_import_collection_from_ajax_request();
+		if ( is_wp_error( $collection ) ) {
+			wp_send_json_error(
+				array(
+					'message' => $collection->get_error_message(),
+				),
+				$collection->get_error_data( 'status' ) ? $collection->get_error_data( 'status' ) : 400
+			);
+		}
+
+		$sources    = array();
+		$raw_import = isset( $_POST['import_urls'] ) ? wp_unslash( $_POST['import_urls'] ) : '';
+		if ( trim( (string) $raw_import ) ) {
+			$sources[] = array(
+				'content'  => $raw_import,
+				'filename' => 'pasted.txt',
+			);
+		}
+
+		if ( isset( $_FILES['import_file'] ) && isset( $_FILES['import_file']['error'] ) && UPLOAD_ERR_NO_FILE !== (int) $_FILES['import_file']['error'] ) {
+			$file_source = $this->get_import_upload_source( $_FILES['import_file'] );
+			if ( is_wp_error( $file_source ) ) {
+				wp_send_json_error(
+					array(
+						'message' => $file_source->get_error_message(),
+					),
+					$file_source->get_error_data( 'status' ) ? $file_source->get_error_data( 'status' ) : 400
+				);
+			}
+			$sources[] = $file_source;
+		}
+
+		$items = $this->post_collection->parse_import_sources( $sources );
+
+		wp_send_json_success(
+			array(
+				'items' => $items,
+				'total' => count( $items ),
+			)
+		);
+	}
+
+	/**
+	 * Import one item for the client-side importer.
+	 */
+	public function wp_ajax_import_item() {
+		$collection = $this->get_import_collection_from_ajax_request();
+		if ( is_wp_error( $collection ) ) {
+			wp_send_json_error(
+				array(
+					'message' => $collection->get_error_message(),
+				),
+				$collection->get_error_data( 'status' ) ? $collection->get_error_data( 'status' ) : 400
+			);
+		}
+
+		$item = array(
+			'url'   => isset( $_POST['url'] ) ? wp_unslash( $_POST['url'] ) : '',
+			'title' => isset( $_POST['title'] ) ? wp_unslash( $_POST['title'] ) : '',
+			'tags'  => isset( $_POST['tags'] ) ? wp_unslash( $_POST['tags'] ) : array(),
+		);
+
+		if ( is_string( $item['tags'] ) ) {
+			$item['tags'] = array_filter( array_map( 'trim', explode( ',', $item['tags'] ) ) );
+		}
+
+		$result = $this->post_collection->import_item_to_collection( $collection, $item );
+		if ( is_wp_error( $result ) ) {
+			wp_send_json_error(
+				array(
+					'message' => $result->get_error_message(),
+					'url'     => isset( $item['url'] ) ? $item['url'] : '',
+				),
+				$result->get_error_data( 'status' ) ? $result->get_error_data( 'status' ) : 400
+			);
+		}
+
+		wp_send_json_success( $result );
+	}
+
+	/**
+	 * Validate and resolve the collection for import AJAX requests.
+	 *
+	 * @return \WP_Term|\WP_Error
+	 */
+	private function get_import_collection_from_ajax_request() {
+		if ( ! $this->can_manage_collections() ) {
+			return new \WP_Error( 'forbidden', __( 'Sorry, you are not allowed to import into this collection.', 'post-collection' ), array( 'status' => 403 ) );
+		}
+
+		$term_id = isset( $_POST['collection_term_id'] ) ? absint( wp_unslash( $_POST['collection_term_id'] ) ) : 0;
+		if ( ! $term_id || ! isset( $_POST['_wpnonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['_wpnonce'] ) ), 'post-collection-import-' . $term_id ) ) {
+			return new \WP_Error( 'invalid_nonce', __( 'The collection import request could not be verified.', 'post-collection' ), array( 'status' => 403 ) );
+		}
+
+		$collection = get_term( $term_id, Post_Collection::COLLECTION_TAXONOMY );
+		if ( ! $collection || is_wp_error( $collection ) ) {
+			return new \WP_Error( 'invalid_collection', __( 'Invalid post collection.', 'post-collection' ), array( 'status' => 404 ) );
+		}
+
+		return $collection;
 	}
 
 	/**

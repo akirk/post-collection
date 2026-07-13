@@ -1276,6 +1276,24 @@ class Post_Collection {
 	private function url_to_collection_term_postid( $url, \WP_Term $collection ) {
 		global $wpdb;
 
+		if ( ! $wpdb || empty( $wpdb->posts ) ) {
+			$posts = get_posts(
+				array(
+					'post_type'      => self::CPT,
+					'post_status'    => array( 'publish', 'private', 'trash' ),
+					'posts_per_page' => -1,
+				)
+			);
+
+			foreach ( $posts as $post ) {
+				if ( $url === $post->guid && has_term( (int) $collection->term_id, self::COLLECTION_TAXONOMY, $post ) ) {
+					return (int) $post->ID;
+				}
+			}
+
+			return null;
+		}
+
 		$post_id = $wpdb->get_var(
 			$wpdb->prepare(
 				"SELECT p.ID
@@ -1358,6 +1376,7 @@ class Post_Collection {
 					'post_id'           => (int) $post_id,
 					'created'           => false,
 					'content_extracted' => false,
+					'word_count'        => $this->get_post_word_count( $post_id ),
 				);
 			}
 
@@ -1434,10 +1453,450 @@ class Post_Collection {
 				'post_id'           => (int) $post_id,
 				'created'           => true,
 				'content_extracted' => $content_extracted,
+				'word_count'        => $this->get_post_word_count( $post_id ),
 			);
 		}
 
 		return (int) $post_id;
+	}
+
+	/**
+	 * Count words in a collected post.
+	 *
+	 * @param int $post_id Post ID.
+	 * @return int Word count.
+	 */
+	private function get_post_word_count( $post_id ) {
+		$post = get_post( $post_id );
+		if ( ! $post ) {
+			return 0;
+		}
+
+		$charset = function_exists( 'get_bloginfo' ) && get_bloginfo( 'charset' ) ? get_bloginfo( 'charset' ) : 'UTF-8';
+		$content = html_entity_decode( wp_strip_all_tags( $post->post_content ), ENT_QUOTES, $charset );
+
+		return str_word_count( $content );
+	}
+
+	/**
+	 * Parse import text into unique URLs.
+	 *
+	 * @param string $raw_import Plain text, bookmark export HTML, or mixed pasted content.
+	 * @return array URL strings.
+	 */
+	public function parse_import_urls( $raw_import ) {
+		return array_map(
+			function ( $item ) {
+				return $item['url'];
+			},
+			$this->parse_import_items( $raw_import )
+		);
+	}
+
+	/**
+	 * Parse import text into unique import items.
+	 *
+	 * @param string $raw_import Plain text, bookmark HTML, CSV, RSS, or Atom.
+	 * @param string $filename Optional source filename.
+	 * @return array Import items.
+	 */
+	public function parse_import_items( $raw_import, $filename = '' ) {
+		$raw_import = (string) $raw_import;
+		$extension  = strtolower( pathinfo( (string) $filename, PATHINFO_EXTENSION ) );
+		$trimmed    = ltrim( $raw_import );
+
+		if ( 'csv' === $extension || $this->looks_like_csv_import( $raw_import ) ) {
+			return $this->deduplicate_import_items( $this->parse_csv_import_items( $raw_import ) );
+		}
+
+		if ( in_array( $extension, array( 'xml', 'rss', 'atom' ), true ) || 0 === strpos( $trimmed, '<?xml' ) || 0 === strpos( $trimmed, '<rss' ) || 0 === strpos( $trimmed, '<feed' ) ) {
+			$items = $this->parse_feed_import_items( $raw_import );
+			if ( $items ) {
+				return $this->deduplicate_import_items( $items );
+			}
+		}
+
+		return $this->deduplicate_import_items( $this->parse_text_import_items( $raw_import ) );
+	}
+
+	/**
+	 * Parse multiple import sources.
+	 *
+	 * @param array $sources Import source arrays with content and filename keys.
+	 * @return array Import items.
+	 */
+	public function parse_import_sources( array $sources ) {
+		$items = array();
+		foreach ( $sources as $source ) {
+			if ( ! is_array( $source ) ) {
+				continue;
+			}
+
+			$items = array_merge(
+				$items,
+				$this->parse_import_items(
+					isset( $source['content'] ) ? $source['content'] : '',
+					isset( $source['filename'] ) ? $source['filename'] : ''
+				)
+			);
+		}
+
+		return $this->deduplicate_import_items( $items );
+	}
+
+	/**
+	 * Detect whether text appears to be a URL export CSV.
+	 *
+	 * @param string $raw_import Import text.
+	 * @return bool
+	 */
+	private function looks_like_csv_import( $raw_import ) {
+		$line = strtok( (string) $raw_import, "\r\n" );
+		if ( false === $line || false === strpos( $line, ',' ) ) {
+			return false;
+		}
+
+		$headers = array_map( array( $this, 'normalize_import_header' ), str_getcsv( $line ) );
+		return (bool) array_intersect( $headers, array( 'url', 'href', 'link', 'resolved_url', 'given_url' ) );
+	}
+
+	/**
+	 * Parse a CSV import source.
+	 *
+	 * @param string $raw_import CSV text.
+	 * @return array Import items.
+	 */
+	private function parse_csv_import_items( $raw_import ) {
+		$handle = fopen( 'php://temp', 'r+' );
+		if ( ! $handle ) {
+			return array();
+		}
+
+		fwrite( $handle, (string) $raw_import );
+		rewind( $handle );
+
+		$headers = fgetcsv( $handle );
+		if ( ! is_array( $headers ) ) {
+			fclose( $handle );
+			return array();
+		}
+
+		$headers    = array_map( array( $this, 'normalize_import_header' ), $headers );
+		$url_index  = $this->find_import_column( $headers, array( 'url', 'href', 'link', 'resolved_url', 'given_url' ) );
+		$title_index = $this->find_import_column( $headers, array( 'title', 'item_title', 'resolved_title', 'given_title', 'name' ) );
+		$tags_index = $this->find_import_column( $headers, array( 'tags', 'tag' ) );
+		$items      = array();
+
+		if ( null === $url_index ) {
+			fclose( $handle );
+			return array();
+		}
+
+		while ( false !== ( $row = fgetcsv( $handle ) ) ) {
+			$items[] = $this->normalize_import_item(
+				array(
+					'url'   => isset( $row[ $url_index ] ) ? $row[ $url_index ] : '',
+					'title' => null !== $title_index && isset( $row[ $title_index ] ) ? $row[ $title_index ] : '',
+					'tags'  => null !== $tags_index && isset( $row[ $tags_index ] ) ? $this->split_import_tags( $row[ $tags_index ] ) : array(),
+				)
+			);
+		}
+
+		fclose( $handle );
+		return $items;
+	}
+
+	/**
+	 * Parse RSS or Atom feed text.
+	 *
+	 * @param string $raw_import XML text.
+	 * @return array Import items.
+	 */
+	private function parse_feed_import_items( $raw_import ) {
+		if ( ! function_exists( 'simplexml_load_string' ) ) {
+			return array();
+		}
+
+		$previous = libxml_use_internal_errors( true );
+		$xml      = simplexml_load_string( (string) $raw_import, 'SimpleXMLElement', LIBXML_NONET | LIBXML_NOCDATA );
+		libxml_clear_errors();
+		libxml_use_internal_errors( $previous );
+
+		if ( ! $xml ) {
+			return array();
+		}
+
+		$items = array();
+		if ( isset( $xml->channel->item ) ) {
+			foreach ( $xml->channel->item as $item ) {
+				$tags = array();
+				foreach ( $item->category as $category ) {
+					$tags[] = (string) $category;
+				}
+				$items[] = $this->normalize_import_item(
+					array(
+						'url'   => (string) $item->link,
+						'title' => (string) $item->title,
+						'tags'  => $tags,
+					)
+				);
+			}
+		} elseif ( 'feed' === strtolower( $xml->getName() ) ) {
+			foreach ( $xml->entry as $entry ) {
+				$url = '';
+				foreach ( $entry->link as $link ) {
+					$attrs = $link->attributes();
+					$rel   = isset( $attrs['rel'] ) ? (string) $attrs['rel'] : 'alternate';
+					if ( isset( $attrs['href'] ) && 'alternate' === $rel ) {
+						$url = (string) $attrs['href'];
+						break;
+					}
+				}
+				$tags = array();
+				foreach ( $entry->category as $category ) {
+					$attrs = $category->attributes();
+					$tags[] = isset( $attrs['term'] ) ? (string) $attrs['term'] : (string) $category;
+				}
+				$items[] = $this->normalize_import_item(
+					array(
+						'url'   => $url,
+						'title' => (string) $entry->title,
+						'tags'  => $tags,
+					)
+				);
+			}
+		}
+
+		return $items;
+	}
+
+	/**
+	 * Parse loose text and bookmark HTML.
+	 *
+	 * @param string $raw_import Import text.
+	 * @return array Import items.
+	 */
+	private function parse_text_import_items( $raw_import ) {
+		$charset    = function_exists( 'get_bloginfo' ) && get_bloginfo( 'charset' ) ? get_bloginfo( 'charset' ) : 'UTF-8';
+		$raw_import = html_entity_decode( (string) $raw_import, ENT_QUOTES, $charset );
+		$items      = array();
+
+		if ( preg_match_all( '/<a\b[^>]*href=[\'"]([^\'"]+)[\'"][^>]*>(.*?)<\/a>/is', $raw_import, $matches, PREG_SET_ORDER ) ) {
+			foreach ( $matches as $match ) {
+				$items[] = $this->normalize_import_item(
+					array(
+						'url'   => $match[1],
+						'title' => wp_strip_all_tags( $match[2] ),
+					)
+				);
+			}
+		}
+
+		if ( preg_match_all( '#https?://[^\s<>"\']+#i', $raw_import, $matches ) ) {
+			foreach ( $matches[0] as $url ) {
+				$items[] = $this->normalize_import_item( array( 'url' => $url ) );
+			}
+		}
+
+		return $items;
+	}
+
+	/**
+	 * Normalize an import item.
+	 *
+	 * @param array $item Import item.
+	 * @return array
+	 */
+	private function normalize_import_item( array $item ) {
+		$url    = isset( $item['url'] ) ? trim( (string) $item['url'] ) : '';
+		$url    = preg_replace( '/[)\].,;:]+$/', '', $url );
+		$url    = esc_url_raw( $url );
+		$scheme = strtolower( (string) wp_parse_url( $url, PHP_URL_SCHEME ) );
+
+		if ( ! in_array( $scheme, array( 'http', 'https' ), true ) || ! $url || ! $this->check_url( $url ) ) {
+			$url = '';
+		}
+
+		return array(
+			'url'   => $url,
+			'title' => isset( $item['title'] ) ? wp_strip_all_tags( trim( sanitize_text_field( $item['title'] ) ) ) : '',
+			'tags'  => isset( $item['tags'] ) && is_array( $item['tags'] ) ? $this->sanitize_import_tags( $item['tags'] ) : array(),
+		);
+	}
+
+	/**
+	 * Deduplicate and remove invalid import items.
+	 *
+	 * @param array $items Import items.
+	 * @return array
+	 */
+	private function deduplicate_import_items( array $items ) {
+		$clean_items = array();
+		foreach ( $items as $item ) {
+			if ( empty( $item['url'] ) ) {
+				continue;
+			}
+
+			$key = strtolower( $item['url'] );
+			if ( isset( $clean_items[ $key ] ) ) {
+				continue;
+			}
+
+			$clean_items[ $key ] = $item;
+		}
+
+		return array_values( $clean_items );
+	}
+
+	/**
+	 * Normalize a CSV header.
+	 *
+	 * @param string $header Header text.
+	 * @return string
+	 */
+	private function normalize_import_header( $header ) {
+		return trim( preg_replace( '/[^a-z0-9]+/', '_', strtolower( (string) $header ) ), '_' );
+	}
+
+	/**
+	 * Find a matching CSV column index.
+	 *
+	 * @param array $headers Header names.
+	 * @param array $candidates Candidate names.
+	 * @return int|null
+	 */
+	private function find_import_column( array $headers, array $candidates ) {
+		foreach ( $candidates as $candidate ) {
+			$index = array_search( $candidate, $headers, true );
+			if ( false !== $index ) {
+				return (int) $index;
+			}
+		}
+
+		return null;
+	}
+
+	/**
+	 * Split tag text from imports.
+	 *
+	 * @param string $raw_tags Raw tag text.
+	 * @return array
+	 */
+	private function split_import_tags( $raw_tags ) {
+		return $this->sanitize_import_tags( preg_split( '/[,|;]+/', (string) $raw_tags ) );
+	}
+
+	/**
+	 * Sanitize import tag names.
+	 *
+	 * @param array $tags Tag names.
+	 * @return array
+	 */
+	private function sanitize_import_tags( array $tags ) {
+		$tags = array_map(
+			function ( $tag ) {
+				return sanitize_text_field( wp_strip_all_tags( trim( (string) $tag ) ) );
+			},
+			$tags
+		);
+
+		return array_values( array_unique( array_filter( $tags ) ) );
+	}
+
+	/**
+	 * Import URLs into a taxonomy-backed collection.
+	 *
+	 * @param \WP_Term $collection Collection term.
+	 * @param string   $raw_import Plain text or exported bookmark HTML.
+	 * @return array Import summary.
+	 */
+	public function import_urls_to_collection( \WP_Term $collection, $raw_import, $filename = '' ) {
+		$all_items = array();
+		if ( is_array( $raw_import ) ) {
+			$all_items = $this->parse_import_sources( $raw_import );
+		} else {
+			$all_items = $this->parse_import_items( $raw_import, $filename );
+		}
+
+		$items    = $all_items;
+		$max      = (int) apply_filters( 'post_collection_import_url_limit', 100, $collection );
+
+		if ( $max > 0 && count( $items ) > $max ) {
+			$items = array_slice( $items, 0, $max );
+		}
+
+		$result = array(
+			'total'     => count( $items ),
+			'created'   => 0,
+			'existing'  => 0,
+			'imported'  => 0,
+			'failed'    => 0,
+			'errors'    => array(),
+			'truncated' => $max > 0 && count( $all_items ) > $max,
+			'limit'     => $max,
+		);
+
+		foreach ( $items as $item ) {
+			$save = $this->import_item_to_collection( $collection, $item );
+
+			if ( is_wp_error( $save ) ) {
+				$result['failed']++;
+				$result['errors'][] = array(
+					'url'     => $item['url'],
+					'message' => $save->get_error_message(),
+				);
+				continue;
+			}
+
+			$result['imported']++;
+			if ( ! empty( $save['created'] ) ) {
+				$result['created']++;
+			} else {
+				$result['existing']++;
+			}
+		}
+
+		return $result;
+	}
+
+	/**
+	 * Import one normalized item into a taxonomy-backed collection.
+	 *
+	 * @param \WP_Term $collection Collection term.
+	 * @param array    $item Import item.
+	 * @return array|\WP_Error Imported item result.
+	 */
+	public function import_item_to_collection( \WP_Term $collection, array $item ) {
+		$item = $this->normalize_import_item( $item );
+		if ( empty( $item['url'] ) ) {
+			return new \WP_Error( 'invalid-url', __( 'You entered an invalid URL.', 'post-collection' ), array( 'status' => 400 ) );
+		}
+
+		$save = $this->save_url_to_collection_term(
+			$item['url'],
+			$collection,
+			null,
+			array(
+				'title'          => $item['title'],
+				'tags'           => $item['tags'],
+				'return_details' => true,
+			)
+		);
+
+		if ( is_wp_error( $save ) ) {
+			return $save;
+		}
+
+		$post_id = (int) $save['post_id'];
+
+		return array(
+			'post_id'           => $post_id,
+			'url'               => $item['url'],
+			'title'             => get_the_title( $post_id ),
+			'created'           => ! empty( $save['created'] ),
+			'content_extracted' => ! empty( $save['content_extracted'] ),
+			'word_count'        => isset( $save['word_count'] ) ? (int) $save['word_count'] : 0,
+		);
 	}
 
 	/**
@@ -1686,17 +2145,25 @@ class Post_Collection {
 		$post_id      = $save_details['post_id'];
 		$edit_url = get_edit_post_link( $post_id, 'raw' );
 		$item_url = home_url( '/post-collection/' . $collection->slug . '/' . $post_id . '/' );
+		$word_count = isset( $save_details['word_count'] ) ? (int) $save_details['word_count'] : 0;
+		$word_count_label = sprintf(
+			// translators: %d is the number of words in the saved article.
+			__( '%d words', 'post-collection' ),
+			$word_count
+		);
 		if ( ! empty( $save_details['content_extracted'] ) ) {
 			$message = sprintf(
-				// translators: %s is the name of a post collection.
-				__( 'Saved extracted content to %s.', 'post-collection' ),
-				$collection->name
+				// translators: 1: post collection name, 2: article word count.
+				__( 'Saved extracted content to %1$s. %2$s.', 'post-collection' ),
+				$collection->name,
+				$word_count_label
 			);
 		} else {
 			$message = sprintf(
-				// translators: %s is the name of a post collection.
-				__( 'Saved to %s. This URL was already in the collection.', 'post-collection' ),
-				$collection->name
+				// translators: 1: post collection name, 2: article word count.
+				__( 'Saved to %1$s. This URL was already in the collection. %2$s.', 'post-collection' ),
+				$collection->name,
+				$word_count_label
 			);
 		}
 
@@ -1705,6 +2172,8 @@ class Post_Collection {
 			'message'           => $message,
 			'created'           => ! empty( $save_details['created'] ),
 			'content_extracted' => ! empty( $save_details['content_extracted'] ),
+			'word_count'        => $word_count,
+			'word_count_label'  => $word_count_label,
 			'edit_url'          => $edit_url ? $edit_url : '',
 			'url'               => $item_url ? $item_url : '',
 			'link_label'        => __( 'Open', 'post-collection' ),

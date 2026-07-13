@@ -440,6 +440,169 @@
 			} );
 	}
 
+	function setImportStatus( shell, message ) {
+		var status = shell ? shell.querySelector( '[data-import-status]' ) : null;
+		if ( status ) {
+			status.textContent = message || '';
+		}
+	}
+
+	function updateImportProgress( shell, completed, total ) {
+		var completedNode = shell.querySelector( '[data-import-completed]' );
+		var totalNode = shell.querySelector( '[data-import-total]' );
+		var progress = shell.querySelector( '[data-import-progress-bar]' );
+
+		if ( completedNode ) {
+			completedNode.textContent = completed;
+		}
+		if ( totalNode ) {
+			totalNode.textContent = total;
+		}
+		if ( progress ) {
+			progress.max = total || 1;
+			progress.value = completed;
+		}
+	}
+
+	function addImportLogItem( shell, item, state, message ) {
+		var log = shell.querySelector( '[data-import-log]' );
+		if ( ! log ) {
+			return;
+		}
+
+		var row = document.createElement( 'li' );
+		row.className = 'is-' + state;
+
+		var label = document.createElement( 'strong' );
+		label.textContent = item.title || item.url || '';
+		row.appendChild( label );
+
+		var detail = document.createElement( 'span' );
+		detail.textContent = message || item.url || '';
+		row.appendChild( detail );
+
+		log.appendChild( row );
+	}
+
+	function setImportSummary( shell, created, existing, failed ) {
+		var summary = shell.querySelector( '[data-import-summary]' );
+		if ( ! summary ) {
+			return;
+		}
+
+		summary.textContent = created + ' new, ' + existing + ' already saved, ' + failed + ' failed.';
+	}
+
+	function postImportData( form, data ) {
+		return fetch( form.action, {
+			method: 'POST',
+			credentials: 'same-origin',
+			body: data,
+		} )
+			.then( function ( response ) {
+				return response.json();
+			} )
+			.then( function ( result ) {
+				if ( ! result || ! result.success ) {
+					throw new Error( result && result.data && result.data.message ? result.data.message : 'Import request failed.' );
+				}
+
+				return result.data;
+			} );
+	}
+
+	function appendItemToImportData( data, item ) {
+		data.append( 'url', item.url || '' );
+		data.append( 'title', item.title || '' );
+		( item.tags || [] ).forEach( function ( tag ) {
+			data.append( 'tags[]', tag );
+		} );
+	}
+
+	function runImport( form ) {
+		var shell = document.querySelector( '[data-import-progress]' );
+		var button = form.querySelector( 'button[type="submit"]' );
+		if ( ! shell ) {
+			return;
+		}
+
+		shell.hidden = false;
+		shell.querySelector( '[data-import-log]' ).textContent = '';
+		setImportSummary( shell, 0, 0, 0 );
+		updateImportProgress( shell, 0, 0 );
+		setImportStatus( shell, 'Reading import source...' );
+
+		if ( button ) {
+			button.disabled = true;
+			button.textContent = 'Importing...';
+		}
+
+		var parseData = new FormData( form );
+		parseData.append( 'action', form.dataset.parseAction || 'post_collection_parse_import' );
+
+		postImportData( form, parseData )
+			.then( function ( data ) {
+				var items = data.items || [];
+				var total = items.length;
+				var completed = 0;
+				var created = 0;
+				var existing = 0;
+				var failed = 0;
+
+				updateImportProgress( shell, completed, total );
+				if ( ! total ) {
+					setImportStatus( shell, 'No importable URLs found.' );
+					return Promise.resolve();
+				}
+
+				setImportStatus( shell, 'Importing 1 of ' + total + '...' );
+
+				return items.reduce( function (promise, item, index ) {
+					return promise.then( function () {
+						var itemData = new FormData();
+						itemData.append( 'action', form.dataset.importAction || 'post_collection_import_item' );
+						itemData.append( 'collection_term_id', form.querySelector( 'input[name="collection_term_id"]' ).value );
+						itemData.append( '_wpnonce', form.querySelector( 'input[name="_wpnonce"]' ).value );
+						appendItemToImportData( itemData, item );
+
+						setImportStatus( shell, 'Importing ' + ( index + 1 ) + ' of ' + total + ': ' + ( item.title || item.url ) );
+
+						return postImportData( form, itemData )
+							.then( function ( result ) {
+								completed++;
+								if ( result.created ) {
+									created++;
+									addImportLogItem( shell, item, 'created', 'Saved and extracted.' );
+								} else {
+									existing++;
+									addImportLogItem( shell, item, 'existing', 'Already saved.' );
+								}
+								updateImportProgress( shell, completed, total );
+								setImportSummary( shell, created, existing, failed );
+							} )
+							.catch( function ( error ) {
+								completed++;
+								failed++;
+								addImportLogItem( shell, item, 'failed', error.message || 'Failed.' );
+								updateImportProgress( shell, completed, total );
+								setImportSummary( shell, created, existing, failed );
+							} );
+					} );
+				}, Promise.resolve() ).then( function () {
+					setImportStatus( shell, 'Import complete.' );
+				} );
+			} )
+			.catch( function ( error ) {
+				setImportStatus( shell, error.message || 'Import failed.' );
+			} )
+			.finally( function () {
+				if ( button ) {
+					button.disabled = false;
+					button.textContent = 'Import URLs';
+				}
+			} );
+	}
+
 	var noteSaveTimers = {};
 
 	function queueNoteTextSave( textarea ) {
@@ -781,6 +944,18 @@
 		}
 	} );
 
+	document.addEventListener( 'change', function ( event ) {
+		if ( ! matches( event.target, '.pc-import-file-control input[type="file"]' ) ) {
+			return;
+		}
+
+		var field = closest( event.target, '.pc-import-file-field' );
+		var name = field ? field.querySelector( '[data-import-file-name]' ) : null;
+		if ( name ) {
+			name.textContent = event.target.files && event.target.files.length ? event.target.files[0].name : 'No file selected';
+		}
+	} );
+
 	document.addEventListener( 'mouseover', function ( event ) {
 		var noteStar = closest( event.target, '.pc-note-star' );
 		var ratingContainer = noteStar ? closest( noteStar, '.pc-note-rating' ) : null;
@@ -844,6 +1019,13 @@
 	}, true );
 
 	document.addEventListener( 'submit', function ( event ) {
+		var importForm = closest( event.target, '.pc-import-form' );
+		if ( importForm ) {
+			event.preventDefault();
+			runImport( importForm );
+			return;
+		}
+
 		var form = closest( event.target, '.pc-quick-edit-form' );
 		if ( ! form ) {
 			return;
