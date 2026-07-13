@@ -24,19 +24,21 @@ if ( ! $collection || ! $post || ! $app->can_view_collection( $collection ) ) {
 	return;
 }
 
-$mode       = $app->get_collection_mode( $collection );
-$source_url = $app->get_source_url( $post );
-$host       = $app->get_source_host( $post );
-$embed_html = $app->get_post_description_embed_html( $post, 'detail' );
-$terms      = $app->get_post_terms( $post );
-$can_edit_notes = current_user_can( 'edit_posts' );
-$note           = $can_edit_notes ? $app->get_post_collection()->get_article_notes()->get_note( $post->ID ) : null;
-$statuses       = $app->get_article_statuses();
-$read_status    = $note && ! empty( $note['status'] ) ? $note['status'] : $app->get_article_note_status( $post );
-$rating         = $note ? (int) $note['rating'] : 0;
-$notes          = $note ? $note['notes'] : '';
-$notes_nonce    = $can_edit_notes ? wp_create_nonce( 'post-collection-article-notes' ) : '';
-$back_label = 'bookmarks' === $mode ? __( 'Back to Bookmarks', 'post-collection' ) : __( 'Back to Collection', 'post-collection' );
+$mode             = $app->get_collection_mode( $collection );
+$source_url       = $app->get_source_url( $post );
+$host             = $app->get_source_host( $post );
+$embed_html       = $app->get_post_description_embed_html( $post, 'detail' );
+$terms            = $app->get_post_terms( $post );
+$word_count_label = $app->get_post_word_count_label( $post );
+$read_time_label  = $app->get_post_read_time_label( $post );
+$can_edit_notes   = current_user_can( 'edit_posts' );
+$note             = $can_edit_notes ? $app->get_post_collection()->get_article_notes()->get_note( $post->ID ) : null;
+$statuses         = $app->get_article_statuses();
+$read_status      = $note && ! empty( $note['status'] ) ? $note['status'] : $app->get_article_note_status( $post );
+$rating           = $note ? (int) $note['rating'] : 0;
+$notes            = $note ? $note['notes'] : '';
+$notes_nonce      = $can_edit_notes ? wp_create_nonce( 'post-collection-article-notes' ) : '';
+$back_label       = 'bookmarks' === $mode ? __( 'Back to Bookmarks', 'post-collection' ) : __( 'Back to Collection', 'post-collection' );
 ?>
 <!DOCTYPE html>
 <html <?php echo wp_app_language_attributes(); ?>>
@@ -58,6 +60,8 @@ $back_label = 'bookmarks' === $mode ? __( 'Back to Bookmarks', 'post-collection'
 		<h1><?php echo esc_html( get_the_title( $post ) ); ?></h1>
 		<div class="pc-detail-meta">
 			<time datetime="<?php echo esc_attr( get_the_date( DATE_W3C, $post ) ); ?>"><?php echo esc_html( get_the_date( '', $post ) ); ?></time>
+			<span class="pc-reading-meta"><?php echo esc_html( $word_count_label ); ?></span>
+			<span class="pc-reading-meta"><?php echo esc_html( $read_time_label ); ?></span>
 			<?php $app->render_article_note_status_toggle( $post, $read_status ); ?>
 			<?php if ( 'private' === $post->post_status && $app->can_manage_collections() ) : ?>
 				<span><?php esc_html_e( 'Private', 'post-collection' ); ?></span>

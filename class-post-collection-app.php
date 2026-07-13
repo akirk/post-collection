@@ -732,6 +732,8 @@ class Post_Collection_App {
 			'excerpt'     => $this->get_post_excerpt( $post, 24 ),
 			'embed_html'  => $this->get_post_embed_html( $post, 'links' ),
 			'host'        => $this->get_source_host( $post ),
+			'word_count'  => $this->get_post_word_count( $post ),
+			'read_time'   => $this->get_post_read_time_label( $post ),
 			'is_private'  => 'private' === $post->post_status,
 			'status'      => $post->post_status,
 			'read_status' => $read_status,
@@ -1120,6 +1122,121 @@ class Post_Collection_App {
 		$text = wp_strip_all_tags( strip_shortcodes( $text ) );
 
 		return wp_trim_words( $text, $length );
+	}
+
+	/**
+	 * Get the word or character count for a post.
+	 *
+	 * Mirrors the WordPress/Friends reading-time locale handling.
+	 *
+	 * @param \WP_Post $post The post.
+	 * @return int
+	 */
+	public function get_post_word_count( \WP_Post $post ) {
+		return count( $this->get_words_from_text( $post->post_content ) );
+	}
+
+	/**
+	 * Get a localized word-count label for a post.
+	 *
+	 * @param \WP_Post $post The post.
+	 * @return string
+	 */
+	public function get_post_word_count_label( \WP_Post $post ) {
+		$word_count = $this->get_post_word_count( $post );
+
+		return sprintf(
+			/* translators: %s is a number of words. */
+			_n( '%s word', '%s words', $word_count, 'post-collection' ),
+			number_format_i18n( $word_count )
+		);
+	}
+
+	/**
+	 * Get a localized estimated read-time label for a post.
+	 *
+	 * @param \WP_Post $post The post.
+	 * @return string
+	 */
+	public function get_post_read_time_label( \WP_Post $post ) {
+		$read_time = $this->calculate_read_time( $post->post_content );
+
+		if ( $read_time >= MINUTE_IN_SECONDS ) {
+			$minutes = (int) ceil( $read_time / MINUTE_IN_SECONDS );
+
+			return sprintf(
+				/* translators: %s is a number of minutes. */
+				_n( '%s min read', '%s mins read', $minutes, 'post-collection' ),
+				number_format_i18n( $minutes )
+			);
+		}
+
+		if ( $read_time > 20 ) {
+			return _x( '< 1 min read', 'reading time', 'post-collection' );
+		}
+
+		return _x( 'quick read', 'reading time', 'post-collection' );
+	}
+
+	/**
+	 * Calculate estimated read time in seconds.
+	 *
+	 * Based on the Friends plugin formula.
+	 *
+	 * @param string $original_text Original post content.
+	 * @return float
+	 */
+	private function calculate_read_time( $original_text ) {
+		$words_per_minute = $this->uses_character_word_count() ? 500 : 200;
+		$additional_time  = 0;
+		$figures          = substr_count( strtolower( $original_text ), '<figure' );
+
+		for ( $i = 0; $i < $figures; $i++ ) {
+			if ( $i < 10 ) {
+				$additional_time += 12 - $i;
+			} else {
+				$additional_time += 3;
+			}
+		}
+
+		return count( $this->get_words_from_text( $original_text ) ) / $words_per_minute * 60 + $additional_time;
+	}
+
+	/**
+	 * Get words or characters from post content.
+	 *
+	 * @param string $original_text Original post content.
+	 * @return array
+	 */
+	private function get_words_from_text( $original_text ) {
+		$text = wp_strip_all_tags( $original_text );
+
+		if ( $this->uses_character_word_count() && preg_match( '/^utf\-?8$/i', get_option( 'blog_charset' ) ) ) {
+			$text = trim( preg_replace( "/[\n\r\t ]+/", ' ', $text ), ' ' );
+			preg_match_all( '/./u', $text, $words_array );
+
+			$words_array = array_shift( $words_array );
+
+			return is_array( $words_array ) ? $words_array : array();
+		}
+
+		$words_array = preg_split( "/[\n\r\t ]+/", $text, -1, PREG_SPLIT_NO_EMPTY );
+
+		return is_array( $words_array ) ? $words_array : array();
+	}
+
+	/**
+	 * Whether the current locale counts characters instead of words.
+	 *
+	 * @return bool
+	 */
+	private function uses_character_word_count() {
+		/*
+		 * translators: If your word count is based on single characters (e.g. East Asian characters),
+		 * enter 'characters_excluding_spaces' or 'characters_including_spaces'. Otherwise, enter 'words'.
+		 * Do not translate into your own language.
+		 */
+		return 0 === strpos( _x( 'words', 'Word count type. Do not translate!', 'post-collection' ), 'characters' );
 	}
 
 	/**

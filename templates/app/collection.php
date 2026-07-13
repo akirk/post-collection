@@ -187,12 +187,14 @@ if ( '' !== $active_tag ) {
 			<section class="pc-bookmark-board" aria-label="<?php esc_attr_e( 'Bookmarks', 'post-collection' ); ?>">
 				<?php foreach ( $query->posts as $post ) : ?>
 					<?php
-					$image_url   = $app->get_post_image_url( $post );
-					$embed_html  = $app->get_post_embed_html( $post, 'board' );
-					$excerpt     = $app->get_post_excerpt( $post, 22 );
-					$source_url  = $app->get_source_url( $post );
-					$host        = $app->get_source_host( $post );
-					$read_status = $app->get_article_note_status( $post );
+					$image_url        = $app->get_post_image_url( $post );
+					$embed_html       = $app->get_post_embed_html( $post, 'board' );
+					$excerpt          = $app->get_post_excerpt( $post, 22 );
+					$source_url       = $app->get_source_url( $post );
+					$host             = $app->get_source_host( $post );
+					$read_status      = $app->get_article_note_status( $post );
+					$word_count_label = $app->get_post_word_count_label( $post );
+					$read_time_label  = $app->get_post_read_time_label( $post );
 					?>
 					<article class="pc-bookmark-card">
 						<?php if ( $embed_html ) : ?>
@@ -214,6 +216,8 @@ if ( '' !== $active_tag ) {
 							<?php endif; ?>
 							<div class="pc-card-actions">
 								<a href="<?php echo esc_url( $app->get_collection_url( $collection, $post->ID ) ); ?>"><?php esc_html_e( 'Details', 'post-collection' ); ?></a>
+								<span class="pc-reading-meta"><?php echo esc_html( $word_count_label ); ?></span>
+								<span class="pc-reading-meta"><?php echo esc_html( $read_time_label ); ?></span>
 								<?php $app->render_article_note_status_toggle( $post, $read_status ); ?>
 								<?php if ( 'private' === $post->post_status && $app->can_manage_collections() ) : ?>
 									<span><?php esc_html_e( 'Private', 'post-collection' ); ?></span>
@@ -227,16 +231,18 @@ if ( '' !== $active_tag ) {
 			<section class="pc-link-list" aria-label="<?php esc_attr_e( 'Links', 'post-collection' ); ?>">
 				<?php foreach ( $query->posts as $post ) : ?>
 					<?php
-					$source_url  = $app->get_source_url( $post );
-					$host        = $app->get_source_host( $post );
-					$embed_html  = $app->get_post_embed_html( $post, 'links' );
-					$excerpt     = $app->get_post_excerpt( $post, 24 );
-					$post_terms  = $app->get_post_terms( $post );
-					$tag_names   = wp_list_pluck( $post_terms, 'name' );
-					$read_status = $app->get_article_note_status( $post );
-					$is_editing  = $quick_edit && intval( $post->ID ) === intval( $quick_edit_post_id );
-					$edit_url    = add_query_arg( array( 'pc-view' => 'links', 'pc-edit' => $post->ID ) ) . '#pc-link-' . $post->ID;
-					$cancel_url  = remove_query_arg( 'pc-edit' ) . '#pc-link-' . $post->ID;
+					$source_url       = $app->get_source_url( $post );
+					$host             = $app->get_source_host( $post );
+					$embed_html       = $app->get_post_embed_html( $post, 'links' );
+					$excerpt          = $app->get_post_excerpt( $post, 24 );
+					$post_terms       = $app->get_post_terms( $post );
+					$tag_names        = wp_list_pluck( $post_terms, 'name' );
+					$read_status      = $app->get_article_note_status( $post );
+					$word_count_label = $app->get_post_word_count_label( $post );
+					$read_time_label  = $app->get_post_read_time_label( $post );
+					$is_editing       = $quick_edit && intval( $post->ID ) === intval( $quick_edit_post_id );
+					$edit_url         = add_query_arg( array( 'pc-view' => 'links', 'pc-edit' => $post->ID ) ) . '#pc-link-' . $post->ID;
+					$cancel_url       = remove_query_arg( 'pc-edit' ) . '#pc-link-' . $post->ID;
 					?>
 					<article id="pc-link-<?php echo esc_attr( $post->ID ); ?>" class="pc-link-row<?php echo 'private' === $post->post_status ? ' is-private' : ''; ?><?php echo $is_editing ? ' is-editing' : ''; ?>">
 						<div class="pc-link-main">
@@ -253,6 +259,8 @@ if ( '' !== $active_tag ) {
 						</div>
 						<div class="pc-link-meta">
 							<time datetime="<?php echo esc_attr( get_the_date( DATE_W3C, $post ) ); ?>"><?php echo esc_html( get_the_date( '', $post ) ); ?></time>
+							<span class="pc-reading-meta"><?php echo esc_html( $word_count_label ); ?></span>
+							<span class="pc-reading-meta"><?php echo esc_html( $read_time_label ); ?></span>
 							<span class="pc-link-host"><?php echo esc_html( $host ); ?></span>
 							<?php $app->render_article_note_status_toggle( $post, $read_status ); ?>
 							<?php if ( 'private' === $post->post_status && $app->can_manage_collections() ) : ?>
@@ -323,11 +331,14 @@ if ( '' !== $active_tag ) {
 			<section class="pc-post-list" aria-label="<?php esc_attr_e( 'Posts', 'post-collection' ); ?>">
 				<?php foreach ( $query->posts as $post ) : ?>
 					<?php
-					$image_url   = $app->get_post_image_url( $post );
-					$embed_html  = $app->get_post_embed_html( $post, 'reader' );
-					$excerpt     = $app->get_post_excerpt( $post, 38 );
-					$host        = $app->get_source_host( $post );
-					$read_status = $app->get_article_note_status( $post );
+					$image_url        = $app->get_post_image_url( $post );
+					$embed_html       = $app->get_post_embed_html( $post, 'reader' );
+					$excerpt          = $app->get_post_excerpt( $post, 38 );
+					$source_url       = $app->get_source_url( $post );
+					$host             = $app->get_source_host( $post );
+					$read_status      = $app->get_article_note_status( $post );
+					$word_count_label = $app->get_post_word_count_label( $post );
+					$read_time_label  = $app->get_post_read_time_label( $post );
 					?>
 					<article class="pc-post-row<?php echo $image_url || $embed_html ? ' has-image' : ' is-text-only'; ?>">
 						<?php if ( $embed_html ) : ?>
@@ -345,8 +356,10 @@ if ( '' !== $active_tag ) {
 							<?php endif; ?>
 							<div class="pc-row-meta">
 								<time datetime="<?php echo esc_attr( get_the_date( DATE_W3C, $post ) ); ?>"><?php echo esc_html( get_the_date( '', $post ) ); ?></time>
+								<span class="pc-reading-meta"><?php echo esc_html( $word_count_label ); ?></span>
+								<span class="pc-reading-meta"><?php echo esc_html( $read_time_label ); ?></span>
 								<?php $app->render_article_note_status_toggle( $post, $read_status ); ?>
-								<a href="<?php echo esc_url( $app->get_source_url( $post ) ); ?>" target="_blank" rel="noopener noreferrer"><?php esc_html_e( 'Original', 'post-collection' ); ?></a>
+								<a class="pc-row-source-link" href="<?php echo esc_url( $source_url ); ?>" target="_blank" rel="noopener noreferrer"><?php echo esc_html( $host ); ?></a>
 							</div>
 						</div>
 					</article>
