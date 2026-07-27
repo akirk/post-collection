@@ -2252,6 +2252,11 @@ class Post_Collection {
 				return $response;
 			}
 			if ( 200 !== wp_remote_retrieve_response_code( $response ) ) {
+				$fallback_item = $this->maybe_download_cloudflare_protected_url( $url, wp_remote_retrieve_body( $response ), $response );
+				if ( ! is_wp_error( $fallback_item ) ) {
+					return $fallback_item;
+				}
+
 				return new \WP_Error(
 					'could-not-download',
 					__( 'Could not download the URL.', 'post-collection' ),
@@ -2266,12 +2271,34 @@ class Post_Collection {
 			$content = wp_remote_retrieve_body( $response );
 		}
 
+		$fallback_item = $this->maybe_download_cloudflare_protected_url( $url, $content, isset( $response ) ? $response : null );
+		if ( ! is_wp_error( $fallback_item ) ) {
+			return $fallback_item;
+		}
+
 		$item = $this->extract_content( $content, $url );
 		if ( is_wp_error( $item ) ) {
 			return $item;
 		}
 		$item->raw_html = $content;
 		return $item;
+	}
+
+	/**
+	 * Fetch URLs through Jina when a direct response is a Cloudflare challenge.
+	 *
+	 * @param string $url      The URL to download.
+	 * @param string $content  Response body.
+	 * @param array  $response Optional HTTP response.
+	 * @return ExtractedPage|\WP_Error Extracted item or a non-fallback error.
+	 */
+	private function maybe_download_cloudflare_protected_url( $url, $content, $response = null ) {
+		$cloudflare = new SiteConfig\Cloudflare_Protected();
+		if ( ! $cloudflare->is_challenge_response( (string) $content, $response ) ) {
+			return new \WP_Error( 'not-cloudflare-challenge', __( 'The response is not a Cloudflare challenge.', 'post-collection' ) );
+		}
+
+		return $cloudflare->download( $url );
 	}
 
 	/**

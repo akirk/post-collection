@@ -28,4 +28,56 @@ class Test_Extract_Content extends TestCase {
 		$this->assertStringContainsString( 'Turn-based loops', wp_strip_all_tags( $item->content ) );
 		$this->assertStringNotContainsString( 'tooltip script content', wp_strip_all_tags( $item->content ) );
 	}
+
+	public function test_download_falls_back_to_jina_for_cloudflare_challenge() {
+		$plugin     = new Post_Collection_Extract_Content_Test_Plugin();
+		$url        = 'https://example.com/protected-article';
+		$reader_url = 'https://r.jina.ai/http://' . $url;
+
+		$GLOBALS['wp_test_http_responses'][ $url ] = array(
+			'headers'  => array(
+				'cf-mitigated' => 'challenge',
+			),
+			'response' => array(
+				'code' => 403,
+			),
+			'body'     => '<html><script src="/cdn-cgi/challenge-platform/h/g/orchestrate/chl_page/v1"></script></html>',
+		);
+		$GLOBALS['wp_test_http_responses'][ $reader_url ] = array(
+			'response' => array(
+				'code' => 200,
+			),
+			'body'     => "Title: Protected Article\n\nMarkdown Content:\nFull protected content.",
+		);
+
+		$item = $plugin->download( $url );
+
+		$this->assertFalse( is_wp_error( $item ) );
+		$this->assertSame( 'Protected Article', $item->title );
+		$this->assertStringContainsString( 'Full protected content.', wp_strip_all_tags( $item->content ) );
+	}
+
+	public function test_download_does_not_fallback_to_jina_for_non_cloudflare_http_errors() {
+		$plugin     = new Post_Collection_Extract_Content_Test_Plugin();
+		$url        = 'https://example.com/not-found';
+		$reader_url = 'https://r.jina.ai/http://' . $url;
+
+		$GLOBALS['wp_test_http_responses'][ $url ] = array(
+			'response' => array(
+				'code' => 404,
+			),
+			'body'     => 'Not found.',
+		);
+		$GLOBALS['wp_test_http_responses'][ $reader_url ] = array(
+			'response' => array(
+				'code' => 200,
+			),
+			'body'     => "Title: Reader Article\n\nMarkdown Content:\nReader fallback content.",
+		);
+
+		$item = $plugin->download( $url );
+
+		$this->assertTrue( is_wp_error( $item ) );
+		$this->assertSame( 'could-not-download', $item->get_error_code() );
+	}
 }
