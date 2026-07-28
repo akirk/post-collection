@@ -176,6 +176,37 @@ namespace {
 		return $GLOBALS['wp_test_abilities'][ $name ] ?? null;
 	}
 
+	function wp_remote_get( $url, $args = array() ) {
+		if ( isset( $GLOBALS['wp_test_http_responses'][ $url ] ) ) {
+			return $GLOBALS['wp_test_http_responses'][ $url ];
+		}
+
+		return new WP_Error( 'http_request_failed', 'No test response registered.' );
+	}
+
+	function wp_safe_remote_get( $url, $args = array() ) {
+		return wp_remote_get( $url, $args );
+	}
+
+	function wp_remote_retrieve_response_code( $response ) {
+		return $response['response']['code'] ?? 0;
+	}
+
+	function wp_remote_retrieve_body( $response ) {
+		return $response['body'] ?? '';
+	}
+
+	function wp_remote_retrieve_header( $response, $header ) {
+		$headers = $response['headers'] ?? array();
+		foreach ( $headers as $key => $value ) {
+			if ( strtolower( (string) $key ) === strtolower( (string) $header ) ) {
+				return $value;
+			}
+		}
+
+		return '';
+	}
+
 	function is_wp_error( $thing ) {
 		return $thing instanceof WP_Error;
 	}
@@ -803,6 +834,9 @@ namespace {
 	}
 
 	require_once __DIR__ . '/../class-extracted-page.php';
+	require_once __DIR__ . '/../site-configs/class-site-config.php';
+	require_once __DIR__ . '/../site-configs/class-jina.php';
+	require_once __DIR__ . '/../site-configs/class-cloudflare-protected.php';
 	require_once __DIR__ . '/../class-user.php';
 	require_once __DIR__ . '/../class-user-query.php';
 	require_once __DIR__ . '/../includes/class-article-notes.php';

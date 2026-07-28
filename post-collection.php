@@ -35,6 +35,8 @@ require_once __DIR__ . '/class-post-collection-abilities.php';
 require_once __DIR__ . '/class-post-collection-app.php';
 require_once __DIR__ . '/class-extracted-page.php';
 require_once __DIR__ . '/site-configs/class-site-config.php';
+require_once __DIR__ . '/site-configs/class-jina.php';
+require_once __DIR__ . '/site-configs/class-cloudflare-protected.php';
 require_once __DIR__ . '/site-configs/class-youtube.php';
 require_once __DIR__ . '/includes/class-article-notes.php';
 
