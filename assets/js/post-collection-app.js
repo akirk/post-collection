@@ -234,6 +234,49 @@
 		buttons[ nextIndex ].focus();
 	}
 
+	function copyText( text ) {
+		if ( navigator.clipboard && navigator.clipboard.writeText ) {
+			return navigator.clipboard.writeText( text );
+		}
+
+		return new Promise( function ( resolve, reject ) {
+			var textarea = document.createElement( 'textarea' );
+			textarea.value = text;
+			textarea.setAttribute( 'readonly', '' );
+			textarea.style.position = 'fixed';
+			textarea.style.top = '-9999px';
+			document.body.appendChild( textarea );
+			textarea.select();
+
+			try {
+				if ( document.execCommand( 'copy' ) ) {
+					resolve();
+				} else {
+					reject( new Error( 'Copy failed.' ) );
+				}
+			} catch ( error ) {
+				reject( error );
+			}
+
+			document.body.removeChild( textarea );
+		} );
+	}
+
+	function copyButtonValue( button ) {
+		var value = button.dataset.copyValue || '';
+		if ( ! value ) {
+			return;
+		}
+
+		copyText( value ).then( function () {
+			button.textContent = button.dataset.copiedLabel || 'Copied';
+			window.clearTimeout( button.pcCopyTimeout );
+			button.pcCopyTimeout = window.setTimeout( function () {
+				button.textContent = button.dataset.copyLabel || 'Copy';
+			}, 2000 );
+		} );
+	}
+
 	function updateReviewItemCollapsedStatus( item, label ) {
 		var status = item ? item.querySelector( '.pc-review-collapsed-status' ) : null;
 		if ( status ) {
@@ -836,6 +879,13 @@
 		if ( loadMoreReview ) {
 			event.preventDefault();
 			loadMoreReviewArticles( loadMoreReview );
+			return;
+		}
+
+		var copyValue = closest( event.target, '.pc-copy-value' );
+		if ( copyValue ) {
+			event.preventDefault();
+			copyButtonValue( copyValue );
 			return;
 		}
 
