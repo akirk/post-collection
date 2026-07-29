@@ -150,6 +150,38 @@ class Post_Collection {
 	}
 
 	/**
+	 * Parse a shared text payload into a URL and optional title.
+	 *
+	 * @param string $text The shared text.
+	 * @return array Parsed URL and title.
+	 */
+	public function parse_shared_url_payload( $text ) {
+		$text = trim( (string) $text );
+		if ( $this->check_url( $text ) ) {
+			return array(
+				'url'   => $text,
+				'title' => '',
+			);
+		}
+
+		if ( preg_match( '~https?://[^\s<>"\']+~i', $text, $matches, PREG_OFFSET_CAPTURE ) ) {
+			$url   = rtrim( $matches[0][0], '.,;:!?)]}' );
+			$title = trim( substr( $text, 0, $matches[0][1] ) );
+			$title = preg_replace( '/\s+/', ' ', $title );
+
+			return array(
+				'url'   => $url,
+				'title' => $title && strlen( $title ) <= 160 ? $title : '',
+			);
+		}
+
+		return array(
+			'url'   => $text,
+			'title' => '',
+		);
+	}
+
+	/**
 	 * Truncate URL using Friends method if available.
 	 *
 	 * @param string $url The URL to truncate.
@@ -1145,6 +1177,19 @@ class Post_Collection {
 	}
 
 	/**
+	 * Build a URLForwarder template for saving into a collection.
+	 *
+	 * @param string $target_arg The save endpoint query argument.
+	 * @param int    $target_id  The target collection or user ID.
+	 * @return string URLForwarder template URL.
+	 */
+	public function get_urlforwarder_url( $target_arg, $target_id ) {
+		return home_url(
+			'/?' . rawurlencode( $target_arg ) . '=' . rawurlencode( (string) $target_id ) . '&collect-post=@url&title=@subject'
+		);
+	}
+
+	/**
 	 * Render a bookmarklet link.
 	 *
 	 * @param string $href  Bookmarklet href.
@@ -1190,13 +1235,16 @@ class Post_Collection {
 	public function save_url_endpoint() {
 		$delimiter = '===BODY===';
 		$url = false;
+		$shared_title = '';
 		$collection = null;
 		if ( isset( $_REQUEST['collect-post'], $_REQUEST['collection'] ) ) {
 			$collection = get_term( absint( wp_unslash( $_REQUEST['collection'] ) ), self::COLLECTION_TAXONOMY );
 			if ( ! $collection || is_wp_error( $collection ) ) {
 				return;
 			}
-			$url = wp_unslash( $_REQUEST['collect-post'] );
+			$shared_payload = $this->parse_shared_url_payload( wp_unslash( $_REQUEST['collect-post'] ) );
+			$url            = $shared_payload['url'];
+			$shared_title   = $shared_payload['title'];
 		}
 		if ( isset( $_REQUEST['collect-post'] ) && isset( $_REQUEST['user'] ) ) {
 			if ( ! intval( $_REQUEST['user'] ) ) {
@@ -1244,10 +1292,30 @@ class Post_Collection {
 		}
 
 		if ( $collection ) {
-			$post_id = $this->save_url_to_collection_term( $url, $collection, $body );
+			$args = array();
+			if ( $shared_title ) {
+				$args['title'] = $shared_title;
+			} elseif ( isset( $_REQUEST['title'] ) ) {
+				$args['title'] = wp_unslash( $_REQUEST['title'] );
+			}
+
+			if ( isset( $_POST['post_collection_action'] ) && 'manual-save' === wp_unslash( $_POST['post_collection_action'] ) ) {
+				if ( ! isset( $_POST['_wpnonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['_wpnonce'] ) ), 'post-collection-manual-save' ) ) {
+					wp_die( esc_html__( 'Could not verify the save request.', 'post-collection' ) );
+				}
+
+				$post_id = $this->save_url_to_collection_term_without_content( $url, $collection, $args );
+				if ( is_wp_error( $post_id ) ) {
+					wp_die( esc_html( $post_id->get_error_message() ) );
+				}
+
+				wp_safe_redirect( get_edit_post_link( $post_id, 'raw' ) );
+				exit;
+			}
+
+			$post_id = $this->save_url_to_collection_term( $url, $collection, $body, $args );
 			if ( is_wp_error( $post_id ) ) {
-				echo '<pre>';
-				print_r( $post_id );
+				$this->render_save_error_page( $post_id, $url, $collection, $args );
 				exit;
 			}
 
@@ -1264,6 +1332,107 @@ class Post_Collection {
 				exit;
 			}
 		}
+	}
+
+	/**
+	 * Save a URL to a collection without downloaded content.
+	 *
+	 * @param string   $url        Source URL.
+	 * @param \WP_Term $collection Collection term.
+	 * @param array    $args       Optional arguments: title.
+	 * @return int|\WP_Error Post ID or error.
+	 */
+	public function save_url_to_collection_term_without_content( $url, \WP_Term $collection, $args = array() ) {
+		if ( ! is_string( $url ) || ! $this->check_url( $url ) ) {
+			return new \WP_Error( 'invalid-url', __( 'You entered an invalid URL.', 'post-collection' ) );
+		}
+
+		$title = '';
+		if ( isset( $args['title'] ) ) {
+			$title = wp_strip_all_tags( trim( sanitize_text_field( $args['title'] ) ) );
+		}
+		if ( ! $title ) {
+			$path  = trim( (string) wp_parse_url( $url, PHP_URL_PATH ), '/' );
+			$parts = explode( '/', $path );
+			$title = ucwords( strtr( end( $parts ), '-', ' ' ) );
+		}
+		if ( ! $title ) {
+			$title = $url;
+		}
+
+		$post_id = $this->url_to_collection_term_postid( $url, $collection );
+		if ( $post_id ) {
+			wp_untrash_post( $post_id );
+			$updated_post = wp_update_post(
+				array(
+					'ID'         => $post_id,
+					'post_title' => $title,
+				),
+				true
+			);
+
+			return is_wp_error( $updated_post ) ? $updated_post : (int) $post_id;
+		}
+
+		$post_id = wp_insert_post(
+			array(
+				'post_status'  => 'private',
+				'post_author'  => get_current_user_id(),
+				'guid'         => $url,
+				'post_type'    => self::CPT,
+				'post_title'   => $title,
+				'post_content' => '',
+			),
+			true
+		);
+		if ( is_wp_error( $post_id ) ) {
+			return $post_id;
+		}
+
+		wp_set_object_terms( $post_id, array( (int) $collection->term_id ), self::COLLECTION_TAXONOMY, false );
+
+		return (int) $post_id;
+	}
+
+	/**
+	 * Render a save error page with a manual recovery action.
+	 *
+	 * @param \WP_Error $error      Save error.
+	 * @param string    $url        Source URL.
+	 * @param \WP_Term  $collection Collection term.
+	 * @param array     $args       Save arguments.
+	 */
+	private function render_save_error_page( \WP_Error $error, $url, \WP_Term $collection, $args = array() ) {
+		$title = isset( $args['title'] ) ? wp_strip_all_tags( trim( sanitize_text_field( $args['title'] ) ) ) : '';
+		?>
+		<!doctype html>
+		<html <?php language_attributes(); ?>>
+		<head>
+			<meta charset="<?php bloginfo( 'charset' ); ?>">
+			<meta name="viewport" content="width=device-width, initial-scale=1">
+			<title><?php esc_html_e( 'Could not save article', 'post-collection' ); ?></title>
+			<?php wp_head(); ?>
+		</head>
+		<body>
+			<main style="max-width: 680px; margin: 48px auto; padding: 0 20px; font-family: sans-serif;">
+				<h1><?php esc_html_e( 'Could not save article', 'post-collection' ); ?></h1>
+				<p><?php echo esc_html( $error->get_error_message() ); ?></p>
+				<p><a href="<?php echo esc_url( $url ); ?>" target="_blank" rel="noopener noreferrer"><?php echo esc_html( $url ); ?></a></p>
+				<form method="post">
+					<input type="hidden" name="post_collection_action" value="manual-save">
+					<input type="hidden" name="collection" value="<?php echo esc_attr( $collection->term_id ); ?>">
+					<input type="hidden" name="collect-post" value="<?php echo esc_attr( $url ); ?>">
+					<input type="hidden" name="title" value="<?php echo esc_attr( $title ); ?>">
+					<?php wp_nonce_field( 'post-collection-manual-save' ); ?>
+					<p>
+						<button type="submit"><?php esc_html_e( 'Save anyway and edit', 'post-collection' ); ?></button>
+					</p>
+				</form>
+			</main>
+			<?php wp_footer(); ?>
+		</body>
+		</html>
+		<?php
 	}
 
 	/**

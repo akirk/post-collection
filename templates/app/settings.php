@@ -80,6 +80,7 @@ $hide_from_home  = get_term_meta( $collection->term_id, 'post_collection_hide_fr
 				<div class="pc-save-tab-list" role="tablist" aria-label="<?php esc_attr_e( 'Save methods', 'post-collection' ); ?>">
 					<button type="button" class="is-active" role="tab" aria-selected="true" aria-controls="pc-settings-bookmarklet-panel-<?php echo esc_attr( $collection->term_id ); ?>" id="pc-settings-bookmarklet-tab-<?php echo esc_attr( $collection->term_id ); ?>" data-pc-tab="bookmarklet"><?php esc_html_e( 'Bookmarklet', 'post-collection' ); ?></button>
 					<button type="button" role="tab" aria-selected="false" aria-controls="pc-settings-extension-panel-<?php echo esc_attr( $collection->term_id ); ?>" id="pc-settings-extension-tab-<?php echo esc_attr( $collection->term_id ); ?>" data-pc-tab="extension" tabindex="-1"><?php esc_html_e( 'Browser extension', 'post-collection' ); ?></button>
+					<button type="button" role="tab" aria-selected="false" aria-controls="pc-settings-urlforwarder-panel-<?php echo esc_attr( $collection->term_id ); ?>" id="pc-settings-urlforwarder-tab-<?php echo esc_attr( $collection->term_id ); ?>" data-pc-tab="urlforwarder" tabindex="-1"><?php esc_html_e( 'URLForwarder', 'post-collection' ); ?></button>
 				</div>
 				<div id="pc-settings-bookmarklet-panel-<?php echo esc_attr( $collection->term_id ); ?>" class="pc-save-tab-panel is-active" role="tabpanel" aria-labelledby="pc-settings-bookmarklet-tab-<?php echo esc_attr( $collection->term_id ); ?>" data-pc-tab-panel="bookmarklet">
 					<p><?php esc_html_e( "Drag this bookmarklet to your bookmarks bar and click it when you're on an article you want to save from the web.", 'post-collection' ); ?></p>
@@ -96,6 +97,45 @@ $hide_from_home  = get_term_meta( $collection->term_id, 'post_collection_hide_fr
 				</div>
 				<div id="pc-settings-extension-panel-<?php echo esc_attr( $collection->term_id ); ?>" class="pc-save-tab-panel" role="tabpanel" aria-labelledby="pc-settings-extension-tab-<?php echo esc_attr( $collection->term_id ); ?>" data-pc-tab-panel="extension" hidden>
 					<p><?php esc_html_e( 'The Friends browser extension can add save actions for your collections and send the current page content for better article extraction.', 'post-collection' ); ?></p>
+				</div>
+				<div id="pc-settings-urlforwarder-panel-<?php echo esc_attr( $collection->term_id ); ?>" class="pc-save-tab-panel" role="tabpanel" aria-labelledby="pc-settings-urlforwarder-tab-<?php echo esc_attr( $collection->term_id ); ?>" data-pc-tab-panel="urlforwarder" hidden>
+					<p>
+						<?php esc_html_e( 'Use these values in', 'post-collection' ); ?>
+						<a href="<?php echo esc_url( 'https://f-droid.org/packages/net.daverix.urlforward/' ); ?>" target="_blank" rel="noopener noreferrer"><?php esc_html_e( 'URLForwarder for Android', 'post-collection' ); ?></a>.
+					</p>
+					<table class="pc-urlforwarder-settings">
+						<tbody>
+							<tr>
+								<th scope="row"><?php esc_html_e( 'Filter name', 'post-collection' ); ?></th>
+								<td><code><?php echo esc_html( $collection->name ); ?></code></td>
+								<td>
+									<button type="button" class="pc-button pc-copy-value" data-copy-value="<?php echo esc_attr( $collection->name ); ?>" data-copy-label="<?php esc_attr_e( 'Copy', 'post-collection' ); ?>" data-copied-label="<?php esc_attr_e( 'Copied', 'post-collection' ); ?>">
+										<?php esc_html_e( 'Copy', 'post-collection' ); ?>
+									</button>
+								</td>
+							</tr>
+							<tr>
+								<th scope="row"><?php esc_html_e( 'Output URL', 'post-collection' ); ?></th>
+								<td><code class="pc-urlforwarder-output-url"><?php echo esc_html( $app->get_collection_urlforwarder_url( $collection ) ); ?></code></td>
+								<td>
+									<button type="button" class="pc-button pc-copy-value" data-copy-value="<?php echo esc_attr( $app->get_collection_urlforwarder_url( $collection ) ); ?>" data-copy-label="<?php esc_attr_e( 'Copy', 'post-collection' ); ?>" data-copied-label="<?php esc_attr_e( 'Copied', 'post-collection' ); ?>">
+										<?php esc_html_e( 'Copy', 'post-collection' ); ?>
+									</button>
+								</td>
+							</tr>
+							<tr>
+								<th scope="row"><?php esc_html_e( 'Replaceable text', 'post-collection' ); ?></th>
+								<td><code>@url</code></td>
+								<td></td>
+							</tr>
+							<tr>
+								<th scope="row"><?php esc_html_e( 'Replaceable subject', 'post-collection' ); ?></th>
+								<td><code>@subject</code></td>
+								<td></td>
+							</tr>
+						</tbody>
+					</table>
+					<p class="pc-urlforwarder-note"><?php esc_html_e( 'The forwarded URL should be URL encoded.', 'post-collection' ); ?></p>
 				</div>
 			</div>
 		</section>

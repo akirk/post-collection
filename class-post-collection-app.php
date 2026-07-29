@@ -125,17 +125,20 @@ class Post_Collection_App {
 		}
 
 		if ( function_exists( 'wp_app_enqueue_style' ) ) {
+			$style_path  = POST_COLLECTION_PLUGIN_DIR . 'assets/css/post-collection-app.css';
+			$script_path = POST_COLLECTION_PLUGIN_DIR . 'assets/js/post-collection-app.js';
+
 			wp_app_enqueue_style(
 				'post-collection-app',
 				plugins_url( 'assets/css/post-collection-app.css', POST_COLLECTION_PLUGIN_FILE ),
 				array(),
-				POST_COLLECTION_VERSION
+				file_exists( $style_path ) ? filemtime( $style_path ) : POST_COLLECTION_VERSION
 			);
 			wp_app_enqueue_script(
 				'post-collection-app',
 				plugins_url( 'assets/js/post-collection-app.js', POST_COLLECTION_PLUGIN_FILE ),
 				array(),
-				POST_COLLECTION_VERSION,
+				file_exists( $script_path ) ? filemtime( $script_path ) : POST_COLLECTION_VERSION,
 				true
 			);
 		}
@@ -160,6 +163,16 @@ class Post_Collection_App {
 	 */
 	public function get_collection_bookmarklet_href( $collection ) {
 		return $this->post_collection->get_bookmarklet_href( 'collection', $collection->term_id );
+	}
+
+	/**
+	 * Build a URLForwarder URL template for a collection.
+	 *
+	 * @param \WP_Term $collection The collection term.
+	 * @return string URLForwarder template URL.
+	 */
+	public function get_collection_urlforwarder_url( $collection ) {
+		return $this->post_collection->get_urlforwarder_url( 'collection', $collection->term_id );
 	}
 
 	/**

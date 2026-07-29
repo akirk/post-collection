@@ -493,11 +493,68 @@ body.pc-new-collection-page .pc-detail-header {
 	font-size: 0.94rem;
 }
 
+.pc-urlforwarder-settings {
+	width: 100%;
+	border-collapse: collapse;
+	table-layout: fixed;
+}
+
+.pc-urlforwarder-settings th,
+.pc-urlforwarder-settings td {
+	padding: 10px 0;
+	border-top: 1px solid var(--pc-color-border);
+	text-align: left;
+	vertical-align: top;
+}
+
+.pc-urlforwarder-settings tr:first-child th,
+.pc-urlforwarder-settings tr:first-child td {
+	border-top: 0;
+}
+
+.pc-urlforwarder-settings th {
+	width: 150px;
+	color: var(--pc-color-text);
+	font-weight: 700;
+}
+
+.pc-urlforwarder-settings td:last-child {
+	width: 92px;
+	text-align: right;
+}
+
+.pc-urlforwarder-settings code {
+	display: block;
+	overflow-wrap: anywhere;
+	color: var(--pc-color-text);
+	font-size: 0.9rem;
+	white-space: normal;
+}
+
+.pc-urlforwarder-settings .pc-urlforwarder-output-url {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.pc-save-tab-panel .pc-urlforwarder-note {
+	margin-top: 14px;
+	margin-bottom: 0;
+}
+
 @media (max-width: 640px) {
 	.pc-save-tab-list button {
 		padding-right: 8px;
 		padding-left: 8px;
 		font-size: 0.9rem;
+	}
+
+	.pc-urlforwarder-settings th {
+		width: 118px;
+	}
+
+	.pc-urlforwarder-settings td:last-child {
+		width: 74px;
 	}
 }
 
