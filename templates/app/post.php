@@ -84,7 +84,8 @@ $back_label       = 'bookmarks' === $mode ? __( 'Back to Bookmarks', 'post-colle
 	</header>
 
 	<main class="pc-shell pc-detail-layout">
-		<article class="pc-detail-content">
+		<article id="collected-post-content" class="pc-detail-content" aria-labelledby="collected-post-content-heading" data-ai-assistant-important>
+			<h2 id="collected-post-content-heading" class="screen-reader-text"><?php esc_html_e( 'Collected post content', 'post-collection' ); ?></h2>
 			<?php if ( $embed_html ) : ?>
 				<?php echo $embed_html; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
 			<?php endif; ?>
