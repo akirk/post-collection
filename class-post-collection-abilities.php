@@ -57,7 +57,7 @@ class Post_Collection_Abilities {
 			$domains = array();
 		}
 
-		$domains[ self::CATEGORY ] = 'post collection, collected posts, collect posts, save URL, save article, read later, bookmarks, article notes, reading notes, reading status, reviewed articles';
+		$domains[ self::CATEGORY ] = 'post collection, collected posts, collect posts, save URL, save article, edit article content, update article content, read later, bookmarks, article notes, reading notes, reading status, reviewed articles';
 
 		return $domains;
 	}
@@ -81,6 +81,9 @@ class Post_Collection_Abilities {
 
 			case 'post-collection/update-note':
 				return __( 'Confirm the updated reading status, rating, and notes. Include the article title and view_url.', 'post-collection' );
+
+			case 'post-collection/update-article-content':
+				return __( 'Confirm the updated article title, source_url, view_url, and whether full content was changed.', 'post-collection' );
 		}
 
 		return $instructions;
@@ -365,6 +368,68 @@ class Post_Collection_Abilities {
 					false,
 					true,
 					__( 'Use publish to show a collected article in the feed and private to hide it.', 'post-collection' )
+				),
+			)
+		);
+
+		$this->register_ability(
+			'post-collection/update-article-content',
+			array(
+				'label'               => __( 'Update Collected Article Content', 'post-collection' ),
+				'description'         => __( 'Updates editable fields on a collected article, including title, source URL, excerpt, full HTML content, tags, and visibility.', 'post-collection' ),
+				'category'            => self::CATEGORY,
+				'input_schema'        => array(
+					'type'                 => 'object',
+					'required'             => array( 'article_id' ),
+					'properties'           => array(
+						'article_id'   => array(
+							'type'        => 'integer',
+							'description' => __( 'Collected article post ID.', 'post-collection' ),
+						),
+						'title'        => array(
+							'type'        => 'string',
+							'description' => __( 'Article title. Omit to leave unchanged.', 'post-collection' ),
+						),
+						'source_url'   => array(
+							'type'        => 'string',
+							'description' => __( 'Original article URL. Omit to leave unchanged.', 'post-collection' ),
+						),
+						'excerpt'      => array(
+							'type'        => 'string',
+							'description' => __( 'Article excerpt or short description. Omit to leave unchanged.', 'post-collection' ),
+						),
+						'content'      => array(
+							'type'        => 'string',
+							'description' => __( 'Full article HTML content. HTML allowed by wp_kses_post is preserved. Omit to leave unchanged.', 'post-collection' ),
+						),
+						'tags'         => array(
+							'type'        => 'array',
+							'description' => __( 'Tag names to replace the article tags. Omit to leave unchanged.', 'post-collection' ),
+							'items'       => array(
+								'type' => 'string',
+							),
+						),
+						'post_status'  => array(
+							'type'        => 'string',
+							'enum'        => array( 'private', 'publish' ),
+							'description' => __( 'private hides the article from the feed; publish shows it in the feed. Omit to leave unchanged.', 'post-collection' ),
+						),
+					),
+					'additionalProperties' => false,
+				),
+				'output_schema'       => array(
+					'type'       => 'object',
+					'properties' => array(
+						'article' => self::article_schema( true ),
+					),
+				),
+				'execute_callback'    => array( $this, 'ability_update_article_content' ),
+				'permission_callback' => array( $this, 'can_manage_post_collections' ),
+				'meta'                => self::ability_meta(
+					false,
+					false,
+					true,
+					__( 'Use this when the user asks to edit a collected article title, source URL, excerpt, body content, tags, or visibility. Use post-collection/get-article first when preserving or partially rewriting existing content matters.', 'post-collection' )
 				),
 			)
 		);
@@ -748,6 +813,93 @@ class Post_Collection_Abilities {
 
 		return array(
 			'article' => $this->prepare_article_data( $post ),
+		);
+	}
+
+	/**
+	 * Update collected article content fields.
+	 *
+	 * @param array $input Ability input.
+	 * @return array|\WP_Error Ability result or error.
+	 */
+	public function ability_update_article_content( $input ) {
+		$input = is_array( $input ) ? $input : array();
+		$post = $this->get_collected_article( $input['article_id'] ?? 0 );
+		if ( is_wp_error( $post ) ) {
+			return $post;
+		}
+
+		$editable_fields = array( 'title', 'source_url', 'excerpt', 'content', 'tags', 'post_status' );
+		if ( empty( array_intersect( $editable_fields, array_keys( $input ) ) ) ) {
+			return new \WP_Error( 'missing-article-update', __( 'Provide title, source_url, excerpt, content, tags, or post_status to update.', 'post-collection' ) );
+		}
+
+		$update = array(
+			'ID' => $post->ID,
+		);
+
+		if ( array_key_exists( 'title', $input ) ) {
+			$title = $this->sanitize_label( $input['title'] );
+			if ( '' === $title ) {
+				return new \WP_Error( 'invalid-title', __( 'A valid article title is required.', 'post-collection' ) );
+			}
+			$update['post_title'] = $title;
+		}
+
+		$source_url = null;
+		if ( array_key_exists( 'source_url', $input ) ) {
+			$source_url = esc_url_raw( trim( (string) $input['source_url'] ) );
+			if ( ! $this->plugin->check_url( $source_url ) ) {
+				return new \WP_Error( 'invalid-url', __( 'You entered an invalid URL.', 'post-collection' ) );
+			}
+			$update['guid'] = $source_url;
+		}
+
+		if ( array_key_exists( 'excerpt', $input ) ) {
+			$update['post_excerpt'] = sanitize_textarea_field( (string) $input['excerpt'] );
+		}
+
+		if ( array_key_exists( 'content', $input ) ) {
+			$update['post_content'] = force_balance_tags( trim( wp_kses_post( (string) $input['content'] ) ) );
+		}
+
+		if ( array_key_exists( 'post_status', $input ) ) {
+			$post_status = sanitize_key( $input['post_status'] );
+			if ( ! in_array( $post_status, array( 'private', 'publish' ), true ) ) {
+				return new \WP_Error( 'invalid-post-status', __( 'A valid post status is required.', 'post-collection' ) );
+			}
+			$update['post_status'] = $post_status;
+		}
+
+		if ( count( $update ) > 1 ) {
+			$updated = wp_update_post( $update, true );
+			if ( is_wp_error( $updated ) ) {
+				return $updated;
+			}
+		}
+
+		if ( null !== $source_url ) {
+			update_post_meta( $post->ID, 'url', $source_url );
+		}
+
+		if ( array_key_exists( 'tags', $input ) ) {
+			if ( ! is_array( $input['tags'] ) ) {
+				return new \WP_Error( 'invalid-tags', __( 'Tags must be an array of tag names.', 'post-collection' ) );
+			}
+
+			$terms = wp_set_post_terms( $post->ID, $this->sanitize_tags( $input['tags'] ), $this->plugin->get_tag_taxonomy(), false );
+			if ( is_wp_error( $terms ) ) {
+				return $terms;
+			}
+		}
+
+		$post = get_post( $post->ID );
+		if ( ! $post ) {
+			return new \WP_Error( 'article-not-found', __( 'The article was updated but could not be loaded.', 'post-collection' ) );
+		}
+
+		return array(
+			'article' => $this->prepare_article_data( $post, true ),
 		);
 	}
 

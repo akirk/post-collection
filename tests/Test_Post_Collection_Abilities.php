@@ -80,6 +80,7 @@ class Test_Post_Collection_Abilities extends TestCase {
 		$this->assertArrayHasKey( 'post-collection/list-articles', $GLOBALS['wp_test_abilities'] );
 		$this->assertArrayHasKey( 'post-collection/get-article', $GLOBALS['wp_test_abilities'] );
 		$this->assertArrayHasKey( 'post-collection/update-article-visibility', $GLOBALS['wp_test_abilities'] );
+		$this->assertArrayHasKey( 'post-collection/update-article-content', $GLOBALS['wp_test_abilities'] );
 		$this->assertArrayHasKey( 'post-collection/update-note', $GLOBALS['wp_test_abilities'] );
 		$this->assertTrue( $GLOBALS['wp_test_abilities']['post-collection/list-articles']['meta']['annotations']['readonly'] );
 		$this->assertFalse( $GLOBALS['wp_test_abilities']['post-collection/update-note']['meta']['annotations']['destructive'] );
@@ -127,6 +128,36 @@ class Test_Post_Collection_Abilities extends TestCase {
 		$this->assertFalse( is_wp_error( $result ) );
 		$this->assertFalse( get_user_option( 'friends_publish_post_collection', $collection->ID ) );
 		$this->assertFalse( $result['collection']['publish_feed'] );
+	}
+
+	public function test_update_article_content_edits_collected_article_fields() {
+		$collection = $this->create_collection_user( 5, 'editing', 'Editing' );
+		$this->plugin->collection_users = array( $collection );
+		$article = $this->create_article( 105, $collection->ID, 'Original Title' );
+		update_post_meta( $article->ID, 'url', 'https://example.com/original' );
+
+		$result = $this->abilities->ability_update_article_content(
+			array(
+				'article_id'  => $article->ID,
+				'title'       => 'Updated Title',
+				'source_url'  => 'https://example.com/updated',
+				'excerpt'     => 'Updated excerpt',
+				'content'     => '<p>Updated body</p>',
+				'tags'        => array( 'AI', 'Reading' ),
+				'post_status' => 'publish',
+			)
+		);
+
+		$this->assertFalse( is_wp_error( $result ) );
+		$this->assertSame( 'Updated Title', $GLOBALS['wp_test_posts'][ $article->ID ]->post_title );
+		$this->assertSame( 'https://example.com/updated', $GLOBALS['wp_test_posts'][ $article->ID ]->guid );
+		$this->assertSame( 'https://example.com/updated', get_post_meta( $article->ID, 'url', true ) );
+		$this->assertSame( 'Updated excerpt', $GLOBALS['wp_test_posts'][ $article->ID ]->post_excerpt );
+		$this->assertSame( '<p>Updated body</p>', $GLOBALS['wp_test_posts'][ $article->ID ]->post_content );
+		$this->assertSame( 'publish', $GLOBALS['wp_test_posts'][ $article->ID ]->post_status );
+		$this->assertSame( array( 'AI', 'Reading' ), $GLOBALS['wp_test_terms'][ $article->ID ][ $this->plugin->get_tag_taxonomy() ] );
+		$this->assertSame( '<p>Updated body</p>', $result['article']['content'] );
+		$this->assertSame( 'https://example.com/updated', $result['article']['source_url'] );
 	}
 
 	public function test_list_articles_unread_includes_articles_without_notes() {
