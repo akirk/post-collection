@@ -38,6 +38,7 @@ require_once __DIR__ . '/site-configs/class-site-config.php';
 require_once __DIR__ . '/site-configs/class-jina.php';
 require_once __DIR__ . '/site-configs/class-cloudflare-protected.php';
 require_once __DIR__ . '/site-configs/class-youtube.php';
+require_once __DIR__ . '/site-configs/class-archive-is.php';
 require_once __DIR__ . '/includes/class-article-notes.php';
 
 add_filter( 'post_collection_active', '__return_true' );
@@ -52,6 +53,7 @@ function load_post_collection( $friends = null ) {
 	}
 
 	$post_collection = new Post_Collection( $friends );
+	$post_collection->register_site_config( new SiteConfig\Archive_Is() );
 	$post_collection->register_site_config( new SiteConfig\Youtube() );
 }
 

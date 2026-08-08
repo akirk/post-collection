@@ -3,11 +3,13 @@
 use PHPUnit\Framework\TestCase;
 use PostCollection\ExtractedPage;
 use PostCollection\Post_Collection;
+use PostCollection\SiteConfig\Archive_Is;
 
 require_once __DIR__ . '/../class-post-collection.php';
 
 class Post_Collection_Browser_Extension_Test_Plugin extends Post_Collection {
 	public $download_item;
+	public $download_url;
 	public $existing_post_id = null;
 
 	public function __construct() {}
@@ -21,6 +23,7 @@ class Post_Collection_Browser_Extension_Test_Plugin extends Post_Collection {
 	}
 
 	public function download( $url, $content = null ) {
+		$this->download_url = $url;
 		return $this->download_item;
 	}
 }
@@ -40,6 +43,7 @@ class Test_Browser_Extension_Action extends TestCase {
 		$GLOBALS['wp_test_user_options']      = array();
 
 		$this->plugin = new Post_Collection_Browser_Extension_Test_Plugin();
+		$this->plugin->register_site_config( new Archive_Is() );
 	}
 
 	public function test_save_response_reports_collected_post_word_count() {
@@ -96,6 +100,37 @@ class Test_Browser_Extension_Action extends TestCase {
 		$this->assertStringContainsString( 'already in the collection', $result['message'] );
 	}
 
+	public function test_archive_is_save_uses_original_url_from_posted_html() {
+		$collection   = $this->create_collection_term( 3, 'archive-captures', 'Archive Captures' );
+		$original_url = 'https://www.nzz.ch/konsequent_himmelwaerts-ld.898962';
+		$archive_html = '<html><head><link rel="canonical" href="https://archive.is/2026.08.08-084003/' . $original_url . '"></head>'
+			. '<body><input name="q" value="' . $original_url . '"></body></html>';
+		$this->plugin->download_item = new ExtractedPage(
+			$original_url,
+			'Konsequent himmelwärts',
+			'<article><p>Extracted article content.</p></article>'
+		);
+
+		$result = $this->plugin->friends_browser_extension_action_save(
+			null,
+			$this->create_request(
+				$collection->term_id,
+				array(
+					'url'  => 'https://archive.is/MT8fM',
+					'html' => $archive_html,
+				)
+			),
+			new \WP_User( 99 ),
+			array()
+		);
+
+		$this->assertFalse( is_wp_error( $result ) );
+		$this->assertTrue( $result['success'] );
+		$this->assertSame( $original_url, $this->plugin->download_url );
+		$saved_post = reset( $GLOBALS['wp_test_posts'] );
+		$this->assertSame( $original_url, $saved_post->guid );
+	}
+
 	private function create_collection_term( $id, $slug, $name ) {
 		$term = new \WP_Term(
 			(object) array(
@@ -111,14 +146,17 @@ class Test_Browser_Extension_Action extends TestCase {
 		return $term;
 	}
 
-	private function create_request( $collection_id ) {
+	private function create_request( $collection_id, $params = array() ) {
 		$request = new \WP_REST_Request( 'POST', '/friends/v1/extension/action' );
 		$request->set_body_params(
-			array(
-				'collection_id' => $collection_id,
-				'url'           => 'https://source.example/post',
-				'html'          => '<html><body>Fallback page HTML.</body></html>',
-				'title'         => 'Browser Page Title',
+			array_merge(
+				array(
+					'collection_id' => $collection_id,
+					'url'           => 'https://source.example/post',
+					'html'          => '<html><body>Fallback page HTML.</body></html>',
+					'title'         => 'Browser Page Title',
+				),
+				$params
 			)
 		);
 

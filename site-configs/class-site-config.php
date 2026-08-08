@@ -6,4 +6,8 @@ defined( 'ABSPATH' ) || exit;
 abstract class SiteConfig {
 	abstract public function is_url_supported( $url );
 	abstract public function download( $url );
+
+	public function get_source_url( $url, $content = null ) {
+		return '';
+	}
 }
