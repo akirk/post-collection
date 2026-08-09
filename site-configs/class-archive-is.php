@@ -1,4 +1,12 @@
 <?php
+/**
+ * Archive.is URL helper for preserving the archived page's original source URL.
+ *
+ * Archive pages are downloaded by the default downloader; this config inspects
+ * the fetched archive HTML and returns the original article URL when possible.
+ *
+ * @package Post_Collection
+ */
 namespace PostCollection\SiteConfig;
 
 defined( 'ABSPATH' ) || exit;

@@ -1,4 +1,12 @@
 <?php
+/**
+ * Cloudflare challenge detector that retries protected article downloads through Jina.
+ *
+ * The default downloader uses this config only when a direct HTTP response
+ * looks like a Cloudflare challenge page.
+ *
+ * @package Post_Collection
+ */
 namespace PostCollection\SiteConfig;
 
 defined( 'ABSPATH' ) || exit;
