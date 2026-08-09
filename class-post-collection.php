@@ -2286,6 +2286,10 @@ class Post_Collection {
 		}
 		if ( null !== $html ) {
 			$html = (string) wp_unslash( $html );
+			$source_url = $this->get_source_url_from_site_configs( $url, $html );
+			if ( $source_url ) {
+				$url = $source_url;
+			}
 		}
 
 		$title = '';
@@ -2347,6 +2351,28 @@ class Post_Collection {
 			'url'               => $item_url ? $item_url : '',
 			'link_label'        => __( 'Open', 'post-collection' ),
 		);
+	}
+
+	/**
+	 * Resolve the source URL for posted page content via site configs.
+	 *
+	 * @param string $url     Submitted URL.
+	 * @param string $content Posted page content.
+	 * @return string Source URL or an empty string.
+	 */
+	private function get_source_url_from_site_configs( $url, $content ) {
+		foreach ( $this->site_configs as $site_config ) {
+			if ( ! $site_config->is_url_supported( $url ) ) {
+				continue;
+			}
+
+			$source_url = $site_config->get_source_url( $url, $content );
+			if ( $source_url && $this->check_url( $source_url ) ) {
+				return $source_url;
+			}
+		}
+
+		return '';
 	}
 
 	/**

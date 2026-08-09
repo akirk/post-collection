@@ -837,6 +837,7 @@ namespace {
 	require_once __DIR__ . '/../site-configs/class-site-config.php';
 	require_once __DIR__ . '/../site-configs/class-jina.php';
 	require_once __DIR__ . '/../site-configs/class-cloudflare-protected.php';
+	require_once __DIR__ . '/../site-configs/class-archive-is.php';
 	require_once __DIR__ . '/../class-user.php';
 	require_once __DIR__ . '/../class-user-query.php';
 	require_once __DIR__ . '/../includes/class-article-notes.php';
