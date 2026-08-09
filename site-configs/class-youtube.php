@@ -1,4 +1,12 @@
 <?php
+/**
+ * YouTube URL handler for saving videos as WordPress embed posts.
+ *
+ * This uses YouTube oEmbed metadata to populate the collected post title,
+ * author, post format, and embed block instead of extracting article HTML.
+ *
+ * @package Post_Collection
+ */
 namespace PostCollection\SiteConfig;
 
 defined( 'ABSPATH' ) || exit;

@@ -1,4 +1,13 @@
 <?php
+/**
+ * Jina reader fallback for Cloudflare-protected article downloads.
+ *
+ * This uses r.jina.ai to retrieve a markdown representation of a URL when
+ * WordPress cannot fetch the original page because the response is a
+ * Cloudflare challenge. It is not used for search, embeddings, or reranking.
+ *
+ * @package Post_Collection
+ */
 namespace PostCollection\SiteConfig;
 
 defined( 'ABSPATH' ) || exit;
