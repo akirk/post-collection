@@ -2299,6 +2299,11 @@ class Post_Collection {
 
 		$tags = $this->parse_extension_action_tags( $request->get_param( 'tags' ) );
 
+		$existing_post_id = absint( $request->get_param( 'post_id' ) );
+		if ( $existing_post_id ) {
+			return $this->update_browser_extension_saved_post( $existing_post_id, $collection, $title, $tags );
+		}
+
 		$post_id = $this->save_url_to_collection_term(
 			$url,
 			$collection,
@@ -2316,6 +2321,39 @@ class Post_Collection {
 
 		$save_details = $post_id;
 		$post_id      = $save_details['post_id'];
+		$post         = get_post( $post_id );
+		if ( ! $post ) {
+			return new \WP_Error(
+				'article-not-found',
+				__( 'The article was saved but could not be loaded.', 'post-collection' ),
+				array( 'status' => 500 )
+			);
+		}
+
+		$generated = $this->generate_browser_extension_article_details( $post, $tags );
+		if ( ! empty( $generated['title'] ) && $generated['title'] !== $post->post_title ) {
+			$updated_post = wp_update_post(
+				array(
+					'ID'         => $post_id,
+					'post_title' => $generated['title'],
+				),
+				true
+			);
+			if ( ! is_wp_error( $updated_post ) ) {
+				$post = get_post( $post_id );
+			}
+		}
+		if ( ! empty( $generated['tags'] ) ) {
+			$terms = wp_set_post_terms( $post_id, $generated['tags'], $this->get_tag_taxonomy(), false );
+			if ( is_wp_error( $terms ) ) {
+				return $terms;
+			}
+		}
+
+		$response_tags = ! empty( $generated['tags'] ) ? $generated['tags'] : $this->get_post_tag_names( $post_id );
+		if ( ! $response_tags && $tags ) {
+			$response_tags = $tags;
+		}
 		$edit_url = get_edit_post_link( $post_id, 'raw' );
 		$item_url = home_url( '/post-collection/' . $collection->slug . '/' . $post_id . '/' );
 		$word_count = isset( $save_details['word_count'] ) ? (int) $save_details['word_count'] : 0;
@@ -2350,6 +2388,238 @@ class Post_Collection {
 			'edit_url'          => $edit_url ? $edit_url : '',
 			'url'               => $item_url ? $item_url : '',
 			'link_label'        => __( 'Open', 'post-collection' ),
+			'post_id'           => $post_id,
+			'title'             => $post ? get_the_title( $post ) : '',
+			'tags'              => $response_tags,
+			'values'            => array(
+				'title' => $post ? get_the_title( $post ) : '',
+				'tags'  => implode( ', ', $response_tags ),
+			),
+			'fields'            => array(
+				'post_id' => (string) $post_id,
+			),
+			'submit_label'      => __( 'Update', 'post-collection' ),
+		);
+	}
+
+	/**
+	 * Update title and tags for a post previously saved through the browser extension.
+	 *
+	 * @param int      $post_id    Collected post ID.
+	 * @param \WP_Term $collection Collection term.
+	 * @param string   $title      Submitted title.
+	 * @param array    $tags       Submitted tags.
+	 * @return array|\WP_Error The action response.
+	 */
+	private function update_browser_extension_saved_post( $post_id, \WP_Term $collection, $title, array $tags ) {
+		$post = get_post( $post_id );
+		if ( ! $post || self::CPT !== $post->post_type || ! has_term( (int) $collection->term_id, self::COLLECTION_TAXONOMY, $post ) ) {
+			return new \WP_Error(
+				'invalid-post',
+				__( 'The saved post could not be found in this collection.', 'post-collection' ),
+				array( 'status' => 404 )
+			);
+		}
+
+		if ( $title ) {
+			$updated_post = wp_update_post(
+				array(
+					'ID'         => $post_id,
+					'post_title' => $title,
+				),
+				true
+			);
+			if ( is_wp_error( $updated_post ) ) {
+				return $updated_post;
+			}
+		}
+
+		$terms = wp_set_post_terms( $post_id, $tags, $this->get_tag_taxonomy(), false );
+		if ( is_wp_error( $terms ) ) {
+			return $terms;
+		}
+
+		$post = get_post( $post_id );
+		$saved_tags = $this->get_post_tag_names( $post_id );
+		if ( ! $saved_tags ) {
+			$saved_tags = $tags;
+		}
+
+		return array(
+			'success'      => true,
+			'message'      => sprintf(
+				// translators: %s is the post collection name.
+				__( 'Updated %s.', 'post-collection' ),
+				$collection->name
+			),
+			'edit_url'     => get_edit_post_link( $post_id, 'raw' ),
+			'url'          => home_url( '/post-collection/' . $collection->slug . '/' . $post_id . '/' ),
+			'link_label'   => __( 'Open', 'post-collection' ),
+			'post_id'      => $post_id,
+			'title'        => $post ? get_the_title( $post ) : '',
+			'tags'         => $saved_tags,
+			'values'       => array(
+				'title' => $post ? get_the_title( $post ) : '',
+				'tags'  => implode( ', ', $saved_tags ),
+			),
+			'fields'       => array(
+				'post_id' => (string) $post_id,
+			),
+			'submit_label' => __( 'Update', 'post-collection' ),
+		);
+	}
+
+	/**
+	 * Generate title and tag suggestions for a saved article with the WordPress AI Client.
+	 *
+	 * @param \WP_Post $post           Saved post.
+	 * @param array    $submitted_tags Tags the user already chose.
+	 * @return array Suggested title and tags.
+	 */
+	private function generate_browser_extension_article_details( \WP_Post $post, array $submitted_tags ) {
+		if ( ! function_exists( 'wp_ai_client_prompt' ) || $submitted_tags ) {
+			return array();
+		}
+
+		$content = wp_strip_all_tags( $post->post_content );
+		$content = preg_replace( '/\s+/', ' ', $content );
+		$content = trim( substr( $content, 0, 6000 ) );
+		if ( '' === $content ) {
+			return array();
+		}
+
+		$prompt = implode(
+			"\n",
+			array(
+				'Return strict JSON only for this saved article.',
+				'Use this shape: {"title":"","tags":[""]}.',
+				'Choose a concise human-readable title and 3 to 6 short topical tags.',
+				'Tags should be lowercase unless they are proper nouns, and should not include generic words like article, blog, post, page, news, reading, or saved.',
+				'Do not wrap the JSON in Markdown.',
+				'Current title: ' . $post->post_title,
+				'Source URL: ' . $post->guid,
+				'Article text:',
+				$content,
+			)
+		);
+
+		$builder = wp_ai_client_prompt( $prompt );
+		if ( is_wp_error( $builder ) ) {
+			return array();
+		}
+
+		if ( method_exists( $builder, 'using_system_instruction' ) ) {
+			$builder = $builder->using_system_instruction( 'You classify saved articles for a personal reading collection. Return JSON only.' );
+		}
+		if ( method_exists( $builder, 'using_max_tokens' ) ) {
+			$builder = $builder->using_max_tokens( 512 );
+		}
+
+		$text = $this->generate_ai_text( $builder );
+		if ( is_wp_error( $text ) ) {
+			return array();
+		}
+
+		$json = $this->extract_json_object( (string) $text );
+		if ( '' === $json ) {
+			return array();
+		}
+
+		$data = json_decode( $json, true );
+		if ( ! is_array( $data ) ) {
+			return array();
+		}
+
+		$title = isset( $data['title'] ) ? wp_strip_all_tags( trim( sanitize_text_field( $data['title'] ) ) ) : '';
+		$tags  = isset( $data['tags'] ) && is_array( $data['tags'] ) ? $this->sanitize_import_tags( $data['tags'] ) : array();
+
+		return array_filter(
+			array(
+				'title' => $title,
+				'tags'  => $tags,
+			)
+		);
+	}
+
+	/**
+	 * Generate text using the available WP AI Client method names.
+	 *
+	 * @param object $builder Prompt builder.
+	 * @return string|\WP_Error Generated text or error.
+	 */
+	private function generate_ai_text( $builder ) {
+		if ( is_callable( array( $builder, 'generate_text_result' ) ) ) {
+			$result = $builder->generate_text_result();
+			if ( is_wp_error( $result ) ) {
+				return $result;
+			}
+			if ( is_object( $result ) && method_exists( $result, 'to_text' ) ) {
+				return $result->to_text();
+			}
+			if ( is_object( $result ) && method_exists( $result, 'toText' ) ) {
+				return $result->toText();
+			}
+		}
+
+		if ( is_callable( array( $builder, 'generateTextResult' ) ) ) {
+			$result = $builder->generateTextResult();
+			if ( is_wp_error( $result ) ) {
+				return $result;
+			}
+			if ( is_object( $result ) && method_exists( $result, 'toText' ) ) {
+				return $result->toText();
+			}
+		}
+
+		if ( is_callable( array( $builder, 'generate_text' ) ) ) {
+			return $builder->generate_text();
+		}
+
+		return new \WP_Error( 'ai-text-generation-unavailable', __( 'The AI connector does not support text generation.', 'post-collection' ) );
+	}
+
+	/**
+	 * Extract a JSON object from an AI response.
+	 *
+	 * @param string $text AI response text.
+	 * @return string JSON object or an empty string.
+	 */
+	private function extract_json_object( $text ) {
+		$text = trim( (string) $text );
+		if ( 0 === strpos( $text, '{' ) && strrpos( $text, '}' ) === strlen( $text ) - 1 ) {
+			return $text;
+		}
+
+		$start = strpos( $text, '{' );
+		$end   = strrpos( $text, '}' );
+		if ( false === $start || false === $end || $end <= $start ) {
+			return '';
+		}
+
+		return substr( $text, $start, $end - $start + 1 );
+	}
+
+	/**
+	 * Get assigned tag names for a collected post.
+	 *
+	 * @param int $post_id Post ID.
+	 * @return array Tag names.
+	 */
+	private function get_post_tag_names( $post_id ) {
+		$terms = get_the_terms( $post_id, $this->get_tag_taxonomy() );
+		if ( ! $terms || is_wp_error( $terms ) ) {
+			return array();
+		}
+
+		return array_values(
+			array_filter(
+				array_map(
+					function ( $term ) {
+						return isset( $term->name ) ? $term->name : '';
+					},
+					$terms
+				)
+			)
 		);
 	}
 
