@@ -2380,6 +2380,7 @@ class Post_Collection {
 				'post_id' => (string) $post_id,
 			),
 			'submit_label'      => __( 'Update', 'post-collection' ),
+			'followup_action'   => $this->get_generate_tags_browser_extension_action( $collection, $this->get_browser_extension_key( $context ), true ),
 		);
 	}
 
@@ -3478,29 +3479,6 @@ class Post_Collection {
 					),
 					'inputs'           => $inputs,
 				);
-				$actions[] = array(
-					'id'               => 'generate-tags-for-post-collection-' . $collection->term_id,
-					'name'             => sprintf(
-						// translators: %s is the name of a post collection.
-						__( 'Generate tags for %s', 'post-collection' ),
-						$collection->name
-					),
-					'category'         => __( 'Save', 'post-collection' ),
-					'url'              => rest_url( 'friends/v1/extension/action' ),
-					'method'           => 'POST',
-					'run'              => 'inline',
-					'submit_label'     => __( 'Generate Tags', 'post-collection' ),
-					'progress_message' => __( 'Generating tags...', 'post-collection' ),
-					'success_message'  => __( 'Generated tags.', 'post-collection' ),
-					'fields'           => array(
-						'action'        => 'post_collection_generate_tags',
-						'key'           => $browser_key,
-						'collection_id' => (string) $collection->term_id,
-						'url'           => '{current_url}',
-						'html'          => '{page_html}',
-					),
-					'inputs'           => $inputs,
-				);
 				continue;
 			}
 
@@ -3508,6 +3486,38 @@ class Post_Collection {
 		}
 
 		return $actions;
+	}
+
+	/**
+	 * Get the follow-up browser extension action for tag generation.
+	 *
+	 * @param \WP_Term $collection The post collection term.
+	 * @param string   $browser_key Browser extension API key.
+	 * @param bool     $compact Whether the action is shown as a follow-up button.
+	 * @return array The action definition.
+	 */
+	private function get_generate_tags_browser_extension_action( \WP_Term $collection, $browser_key, $compact = false ) {
+		return array(
+			'id'               => 'generate-tags-for-post-collection-' . $collection->term_id,
+			'name'             => $compact ? __( 'Generate tags', 'post-collection' ) : sprintf(
+				// translators: %s is the name of a post collection.
+				__( 'Generate tags for %s', 'post-collection' ),
+				$collection->name
+			),
+			'url'              => rest_url( 'friends/v1/extension/action' ),
+			'method'           => 'POST',
+			'run'              => 'inline',
+			'submit_label'     => __( 'Generate Tags', 'post-collection' ),
+			'progress_message' => __( 'Generating tags...', 'post-collection' ),
+			'success_message'  => __( 'Generated tags.', 'post-collection' ),
+			'fields'           => array(
+				'action'        => 'post_collection_generate_tags',
+				'key'           => $browser_key,
+				'collection_id' => (string) $collection->term_id,
+				'url'           => '{current_url}',
+				'html'          => '{page_html}',
+			),
+		);
 	}
 
 	/**

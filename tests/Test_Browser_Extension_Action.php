@@ -100,6 +100,8 @@ class Test_Browser_Extension_Action extends TestCase {
 		$this->assertSame( '5 words', $result['word_count_label'] );
 		$this->assertStringContainsString( '5 words', $result['message'] );
 		$this->assertNull( $GLOBALS['post_collection_test_ai_prompt'] );
+		$this->assertSame( 'Generate tags', $result['followup_action']['name'] );
+		$this->assertSame( 'post_collection_generate_tags', $result['followup_action']['fields']['action'] );
 	}
 
 	public function test_existing_url_response_reports_existing_post_word_count() {

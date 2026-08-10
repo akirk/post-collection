@@ -789,6 +789,10 @@ namespace {
 		return 'https://example.com' . $path;
 	}
 
+	function rest_url( $path = '', $scheme = 'rest' ) {
+		return 'https://example.com/wp-json/' . ltrim( $path, '/' );
+	}
+
 	function sanitize_text_field( $str ) {
 		return trim( strip_tags( (string) $str ) );
 	}
