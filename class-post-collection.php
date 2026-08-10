@@ -300,6 +300,7 @@ class Post_Collection {
 		add_filter( 'friends_search_autocomplete', array( $this, 'friends_search_autocomplete' ), 20, 2 );
 		add_filter( 'friends_browser_extension_actions', array( $this, 'friends_browser_extension_actions' ), 10, 3 );
 		add_filter( 'friends_browser_extension_action_post_collection_save', array( $this, 'friends_browser_extension_action_save' ), 10, 4 );
+		add_filter( 'friends_browser_extension_action_post_collection_generate_tags', array( $this, 'friends_browser_extension_action_generate_tags' ), 10, 4 );
 	}
 
 	public function register_site_config( SiteConfig\SiteConfig $config ) {
@@ -2330,27 +2331,7 @@ class Post_Collection {
 			);
 		}
 
-		$generated = $this->generate_browser_extension_article_details( $post, $tags );
-		if ( ! empty( $generated['title'] ) && $generated['title'] !== $post->post_title ) {
-			$updated_post = wp_update_post(
-				array(
-					'ID'         => $post_id,
-					'post_title' => $generated['title'],
-				),
-				true
-			);
-			if ( ! is_wp_error( $updated_post ) ) {
-				$post = get_post( $post_id );
-			}
-		}
-		if ( ! empty( $generated['tags'] ) ) {
-			$terms = wp_set_post_terms( $post_id, $generated['tags'], $this->get_tag_taxonomy(), false );
-			if ( is_wp_error( $terms ) ) {
-				return $terms;
-			}
-		}
-
-		$response_tags = ! empty( $generated['tags'] ) ? $generated['tags'] : $this->get_post_tag_names( $post_id );
+		$response_tags = $this->get_post_tag_names( $post_id );
 		if ( ! $response_tags && $tags ) {
 			$response_tags = $tags;
 		}
@@ -2399,6 +2380,116 @@ class Post_Collection {
 				'post_id' => (string) $post_id,
 			),
 			'submit_label'      => __( 'Update', 'post-collection' ),
+		);
+	}
+
+	/**
+	 * Handle explicit tag generation actions relayed by the Friends browser extension.
+	 *
+	 * @param mixed            $response     The previous action response.
+	 * @param \WP_REST_Request $request      The REST request.
+	 * @param \WP_User         $current_user The user authenticated by Friends.
+	 * @param array            $context      Browser extension request context.
+	 * @return array|\WP_Error The action response.
+	 */
+	public function friends_browser_extension_action_generate_tags( $response, \WP_REST_Request $request, \WP_User $current_user, $context ) {
+		if ( null !== $response ) {
+			return $response;
+		}
+
+		if ( ! current_user_can( $this->get_required_role() ) ) {
+			return new \WP_Error(
+				'forbidden',
+				__( 'You are not allowed to edit post collections.', 'post-collection' ),
+				array( 'status' => 403 )
+			);
+		}
+
+		$collection_id = absint( $request->get_param( 'collection_id' ) );
+		$collection    = get_term( $collection_id, self::COLLECTION_TAXONOMY );
+		if ( ! $collection || is_wp_error( $collection ) ) {
+			return new \WP_Error(
+				'invalid-collection',
+				__( 'Invalid post collection.', 'post-collection' ),
+				array( 'status' => 404 )
+			);
+		}
+
+		if ( get_term_meta( $collection->term_id, 'friends_post_collection_inactive', true ) ) {
+			return new \WP_Error(
+				'inactive-collection',
+				__( 'This post collection is inactive.', 'post-collection' ),
+				array( 'status' => 403 )
+			);
+		}
+
+		$post_id = absint( $request->get_param( 'post_id' ) );
+		if ( ! $post_id ) {
+			$url = esc_url_raw( trim( (string) wp_unslash( $request->get_param( 'url' ) ) ) );
+			if ( ! $this->check_url( $url ) ) {
+				return new \WP_Error(
+					'invalid-url',
+					__( 'You entered an invalid URL.', 'post-collection' ),
+					array( 'status' => 400 )
+				);
+			}
+
+			$html = $request->get_param( 'html' );
+			if ( null === $html ) {
+				$html = $request->get_param( 'body' );
+			}
+			if ( null !== $html ) {
+				$source_url = $this->get_source_url_from_site_configs( $url, (string) wp_unslash( $html ) );
+				if ( $source_url ) {
+					$url = $source_url;
+				}
+			}
+
+			$post_id = (int) $this->url_to_collection_term_postid( $url, $collection );
+		}
+
+		$post = get_post( $post_id );
+		if ( ! $post || self::CPT !== $post->post_type || ! has_term( (int) $collection->term_id, self::COLLECTION_TAXONOMY, $post ) ) {
+			return new \WP_Error(
+				'saved-post-not-found',
+				__( 'Save this page before generating tags.', 'post-collection' ),
+				array( 'status' => 404 )
+			);
+		}
+
+		$title = '';
+		if ( null !== $request->get_param( 'title' ) ) {
+			$title = wp_strip_all_tags( trim( sanitize_text_field( wp_unslash( $request->get_param( 'title' ) ) ) ) );
+		}
+
+		if ( rest_sanitize_boolean( $request->get_param( 'apply_generated_tags' ) ) ) {
+			$tags = $this->parse_extension_action_tags( $request->get_param( 'tags' ) );
+			return $this->update_browser_extension_saved_post( $post_id, $collection, $title, $tags );
+		}
+
+		$generated_tags = $this->generate_browser_extension_article_tags( $post, $title );
+		if ( is_wp_error( $generated_tags ) ) {
+			return $generated_tags;
+		}
+
+		return array(
+			'success'      => true,
+			'message'      => __( 'Generated tag suggestions. Review and update to save them.', 'post-collection' ),
+			'edit_url'     => get_edit_post_link( $post_id, 'raw' ),
+			'url'          => home_url( '/post-collection/' . $collection->slug . '/' . $post_id . '/' ),
+			'link_label'   => __( 'Open', 'post-collection' ),
+			'post_id'      => $post_id,
+			'title'        => $title ? $title : get_the_title( $post ),
+			'tags'         => $generated_tags,
+			'values'       => array(
+				'title' => $title ? $title : get_the_title( $post ),
+				'tags'  => implode( ', ', $generated_tags ),
+			),
+			'fields'       => array(
+				'post_id'              => (string) $post_id,
+				'apply_generated_tags' => '1',
+			),
+			'submit_label' => __( 'Update Tags', 'post-collection' ),
 		);
 	}
 
@@ -2470,15 +2561,19 @@ class Post_Collection {
 	}
 
 	/**
-	 * Generate title and tag suggestions for a saved article with the WordPress AI Client.
+	 * Generate tag suggestions for a saved article with the WordPress AI Client.
 	 *
-	 * @param \WP_Post $post           Saved post.
-	 * @param array    $submitted_tags Tags the user already chose.
-	 * @return array Suggested title and tags.
+	 * @param \WP_Post $post  Saved post.
+	 * @param string   $title Optional title context from the browser extension.
+	 * @return array|\WP_Error Suggested tags or an error.
 	 */
-	private function generate_browser_extension_article_details( \WP_Post $post, array $submitted_tags ) {
-		if ( ! function_exists( 'wp_ai_client_prompt' ) || $submitted_tags ) {
-			return array();
+	private function generate_browser_extension_article_tags( \WP_Post $post, $title = '' ) {
+		if ( ! function_exists( 'wp_ai_client_prompt' ) ) {
+			return new \WP_Error(
+				'ai-client-unavailable',
+				__( 'The WordPress AI Client is not available.', 'post-collection' ),
+				array( 'status' => 503 )
+			);
 		}
 
 		$content = wp_strip_all_tags( $post->post_content );
@@ -2488,15 +2583,19 @@ class Post_Collection {
 			return array();
 		}
 
+		$existing_tags = $this->get_existing_tag_names();
 		$prompt = implode(
 			"\n",
 			array(
 				'Return strict JSON only for this saved article.',
-				'Use this shape: {"title":"","tags":[""]}.',
-				'Choose a concise human-readable title and 3 to 6 short topical tags.',
-				'Tags should be lowercase unless they are proper nouns, and should not include generic words like article, blog, post, page, news, reading, or saved.',
+				'Use this shape: {"tags":[""]}.',
+				'Choose 3 to 5 reusable tags for a personal reading collection.',
+				'Prefer existing tags from the supplied vocabulary. Invent a new tag only when no existing tag fits.',
+				'Prefer durable subjects over article-specific keywords. Avoid one-off people, publication names, country names, and institutions unless they are the main retrieval reason.',
+				'Do not use generic tags such as article, blog, post, page, news, reading, saved, or content.',
 				'Do not wrap the JSON in Markdown.',
-				'Current title: ' . $post->post_title,
+				'Existing tag vocabulary: ' . ( $existing_tags ? implode( ', ', $existing_tags ) : '(none)' ),
+				'Current title: ' . ( $title ? $title : $post->post_title ),
 				'Source URL: ' . $post->guid,
 				'Article text:',
 				$content,
@@ -2505,7 +2604,7 @@ class Post_Collection {
 
 		$builder = wp_ai_client_prompt( $prompt );
 		if ( is_wp_error( $builder ) ) {
-			return array();
+			return $builder;
 		}
 
 		if ( method_exists( $builder, 'using_system_instruction' ) ) {
@@ -2517,7 +2616,7 @@ class Post_Collection {
 
 		$text = $this->generate_ai_text( $builder );
 		if ( is_wp_error( $text ) ) {
-			return array();
+			return $text;
 		}
 
 		$json = $this->extract_json_object( (string) $text );
@@ -2530,15 +2629,7 @@ class Post_Collection {
 			return array();
 		}
 
-		$title = isset( $data['title'] ) ? wp_strip_all_tags( trim( sanitize_text_field( $data['title'] ) ) ) : '';
-		$tags  = isset( $data['tags'] ) && is_array( $data['tags'] ) ? $this->sanitize_import_tags( $data['tags'] ) : array();
-
-		return array_filter(
-			array(
-				'title' => $title,
-				'tags'  => $tags,
-			)
-		);
+		return isset( $data['tags'] ) && is_array( $data['tags'] ) ? $this->sanitize_import_tags( $data['tags'] ) : array();
 	}
 
 	/**
@@ -2607,6 +2698,37 @@ class Post_Collection {
 	 */
 	private function get_post_tag_names( $post_id ) {
 		$terms = get_the_terms( $post_id, $this->get_tag_taxonomy() );
+		if ( ! $terms || is_wp_error( $terms ) ) {
+			return array();
+		}
+
+		return array_values(
+			array_filter(
+				array_map(
+					function ( $term ) {
+						return isset( $term->name ) ? $term->name : '';
+					},
+					$terms
+				)
+			)
+		);
+	}
+
+	/**
+	 * Get existing tag names for AI vocabulary context.
+	 *
+	 * @return array Tag names.
+	 */
+	private function get_existing_tag_names() {
+		$terms = get_terms(
+			array(
+				'taxonomy'   => $this->get_tag_taxonomy(),
+				'hide_empty' => false,
+				'orderby'    => 'count',
+				'order'      => 'DESC',
+				'number'     => 80,
+			)
+		);
 		if ( ! $terms || is_wp_error( $terms ) ) {
 			return array();
 		}
@@ -3317,6 +3439,22 @@ class Post_Collection {
 			}
 
 			if ( $use_inline ) {
+				$inputs = array(
+					array(
+						'name'     => 'title',
+						'label'    => __( 'Title', 'post-collection' ),
+						'type'     => 'text',
+						'default'  => '{page_title}',
+						'required' => true,
+					),
+					array(
+						'name'        => 'tags',
+						'label'       => __( 'Tags', 'post-collection' ),
+						'type'        => 'tags',
+						'placeholder' => __( 'tag-one, tag-two', 'post-collection' ),
+					),
+				);
+
 				$actions[] = array(
 					'id'               => 'save-to-post-collection-' . $collection->term_id,
 					'name'             => sprintf(
@@ -3338,21 +3476,30 @@ class Post_Collection {
 						'url'           => '{current_url}',
 						'html'          => '{page_html}',
 					),
-					'inputs'           => array(
-						array(
-							'name'     => 'title',
-							'label'    => __( 'Title', 'post-collection' ),
-							'type'     => 'text',
-							'default'  => '{page_title}',
-							'required' => true,
-						),
-						array(
-							'name'        => 'tags',
-							'label'       => __( 'Tags', 'post-collection' ),
-							'type'        => 'tags',
-							'placeholder' => __( 'tag-one, tag-two', 'post-collection' ),
-						),
+					'inputs'           => $inputs,
+				);
+				$actions[] = array(
+					'id'               => 'generate-tags-for-post-collection-' . $collection->term_id,
+					'name'             => sprintf(
+						// translators: %s is the name of a post collection.
+						__( 'Generate tags for %s', 'post-collection' ),
+						$collection->name
 					),
+					'category'         => __( 'Save', 'post-collection' ),
+					'url'              => rest_url( 'friends/v1/extension/action' ),
+					'method'           => 'POST',
+					'run'              => 'inline',
+					'submit_label'     => __( 'Generate Tags', 'post-collection' ),
+					'progress_message' => __( 'Generating tags...', 'post-collection' ),
+					'success_message'  => __( 'Generated tags.', 'post-collection' ),
+					'fields'           => array(
+						'action'        => 'post_collection_generate_tags',
+						'key'           => $browser_key,
+						'collection_id' => (string) $collection->term_id,
+						'url'           => '{current_url}',
+						'html'          => '{page_html}',
+					),
+					'inputs'           => $inputs,
 				);
 				continue;
 			}

@@ -73,6 +73,7 @@ class Test_Browser_Extension_Action extends TestCase {
 		$GLOBALS['wp_test_users']             = array();
 		$GLOBALS['wp_test_user_options']      = array();
 		$GLOBALS['post_collection_test_ai_response'] = null;
+		$GLOBALS['post_collection_test_ai_prompt']   = null;
 
 		$this->plugin = new Post_Collection_Browser_Extension_Test_Plugin();
 		$this->plugin->register_site_config( new Archive_Is() );
@@ -98,6 +99,7 @@ class Test_Browser_Extension_Action extends TestCase {
 		$this->assertSame( 5, $result['word_count'] );
 		$this->assertSame( '5 words', $result['word_count_label'] );
 		$this->assertStringContainsString( '5 words', $result['message'] );
+		$this->assertNull( $GLOBALS['post_collection_test_ai_prompt'] );
 	}
 
 	public function test_existing_url_response_reports_existing_post_word_count() {
@@ -163,16 +165,25 @@ class Test_Browser_Extension_Action extends TestCase {
 		$this->assertSame( $original_url, $saved_post->guid );
 	}
 
-	public function test_save_response_reports_ai_generated_title_and_tags() {
+	public function test_generate_tags_action_reports_suggested_tags_without_saving_them() {
 		$collection = $this->create_collection_term( 4, 'ai', 'AI Articles' );
-		$this->plugin->download_item = new ExtractedPage(
-			'https://source.example/ai-post',
-			'Original Page Title',
-			'<article><p>Local models classify saved reading material into useful topics.</p></article>'
+		$post       = new \WP_Post(
+			(object) array(
+				'ID'           => 44,
+				'post_author'  => 99,
+				'post_title'   => 'Original Page Title',
+				'post_content' => '<p>Local models classify saved reading material into useful topics.</p>',
+				'post_status'  => 'private',
+				'post_type'    => Post_Collection::CPT,
+				'guid'         => 'https://source.example/ai-post',
+			)
 		);
-		$GLOBALS['post_collection_test_ai_response'] = '{"title":"Classifying saved articles","tags":["local ai","reading tools","classification"]}';
 
-		$result = $this->plugin->friends_browser_extension_action_save(
+		$GLOBALS['wp_test_posts'][ $post->ID ] = $post;
+		$GLOBALS['wp_test_terms'][ $post->ID ][ Post_Collection::COLLECTION_TAXONOMY ] = array( $collection->term_id );
+		$GLOBALS['post_collection_test_ai_response'] = '{"tags":["local ai","reading tools","classification"]}';
+
+		$result = $this->plugin->friends_browser_extension_action_generate_tags(
 			null,
 			$this->create_request( $collection->term_id, array( 'url' => 'https://source.example/ai-post' ) ),
 			new \WP_User( 99 ),
@@ -180,12 +191,87 @@ class Test_Browser_Extension_Action extends TestCase {
 		);
 
 		$this->assertFalse( is_wp_error( $result ) );
-		$this->assertSame( 'Classifying saved articles', $result['title'] );
+		$this->assertSame( 'Browser Page Title', $result['title'] );
 		$this->assertSame( array( 'local ai', 'reading tools', 'classification' ), $result['tags'] );
-		$this->assertSame( 'Classifying saved articles', $result['values']['title'] );
 		$this->assertSame( 'local ai, reading tools, classification', $result['values']['tags'] );
+		$this->assertSame( 'Update Tags', $result['submit_label'] );
+		$this->assertSame( (string) $post->ID, $result['fields']['post_id'] );
+		$this->assertSame( '1', $result['fields']['apply_generated_tags'] );
+		$this->assertArrayNotHasKey( $this->plugin->get_tag_taxonomy(), $GLOBALS['wp_test_terms'][ $post->ID ] );
+		$this->assertStringContainsString( 'Existing tag vocabulary:', $GLOBALS['post_collection_test_ai_prompt'] );
+	}
+
+	public function test_generate_tags_action_applies_reviewed_tags_on_second_submit() {
+		$collection = $this->create_collection_term( 6, 'ai-updates', 'AI Updates' );
+		$post       = new \WP_Post(
+			(object) array(
+				'ID'           => 61,
+				'post_author'  => 99,
+				'post_title'   => 'Old Title',
+				'post_content' => '<p>Already saved words here.</p>',
+				'post_status'  => 'private',
+				'post_type'    => Post_Collection::CPT,
+				'guid'         => 'https://source.example/generated-update',
+			)
+		);
+
+		$GLOBALS['wp_test_posts'][ $post->ID ] = $post;
+		$GLOBALS['wp_test_terms'][ $post->ID ][ Post_Collection::COLLECTION_TAXONOMY ] = array( $collection->term_id );
+
+		$result = $this->plugin->friends_browser_extension_action_generate_tags(
+			null,
+			$this->create_request(
+				$collection->term_id,
+				array(
+					'post_id'              => $post->ID,
+					'apply_generated_tags' => '1',
+					'title'                => 'Reviewed Title',
+					'tags'                 => 'first tag, second tag',
+				)
+			),
+			new \WP_User( 99 ),
+			array()
+		);
+
+		$this->assertFalse( is_wp_error( $result ) );
+		$this->assertSame( 'Reviewed Title', $GLOBALS['wp_test_posts'][ $post->ID ]->post_title );
+		$this->assertSame( array( 'first tag', 'second tag' ), $GLOBALS['wp_test_terms'][ $post->ID ][ $this->plugin->get_tag_taxonomy() ] );
+		$this->assertSame( 'Reviewed Title', $result['values']['title'] );
+		$this->assertSame( 'first tag, second tag', $result['values']['tags'] );
+		$this->assertSame( 'Update', $result['submit_label'] );
+	}
+
+	public function test_save_response_reports_submitted_title_and_tags_without_generating_them() {
+		$collection = $this->create_collection_term( 7, 'manual-tags', 'Manual Tags' );
+		$this->plugin->download_item = new ExtractedPage(
+			'https://source.example/ai-post',
+			'Original Page Title',
+			'<article><p>Local models classify saved reading material into useful topics.</p></article>'
+		);
+		$GLOBALS['post_collection_test_ai_response'] = '{"tags":["local ai","reading tools","classification"]}';
+
+		$result = $this->plugin->friends_browser_extension_action_save(
+			null,
+			$this->create_request(
+				$collection->term_id,
+				array(
+					'url'   => 'https://source.example/ai-post',
+					'title' => 'Browser Title',
+					'tags'  => 'manual tag',
+				)
+			),
+			new \WP_User( 99 ),
+			array()
+		);
+
+		$this->assertFalse( is_wp_error( $result ) );
+		$this->assertSame( 'Browser Title', $result['title'] );
+		$this->assertSame( array( 'manual tag' ), $result['tags'] );
+		$this->assertSame( 'Browser Title', $result['values']['title'] );
+		$this->assertSame( 'manual tag', $result['values']['tags'] );
 		$this->assertSame( 'Update', $result['submit_label'] );
 		$this->assertSame( (string) $result['post_id'], $result['fields']['post_id'] );
+		$this->assertNull( $GLOBALS['post_collection_test_ai_prompt'] );
 	}
 
 	public function test_saved_post_can_be_updated_from_browser_extension_response_state() {
