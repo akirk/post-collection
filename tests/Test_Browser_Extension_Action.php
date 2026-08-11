@@ -211,7 +211,46 @@ class Test_Browser_Extension_Action extends TestCase {
 		$this->assertArrayNotHasKey( $this->plugin->get_tag_taxonomy(), $GLOBALS['wp_test_terms'][ $post->ID ] );
 		$this->assertStringContainsString( 'Existing tag vocabulary: Immobilien', $GLOBALS['post_collection_test_ai_prompt'] );
 		$this->assertStringNotContainsString( '8217', $GLOBALS['post_collection_test_ai_prompt'] );
-		$this->assertStringContainsString( 'Write tags in the same language as the article.', $GLOBALS['post_collection_test_ai_prompt'] );
+		$this->assertStringContainsString( 'Detected article language: German.', $GLOBALS['post_collection_test_ai_prompt'] );
+		$this->assertStringNotContainsString( 'good tags include Immobilien', $GLOBALS['post_collection_test_ai_prompt'] );
+	}
+
+	public function test_generate_tags_prompt_uses_english_for_english_articles() {
+		$collection = $this->create_collection_term( 8, 'essays', 'Essays' );
+		$post       = new \WP_Post(
+			(object) array(
+				'ID'           => 81,
+				'post_author'  => 99,
+				'post_title'   => 'Do Not Write With an LLM',
+				'post_content' => '<p>You should write with your own mind. Writing is how people discover what they think about work, tools, and responsibility.</p>',
+				'post_status'  => 'private',
+				'post_type'    => Post_Collection::CPT,
+				'guid'         => 'https://harperp2.wordpress.com/2026/02/27/do-not-write-with-an-llm/',
+			)
+		);
+
+		$GLOBALS['wp_test_posts'][ $post->ID ] = $post;
+		$GLOBALS['wp_test_terms'][ $post->ID ][ Post_Collection::COLLECTION_TAXONOMY ] = array( $collection->term_id );
+		$GLOBALS['post_collection_test_ai_response'] = '{"tags":["writing","ai","education"]}';
+
+		$result = $this->plugin->friends_browser_extension_action_generate_tags(
+			null,
+			$this->create_request(
+				$collection->term_id,
+				array(
+					'url'   => 'https://harperp2.wordpress.com/2026/02/27/do-not-write-with-an-llm/',
+					'title' => 'Do Not Write With an LLM',
+				)
+			),
+			new \WP_User( 99 ),
+			array()
+		);
+
+		$this->assertFalse( is_wp_error( $result ) );
+		$this->assertSame( array( 'writing', 'ai', 'education' ), $result['tags'] );
+		$this->assertStringContainsString( 'Detected article language: English.', $GLOBALS['post_collection_test_ai_prompt'] );
+		$this->assertStringContainsString( 'Do not translate tags into another language.', $GLOBALS['post_collection_test_ai_prompt'] );
+		$this->assertStringNotContainsString( 'Erbbaurecht:', $GLOBALS['post_collection_test_ai_prompt'] );
 	}
 
 	public function test_generate_tags_action_applies_reviewed_tags_on_second_submit() {

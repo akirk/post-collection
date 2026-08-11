@@ -1996,7 +1996,7 @@ class Post_Collection {
 		$tag       = trim( (string) $tag );
 		$lower_tag = strtolower( $tag );
 
-		if ( '' === $tag || strlen( $tag ) < 3 ) {
+		if ( '' === $tag || ( strlen( $tag ) < 3 && 'ai' !== $lower_tag ) ) {
 			return false;
 		}
 
@@ -2643,18 +2643,19 @@ class Post_Collection {
 		}
 
 		$existing_tags = $this->get_existing_tag_names();
+		$language      = $this->detect_article_language( trim( ( $title ? $title : $post->post_title ) . ' ' . $content ) );
 		$prompt = implode(
 			"\n",
 			array(
 				'Return strict JSON only for this saved article.',
 				'Use this shape: {"tags":[""]}.',
 				'Choose 2 to 4 precise, reusable tags for a personal reading collection.',
-				'Write tags in the same language as the article. If the article is German, use German tags.',
+				'Detected article language: ' . $language . '. Write every tag in this language.',
+				'Do not translate tags into another language.',
 				'Prefer clean existing tags from the supplied vocabulary only when they match the article language and subject. Invent a new tag when the right tag is missing.',
 				'Optimize for finding the article again months later, not SEO, trending categories, or named entities.',
 				'Prefer durable subject areas over article-specific keywords. Avoid one-off people, publication names, country names, locations, and institutions unless they are the main retrieval reason.',
 				'Do not use generic tags such as article, blog, post, page, news, reading, saved, content, history, tech, or technology.',
-				'For a German article titled "Erbbaurecht: Sieht aus wie ein Immo-Schnäppchen. Ist es aber (oft) nicht", good tags include Immobilien, Erbbaurecht, Hauskauf, Finanzen. Bad tags include Germany, history, Technology.',
 				'Do not wrap the JSON in Markdown.',
 				'Existing tag vocabulary: ' . ( $existing_tags ? implode( ', ', $existing_tags ) : '(none)' ),
 				'Current title: ' . ( $title ? $title : $post->post_title ),
@@ -2692,6 +2693,29 @@ class Post_Collection {
 		}
 
 		return isset( $data['tags'] ) && is_array( $data['tags'] ) ? $this->sanitize_generated_tag_names( $data['tags'] ) : array();
+	}
+
+	/**
+	 * Detect the article language for the tag generation prompt.
+	 *
+	 * @param string $text Article text.
+	 * @return string Language name.
+	 */
+	private function detect_article_language( $text ) {
+		$text       = strtolower( wp_strip_all_tags( (string) $text ) );
+		$german     = preg_match_all( '/\b(?:der|die|das|und|nicht|ein|eine|mit|für|auf|ist|sind|beim|aber|auch|werden|kaufen|grundstück|erbbaurecht)\b/u', $text );
+		$english    = preg_match_all( '/\b(?:the|and|not|with|for|that|this|you|your|write|writing|should|would|from|about|because|people|work)\b/u', $text );
+		$has_umlaut = preg_match( '/[äöüß]/u', $text );
+
+		if ( $has_umlaut || $german > $english ) {
+			return 'German';
+		}
+
+		if ( $english > 0 ) {
+			return 'English';
+		}
+
+		return 'the article language';
 	}
 
 	/**
