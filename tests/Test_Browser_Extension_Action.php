@@ -169,38 +169,49 @@ class Test_Browser_Extension_Action extends TestCase {
 
 	public function test_generate_tags_action_reports_suggested_tags_without_saving_them() {
 		$collection = $this->create_collection_term( 4, 'ai', 'AI Articles' );
+		$this->create_tag_term( 400, '8217', '8217' );
+		$this->create_tag_term( 401, 'Technology', 'technology' );
+		$this->create_tag_term( 402, 'Immobilien', 'immobilien' );
 		$post       = new \WP_Post(
 			(object) array(
 				'ID'           => 44,
 				'post_author'  => 99,
-				'post_title'   => 'Original Page Title',
-				'post_content' => '<p>Local models classify saved reading material into useful topics.</p>',
+				'post_title'   => 'Erbbaurecht: Sieht aus wie ein Immo-Schnäppchen. Ist es aber (oft) nicht',
+				'post_content' => '<p>Beim Erbbaurecht kaufen Familien ein Haus, aber nicht das Grundstück. Der Erbbauzins und kurze Laufzeiten können Immobilienkäufer finanziell stark belasten.</p>',
 				'post_status'  => 'private',
 				'post_type'    => Post_Collection::CPT,
-				'guid'         => 'https://source.example/ai-post',
+				'guid'         => 'https://www.zeit.de/geld/2026-07/erbbaurecht-eigentum-haus-grundstueck-immobilienmarkt-kaeufer-gxe',
 			)
 		);
 
 		$GLOBALS['wp_test_posts'][ $post->ID ] = $post;
 		$GLOBALS['wp_test_terms'][ $post->ID ][ Post_Collection::COLLECTION_TAXONOMY ] = array( $collection->term_id );
-		$GLOBALS['post_collection_test_ai_response'] = '{"tags":["local ai","reading tools","classification"]}';
+		$GLOBALS['post_collection_test_ai_response'] = '{"tags":["Germany","history","Technology","Immobilien","Erbbaurecht"]}';
 
 		$result = $this->plugin->friends_browser_extension_action_generate_tags(
 			null,
-			$this->create_request( $collection->term_id, array( 'url' => 'https://source.example/ai-post' ) ),
+			$this->create_request(
+				$collection->term_id,
+				array(
+					'url'   => 'https://www.zeit.de/geld/2026-07/erbbaurecht-eigentum-haus-grundstueck-immobilienmarkt-kaeufer-gxe',
+					'title' => 'Erbbaurecht: Sieht aus wie ein Immo-Schnäppchen. Ist es aber (oft) nicht',
+				)
+			),
 			new \WP_User( 99 ),
 			array()
 		);
 
 		$this->assertFalse( is_wp_error( $result ) );
-		$this->assertSame( 'Browser Page Title', $result['title'] );
-		$this->assertSame( array( 'local ai', 'reading tools', 'classification' ), $result['tags'] );
-		$this->assertSame( 'local ai, reading tools, classification', $result['values']['tags'] );
+		$this->assertSame( 'Erbbaurecht: Sieht aus wie ein Immo-Schnäppchen. Ist es aber (oft) nicht', $result['title'] );
+		$this->assertSame( array( 'Immobilien', 'Erbbaurecht' ), $result['tags'] );
+		$this->assertSame( 'Immobilien, Erbbaurecht', $result['values']['tags'] );
 		$this->assertSame( 'Update Tags', $result['submit_label'] );
 		$this->assertSame( (string) $post->ID, $result['fields']['post_id'] );
 		$this->assertSame( '1', $result['fields']['apply_generated_tags'] );
 		$this->assertArrayNotHasKey( $this->plugin->get_tag_taxonomy(), $GLOBALS['wp_test_terms'][ $post->ID ] );
-		$this->assertStringContainsString( 'Existing tag vocabulary:', $GLOBALS['post_collection_test_ai_prompt'] );
+		$this->assertStringContainsString( 'Existing tag vocabulary: Immobilien', $GLOBALS['post_collection_test_ai_prompt'] );
+		$this->assertStringNotContainsString( '8217', $GLOBALS['post_collection_test_ai_prompt'] );
+		$this->assertStringContainsString( 'Write tags in the same language as the article.', $GLOBALS['post_collection_test_ai_prompt'] );
 	}
 
 	public function test_generate_tags_action_applies_reviewed_tags_on_second_submit() {
@@ -326,6 +337,21 @@ class Test_Browser_Extension_Action extends TestCase {
 		);
 
 		$GLOBALS['wp_test_registered_terms'][ Post_Collection::COLLECTION_TAXONOMY ][ $id ] = $term;
+
+		return $term;
+	}
+
+	private function create_tag_term( $id, $name, $slug ) {
+		$term = new \WP_Term(
+			(object) array(
+				'term_id'  => $id,
+				'name'     => $name,
+				'slug'     => $slug,
+				'taxonomy' => $this->plugin->get_tag_taxonomy(),
+			)
+		);
+
+		$GLOBALS['wp_test_registered_terms'][ $this->plugin->get_tag_taxonomy() ][ $id ] = $term;
 
 		return $term;
 	}

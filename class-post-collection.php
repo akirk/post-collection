@@ -1974,6 +1974,64 @@ class Post_Collection {
 	}
 
 	/**
+	 * Sanitize AI-generated tag names and drop poor retrieval tags.
+	 *
+	 * @param array $tags Tag names.
+	 * @return array
+	 */
+	private function sanitize_generated_tag_names( array $tags ) {
+		$tags = $this->sanitize_import_tags( $tags );
+		$tags = array_filter( $tags, array( $this, 'is_usable_generated_tag_name' ) );
+
+		return array_slice( array_values( array_unique( $tags ) ), 0, 4 );
+	}
+
+	/**
+	 * Check whether a generated tag is useful enough to suggest.
+	 *
+	 * @param string $tag Tag name.
+	 * @return bool
+	 */
+	private function is_usable_generated_tag_name( $tag ) {
+		$tag       = trim( (string) $tag );
+		$lower_tag = strtolower( $tag );
+
+		if ( '' === $tag || strlen( $tag ) < 3 ) {
+			return false;
+		}
+
+		if ( preg_match( '/^(?:#?\d+|x[0-9a-f]{3,}|[0-9a-f]{4,})$/i', $tag ) ) {
+			return false;
+		}
+
+		$blocked_tags = apply_filters(
+			'post_collection_ai_generated_tag_blocklist',
+			array(
+				'article',
+				'blog',
+				'content',
+				'deutschland',
+				'europe',
+				'germany',
+				'history',
+				'news',
+				'page',
+				'post',
+				'reading',
+				'saved',
+				'tech',
+				'technology',
+				'united kingdom',
+				'united states',
+				'usa',
+				'world',
+			)
+		);
+
+		return ! in_array( $lower_tag, array_map( 'strtolower', $blocked_tags ), true );
+	}
+
+	/**
 	 * Import URLs into a taxonomy-backed collection.
 	 *
 	 * @param \WP_Term $collection Collection term.
@@ -2590,10 +2648,13 @@ class Post_Collection {
 			array(
 				'Return strict JSON only for this saved article.',
 				'Use this shape: {"tags":[""]}.',
-				'Choose 3 to 5 reusable tags for a personal reading collection.',
-				'Prefer existing tags from the supplied vocabulary. Invent a new tag only when no existing tag fits.',
-				'Prefer durable subjects over article-specific keywords. Avoid one-off people, publication names, country names, and institutions unless they are the main retrieval reason.',
-				'Do not use generic tags such as article, blog, post, page, news, reading, saved, or content.',
+				'Choose 2 to 4 precise, reusable tags for a personal reading collection.',
+				'Write tags in the same language as the article. If the article is German, use German tags.',
+				'Prefer clean existing tags from the supplied vocabulary only when they match the article language and subject. Invent a new tag when the right tag is missing.',
+				'Optimize for finding the article again months later, not SEO, trending categories, or named entities.',
+				'Prefer durable subject areas over article-specific keywords. Avoid one-off people, publication names, country names, locations, and institutions unless they are the main retrieval reason.',
+				'Do not use generic tags such as article, blog, post, page, news, reading, saved, content, history, tech, or technology.',
+				'For a German article titled "Erbbaurecht: Sieht aus wie ein Immo-Schnäppchen. Ist es aber (oft) nicht", good tags include Immobilien, Erbbaurecht, Hauskauf, Finanzen. Bad tags include Germany, history, Technology.',
 				'Do not wrap the JSON in Markdown.',
 				'Existing tag vocabulary: ' . ( $existing_tags ? implode( ', ', $existing_tags ) : '(none)' ),
 				'Current title: ' . ( $title ? $title : $post->post_title ),
@@ -2630,7 +2691,7 @@ class Post_Collection {
 			return array();
 		}
 
-		return isset( $data['tags'] ) && is_array( $data['tags'] ) ? $this->sanitize_import_tags( $data['tags'] ) : array();
+		return isset( $data['tags'] ) && is_array( $data['tags'] ) ? $this->sanitize_generated_tag_names( $data['tags'] ) : array();
 	}
 
 	/**
@@ -2734,14 +2795,12 @@ class Post_Collection {
 			return array();
 		}
 
-		return array_values(
-			array_filter(
-				array_map(
-					function ( $term ) {
-						return isset( $term->name ) ? $term->name : '';
-					},
-					$terms
-				)
+		return $this->sanitize_generated_tag_names(
+			array_map(
+				function ( $term ) {
+					return isset( $term->name ) ? $term->name : '';
+				},
+				$terms
 			)
 		);
 	}
