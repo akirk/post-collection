@@ -62,6 +62,22 @@ if ( ! $app->can_manage_collections() ) {
 					<option value="links"><?php esc_html_e( 'Compact links', 'post-collection' ); ?></option>
 				</select>
 			</label>
+			<label>
+				<span><?php esc_html_e( 'Generated tag language', 'post-collection' ); ?></span>
+				<select name="ai_tag_language">
+					<?php foreach ( $app->get_post_collection()->get_generated_tag_language_options() as $value => $label ) : ?>
+						<option value="<?php echo esc_attr( $value ); ?>"><?php echo esc_html( $label ); ?></option>
+					<?php endforeach; ?>
+				</select>
+			</label>
+			<label>
+				<span><?php esc_html_e( 'Generated tag style', 'post-collection' ); ?></span>
+				<select name="ai_tag_style">
+					<?php foreach ( $app->get_post_collection()->get_generated_tag_style_options() as $value => $label ) : ?>
+						<option value="<?php echo esc_attr( $value ); ?>"><?php echo esc_html( $label ); ?></option>
+					<?php endforeach; ?>
+				</select>
+			</label>
 			<label class="pc-checkbox-field">
 				<input type="checkbox" name="hide_from_home" value="1">
 				<span><?php esc_html_e( 'Hide from the default collections view', 'post-collection' ); ?></span>

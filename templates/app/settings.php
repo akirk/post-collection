@@ -24,6 +24,8 @@ if ( ! $collection || ! $app->can_manage_collections() ) {
 $configured_mode = get_term_meta( $collection->term_id, 'post_collection_frontend_mode', true );
 $configured_view = get_term_meta( $collection->term_id, 'post_collection_frontend_view', true );
 $hide_from_home  = get_term_meta( $collection->term_id, 'post_collection_hide_from_home', true );
+$tag_language    = $app->get_post_collection()->sanitize_generated_tag_language( get_term_meta( $collection->term_id, \PostCollection\Post_Collection::AI_TAG_LANGUAGE_META, true ) );
+$tag_style       = $app->get_post_collection()->sanitize_generated_tag_style( get_term_meta( $collection->term_id, \PostCollection\Post_Collection::AI_TAG_STYLE_META, true ) );
 ?>
 <!DOCTYPE html>
 <html <?php echo wp_app_language_attributes(); ?>>
@@ -63,6 +65,22 @@ $hide_from_home  = get_term_meta( $collection->term_id, 'post_collection_hide_fr
 					<option value="reader"<?php selected( 'reader', $configured_view ?: 'reader' ); ?>><?php esc_html_e( 'Reader list', 'post-collection' ); ?></option>
 					<option value="board"<?php selected( 'board', $configured_view ); ?>><?php esc_html_e( 'Board', 'post-collection' ); ?></option>
 					<option value="links"<?php selected( 'links', $configured_view ); ?>><?php esc_html_e( 'Compact links', 'post-collection' ); ?></option>
+				</select>
+			</label>
+			<label>
+				<span><?php esc_html_e( 'Generated tag language', 'post-collection' ); ?></span>
+				<select name="ai_tag_language">
+					<?php foreach ( $app->get_post_collection()->get_generated_tag_language_options() as $value => $label ) : ?>
+						<option value="<?php echo esc_attr( $value ); ?>"<?php selected( $value, $tag_language ); ?>><?php echo esc_html( $label ); ?></option>
+					<?php endforeach; ?>
+				</select>
+			</label>
+			<label>
+				<span><?php esc_html_e( 'Generated tag style', 'post-collection' ); ?></span>
+				<select name="ai_tag_style">
+					<?php foreach ( $app->get_post_collection()->get_generated_tag_style_options() as $value => $label ) : ?>
+						<option value="<?php echo esc_attr( $value ); ?>"<?php selected( $value, $tag_style ); ?>><?php echo esc_html( $label ); ?></option>
+					<?php endforeach; ?>
 				</select>
 			</label>
 			<label class="pc-checkbox-field">

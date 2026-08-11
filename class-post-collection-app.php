@@ -446,6 +446,17 @@ class Post_Collection_App {
 			update_term_meta( $collection->term_id, 'post_collection_frontend_view', $frontend_view );
 		}
 
+		update_term_meta(
+			$collection->term_id,
+			Post_Collection::AI_TAG_LANGUAGE_META,
+			$this->post_collection->sanitize_generated_tag_language( isset( $_POST['ai_tag_language'] ) ? wp_unslash( $_POST['ai_tag_language'] ) : '' )
+		);
+		update_term_meta(
+			$collection->term_id,
+			Post_Collection::AI_TAG_STYLE_META,
+			$this->post_collection->sanitize_generated_tag_style( isset( $_POST['ai_tag_style'] ) ? wp_unslash( $_POST['ai_tag_style'] ) : '' )
+		);
+
 		if ( isset( $_POST['hide_from_home'] ) && $_POST['hide_from_home'] ) {
 			update_term_meta( $collection->term_id, 'post_collection_hide_from_home', true );
 		} else {
@@ -682,6 +693,17 @@ class Post_Collection_App {
 		if ( in_array( $frontend_view, array( 'board', 'links', 'reader' ), true ) ) {
 			update_term_meta( $collection->term_id, 'post_collection_frontend_view', $frontend_view );
 		}
+
+		update_term_meta(
+			$collection->term_id,
+			Post_Collection::AI_TAG_LANGUAGE_META,
+			$this->post_collection->sanitize_generated_tag_language( isset( $data['ai_tag_language'] ) ? wp_unslash( $data['ai_tag_language'] ) : '' )
+		);
+		update_term_meta(
+			$collection->term_id,
+			Post_Collection::AI_TAG_STYLE_META,
+			$this->post_collection->sanitize_generated_tag_style( isset( $data['ai_tag_style'] ) ? wp_unslash( $data['ai_tag_style'] ) : '' )
+		);
 
 		if ( ! empty( $data['hide_from_home'] ) ) {
 			update_term_meta( $collection->term_id, 'post_collection_hide_from_home', true );

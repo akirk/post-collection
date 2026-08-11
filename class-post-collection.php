@@ -25,6 +25,8 @@ use WP_HTML_Tag_Processor;
 class Post_Collection {
 	const CPT = 'collected_post';
 	const COLLECTION_TAXONOMY = 'post_collection';
+	const AI_TAG_LANGUAGE_META = 'post_collection_ai_tag_language';
+	const AI_TAG_STYLE_META = 'post_collection_ai_tag_style';
 	/**
 	 * Whether to cache the retrieved users
 	 *
@@ -1974,6 +1976,88 @@ class Post_Collection {
 	}
 
 	/**
+	 * Get available AI generated tag style options.
+	 *
+	 * @return array
+	 */
+	public function get_generated_tag_style_options() {
+		return array(
+			'natural'    => __( 'Natural language tags', 'post-collection' ),
+			'lowercase'  => __( 'lowercase words', 'post-collection' ),
+			'snake_case' => __( 'snake_case', 'post-collection' ),
+			'kebab-case' => __( 'kebab-case', 'post-collection' ),
+		);
+	}
+
+	/**
+	 * Get available AI generated tag language options.
+	 *
+	 * @return array
+	 */
+	public function get_generated_tag_language_options() {
+		return array(
+			'article'    => __( 'Same as article', 'post-collection' ),
+			'english'    => __( 'English', 'post-collection' ),
+			'german'     => __( 'German', 'post-collection' ),
+			'french'     => __( 'French', 'post-collection' ),
+			'spanish'    => __( 'Spanish', 'post-collection' ),
+			'italian'    => __( 'Italian', 'post-collection' ),
+			'dutch'      => __( 'Dutch', 'post-collection' ),
+			'portuguese' => __( 'Portuguese', 'post-collection' ),
+		);
+	}
+
+	/**
+	 * Sanitize an AI generated tag style option.
+	 *
+	 * @param string $style Tag style.
+	 * @return string
+	 */
+	public function sanitize_generated_tag_style( $style ) {
+		$style = sanitize_key( $style );
+		if ( ! array_key_exists( $style, $this->get_generated_tag_style_options() ) ) {
+			return 'natural';
+		}
+
+		return $style;
+	}
+
+	/**
+	 * Sanitize an AI generated tag language option.
+	 *
+	 * @param string $language Tag language.
+	 * @return string
+	 */
+	public function sanitize_generated_tag_language( $language ) {
+		$language = sanitize_key( $language );
+		if ( ! array_key_exists( $language, $this->get_generated_tag_language_options() ) ) {
+			return 'article';
+		}
+
+		return $language;
+	}
+
+	/**
+	 * Get the configured AI generated tag style for a collection.
+	 *
+	 * @param \WP_Term $collection Collection term.
+	 * @return string
+	 */
+	private function get_collection_generated_tag_style( \WP_Term $collection ) {
+		return $this->sanitize_generated_tag_style( get_term_meta( $collection->term_id, self::AI_TAG_STYLE_META, true ) );
+	}
+
+	/**
+	 * Get the configured AI generated tag language for a collection.
+	 *
+	 * @param \WP_Term $collection Collection term.
+	 * @return string
+	 */
+	private function get_collection_generated_tag_language( \WP_Term $collection ) {
+		return $this->sanitize_generated_tag_language( get_term_meta( $collection->term_id, self::AI_TAG_LANGUAGE_META, true ) );
+	}
+
+	/**
 	 * Sanitize AI-generated tag names and drop poor retrieval tags.
 	 *
 	 * @param array $tags Tag names.
@@ -1984,6 +2068,45 @@ class Post_Collection {
 		$tags = array_filter( $tags, array( $this, 'is_usable_generated_tag_name' ) );
 
 		return array_slice( array_values( array_unique( $tags ) ), 0, 4 );
+	}
+
+	/**
+	 * Get prompt instructions for the configured generated tag style.
+	 *
+	 * @param string $style Tag style.
+	 * @return string
+	 */
+	private function get_generated_tag_style_instruction( $style ) {
+		switch ( $this->sanitize_generated_tag_style( $style ) ) {
+			case 'lowercase':
+				return 'Tag style: lowercase words. Use plain lowercase words or short lowercase phrases.';
+			case 'snake_case':
+				return 'Tag style: snake_case. Use lowercase words joined with underscores, such as language_models or writing_tools.';
+			case 'kebab-case':
+				return 'Tag style: kebab-case. Use lowercase words joined with hyphens, such as language-models or writing-tools.';
+			case 'natural':
+			default:
+				return 'Tag style: natural language tags. Use short natural words or phrases.';
+		}
+	}
+
+	/**
+	 * Get prompt instructions for the configured generated tag language.
+	 *
+	 * @param string $language Tag language.
+	 * @return string
+	 */
+	private function get_generated_tag_language_instruction( $language ) {
+		$language = $this->sanitize_generated_tag_language( $language );
+		if ( 'article' === $language ) {
+			return 'Tag language: determine the article language from the title and article text, then write every tag in that same language.';
+		}
+
+		$options = $this->get_generated_tag_language_options();
+		return sprintf(
+			'Tag language: write every tag in %s, even when the article is written in another language.',
+			$options[ $language ]
+		);
 	}
 
 	/**
@@ -2526,7 +2649,7 @@ class Post_Collection {
 			return $this->update_browser_extension_saved_post( $post_id, $collection, $title, $tags );
 		}
 
-		$generated_tags = $this->generate_browser_extension_article_tags( $post, $title );
+		$generated_tags = $this->generate_browser_extension_article_tags( $post, $collection, $title );
 		if ( is_wp_error( $generated_tags ) ) {
 			return $generated_tags;
 		}
@@ -2622,11 +2745,12 @@ class Post_Collection {
 	/**
 	 * Generate tag suggestions for a saved article with the WordPress AI Client.
 	 *
-	 * @param \WP_Post $post  Saved post.
-	 * @param string   $title Optional title context from the browser extension.
+	 * @param \WP_Post $post       Saved post.
+	 * @param \WP_Term $collection Collection term.
+	 * @param string   $title      Optional title context from the browser extension.
 	 * @return array|\WP_Error Suggested tags or an error.
 	 */
-	private function generate_browser_extension_article_tags( \WP_Post $post, $title = '' ) {
+	private function generate_browser_extension_article_tags( \WP_Post $post, \WP_Term $collection, $title = '' ) {
 		if ( ! function_exists( 'wp_ai_client_prompt' ) ) {
 			return new \WP_Error(
 				'ai-client-unavailable',
@@ -2643,16 +2767,18 @@ class Post_Collection {
 		}
 
 		$existing_tags = $this->get_existing_tag_names();
-		$language      = $this->detect_article_language( trim( ( $title ? $title : $post->post_title ) . ' ' . $content ) );
+		$tag_language  = $this->get_collection_generated_tag_language( $collection );
+		$tag_style     = $this->get_collection_generated_tag_style( $collection );
 		$prompt = implode(
 			"\n",
 			array(
 				'Return strict JSON only for this saved article.',
 				'Use this shape: {"tags":[""]}.',
 				'Choose 2 to 4 precise, reusable tags for a personal reading collection.',
-				'Detected article language: ' . $language . '. Write every tag in this language.',
-				'Do not translate tags into another language.',
-				'Prefer clean existing tags from the supplied vocabulary only when they match the article language and subject. Invent a new tag when the right tag is missing.',
+				$this->get_generated_tag_language_instruction( $tag_language ),
+				'Do not reuse existing vocabulary entries written in a different language than the configured tag language.',
+				$this->get_generated_tag_style_instruction( $tag_style ),
+				'Prefer clean existing tags from the supplied vocabulary only when they match the configured tag language and article subject. Invent a new tag when the right tag is missing.',
 				'Optimize for finding the article again months later, not SEO, trending categories, or named entities.',
 				'Prefer durable subject areas over article-specific keywords. Avoid one-off people, publication names, country names, locations, and institutions unless they are the main retrieval reason.',
 				'Do not use generic tags such as article, blog, post, page, news, reading, saved, content, history, tech, or technology.',
@@ -2693,29 +2819,6 @@ class Post_Collection {
 		}
 
 		return isset( $data['tags'] ) && is_array( $data['tags'] ) ? $this->sanitize_generated_tag_names( $data['tags'] ) : array();
-	}
-
-	/**
-	 * Detect the article language for the tag generation prompt.
-	 *
-	 * @param string $text Article text.
-	 * @return string Language name.
-	 */
-	private function detect_article_language( $text ) {
-		$text       = strtolower( wp_strip_all_tags( (string) $text ) );
-		$german     = preg_match_all( '/\b(?:der|die|das|und|nicht|ein|eine|mit|für|auf|ist|sind|beim|aber|auch|werden|kaufen|grundstück|erbbaurecht)\b/u', $text );
-		$english    = preg_match_all( '/\b(?:the|and|not|with|for|that|this|you|your|write|writing|should|would|from|about|because|people|work)\b/u', $text );
-		$has_umlaut = preg_match( '/[äöüß]/u', $text );
-
-		if ( $has_umlaut || $german > $english ) {
-			return 'German';
-		}
-
-		if ( $english > 0 ) {
-			return 'English';
-		}
-
-		return 'the article language';
 	}
 
 	/**
