@@ -89,6 +89,7 @@ class Post_Collection_App {
 	private function init() {
 		add_action( 'wp_loaded', array( $this, 'handle_quick_edit' ) );
 		add_action( 'wp_loaded', array( $this, 'handle_collection_settings' ) );
+		add_action( 'wp_loaded', array( $this, 'handle_delete_collection' ) );
 		add_action( 'wp_loaded', array( $this, 'handle_create_collection' ) );
 		add_action( 'wp_ajax_post_collection_quick_edit', array( $this, 'wp_ajax_quick_edit' ) );
 		add_action( 'wp_ajax_post_collection_parse_import', array( $this, 'wp_ajax_parse_import' ) );
@@ -454,6 +455,115 @@ class Post_Collection_App {
 
 		wp_safe_redirect( add_query_arg( 'pc-settings-updated', '1', $this->get_collection_settings_url( $collection ) ) );
 		exit;
+	}
+
+	/**
+	 * Handle frontend collection deletion submissions.
+	 */
+	public function handle_delete_collection() {
+		if ( wp_doing_ajax() ) {
+			return;
+		}
+
+		if ( ! isset( $_POST['post_collection_action'] ) || 'delete-collection' !== $_POST['post_collection_action'] ) {
+			return;
+		}
+
+		$result = $this->delete_collection_from_request( $_POST );
+		if ( is_wp_error( $result ) ) {
+			wp_die( esc_html( $result->get_error_message() ), '', array( 'response' => $result->get_error_data( 'status' ) ? $result->get_error_data( 'status' ) : 400 ) );
+		}
+
+		wp_safe_redirect( add_query_arg( 'pc-collection-deleted', '1', $this->get_home_url() ) );
+		exit;
+	}
+
+	/**
+	 * Delete a post collection term from request data.
+	 *
+	 * @param array $data Request data.
+	 * @return \WP_Term|\WP_Error Deleted collection or error.
+	 */
+	public function delete_collection_from_request( array $data ) {
+		if ( ! $this->can_manage_collections() ) {
+			return new \WP_Error( 'forbidden', __( 'Sorry, you are not allowed to delete collections.', 'post-collection' ), array( 'status' => 403 ) );
+		}
+
+		$term_id = isset( $data['collection_term_id'] ) ? absint( wp_unslash( $data['collection_term_id'] ) ) : 0;
+		if ( ! $term_id || ! isset( $data['_wpnonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $data['_wpnonce'] ) ), 'post-collection-delete-' . $term_id ) ) {
+			return new \WP_Error( 'invalid_nonce', __( 'The delete collection request could not be verified.', 'post-collection' ), array( 'status' => 403 ) );
+		}
+
+		$collection = get_term( $term_id, Post_Collection::COLLECTION_TAXONOMY );
+		if ( ! $collection || is_wp_error( $collection ) ) {
+			return new \WP_Error( 'invalid_collection', __( 'Invalid post collection.', 'post-collection' ), array( 'status' => 404 ) );
+		}
+
+		$reassign_term_id = isset( $data['reassign_collection_term_id'] ) ? absint( wp_unslash( $data['reassign_collection_term_id'] ) ) : 0;
+		if ( $reassign_term_id ) {
+			if ( $reassign_term_id === (int) $collection->term_id ) {
+				return new \WP_Error( 'invalid_reassign_collection', __( 'Choose a different collection to receive the saved posts.', 'post-collection' ), array( 'status' => 400 ) );
+			}
+
+			$reassign_collection = get_term( $reassign_term_id, Post_Collection::COLLECTION_TAXONOMY );
+			if ( ! $reassign_collection || is_wp_error( $reassign_collection ) ) {
+				return new \WP_Error( 'invalid_reassign_collection', __( 'Invalid reassignment collection.', 'post-collection' ), array( 'status' => 404 ) );
+			}
+
+			$reassigned = $this->reassign_collection_posts( $collection, $reassign_collection );
+			if ( is_wp_error( $reassigned ) ) {
+				return $reassigned;
+			}
+		}
+
+		$deleted = wp_delete_term( $collection->term_id, Post_Collection::COLLECTION_TAXONOMY );
+		if ( is_wp_error( $deleted ) ) {
+			return $deleted;
+		}
+
+		if ( ! $deleted ) {
+			return new \WP_Error( 'delete_failed', __( 'The collection could not be deleted.', 'post-collection' ), array( 'status' => 500 ) );
+		}
+
+		return $collection;
+	}
+
+	/**
+	 * Reassign all posts in one collection to another collection.
+	 *
+	 * @param \WP_Term $from_collection Source collection.
+	 * @param \WP_Term $to_collection Destination collection.
+	 * @return int|\WP_Error Number of reassigned posts or error.
+	 */
+	private function reassign_collection_posts( \WP_Term $from_collection, \WP_Term $to_collection ) {
+		$post_ids = get_posts(
+			array(
+				'post_type'      => Post_Collection::CPT,
+				'post_status'    => 'any',
+				'posts_per_page' => -1,
+				'fields'         => 'ids',
+				'tax_query'      => array(
+					array(
+						'taxonomy' => Post_Collection::COLLECTION_TAXONOMY,
+						'field'    => 'term_id',
+						'terms'    => array( (int) $from_collection->term_id ),
+					),
+				),
+			)
+		);
+
+		if ( is_wp_error( $post_ids ) ) {
+			return $post_ids;
+		}
+
+		foreach ( $post_ids as $post_id ) {
+			$updated = wp_set_object_terms( (int) $post_id, array( (int) $to_collection->term_id ), Post_Collection::COLLECTION_TAXONOMY, false );
+			if ( is_wp_error( $updated ) ) {
+				return $updated;
+			}
+		}
+
+		return count( $post_ids );
 	}
 
 	/**

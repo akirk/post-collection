@@ -99,6 +99,10 @@ $render_collection_card = static function ( $collection ) use ( $app ) {
 	</header>
 
 	<main class="pc-shell">
+		<?php if ( isset( $_GET['pc-collection-deleted'] ) ) : ?>
+			<div class="pc-notice pc-notice-success" role="status"><?php esc_html_e( 'Collection deleted.', 'post-collection' ); ?></div>
+		<?php endif; ?>
+
 		<?php if ( empty( $collections ) ) : ?>
 			<section class="pc-empty">
 				<h2><?php esc_html_e( 'No collections to show', 'post-collection' ); ?></h2>
