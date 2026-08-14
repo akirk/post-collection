@@ -5,6 +5,10 @@ namespace {
 		define( 'ABSPATH', '/tmp/' );
 	}
 
+	if ( ! defined( 'OBJECT' ) ) {
+		define( 'OBJECT', 'OBJECT' );
+	}
+
 	require_once __DIR__ . '/../vendor/autoload.php';
 
 	if ( ! class_exists( 'WP_HTML_Tag_Processor' ) ) {
@@ -234,6 +238,13 @@ namespace {
 			}
 			return $this->errors[ $code ][0] ?? '';
 		}
+
+		public function get_error_data( $code = '' ) {
+			if ( '' === $code ) {
+				$code = $this->get_error_code();
+			}
+			return $this->error_data[ $code ] ?? null;
+		}
 	}
 
 	class WP_User {
@@ -436,6 +447,16 @@ namespace {
 					}
 				);
 			}
+
+			if ( ! empty( $args['tax_query'] ) ) {
+				$tax_query = $args['tax_query'];
+				$posts = array_filter(
+					$posts,
+					function ( $post ) use ( $tax_query ) {
+						return post_collection_test_post_matches_tax_query( $post, $tax_query );
+					}
+				);
+			}
 		}
 
 		$posts = array_values( $posts );
@@ -494,6 +515,51 @@ namespace {
 					return in_array( (string) $stored, array_map( 'strval', (array) $value ), true );
 				}
 				return (string) $stored === (string) $value;
+			},
+			$clauses
+		);
+
+		return 'OR' === $relation ? in_array( true, $matches, true ) : ! in_array( false, $matches, true );
+	}
+
+	function post_collection_test_post_matches_tax_query( $post, $tax_query ) {
+		$relation = 'AND';
+		if ( isset( $tax_query['relation'] ) ) {
+			$relation = strtoupper( $tax_query['relation'] );
+		}
+
+		$clauses = array();
+		foreach ( $tax_query as $clause ) {
+			if ( ! is_array( $clause ) || empty( $clause['taxonomy'] ) ) {
+				continue;
+			}
+			$clauses[] = $clause;
+		}
+
+		if ( empty( $clauses ) ) {
+			return true;
+		}
+
+		$matches = array_map(
+			function ( $clause ) use ( $post ) {
+				$taxonomy = $clause['taxonomy'];
+				$field    = $clause['field'] ?? 'term_id';
+				$terms    = array_map( 'strval', (array) ( $clause['terms'] ?? array() ) );
+				$operator = strtoupper( $clause['operator'] ?? 'IN' );
+				$assigned = $GLOBALS['wp_test_terms'][ $post->ID ][ $taxonomy ] ?? array();
+
+				if ( 'term_id' !== $field ) {
+					$assigned = array_map(
+						function ( $term_id ) use ( $taxonomy, $field ) {
+							$term = get_term( $term_id, $taxonomy );
+							return $term && isset( $term->$field ) ? $term->$field : $term_id;
+						},
+						$assigned
+					);
+				}
+
+				$has_term = (bool) array_intersect( array_map( 'strval', $assigned ), $terms );
+				return 'NOT IN' === $operator ? ! $has_term : $has_term;
 			},
 			$clauses
 		);
@@ -607,6 +673,16 @@ namespace {
 		return $terms;
 	}
 
+	function get_term_by( $field, $value, $taxonomy = '', $output = OBJECT, $filter = 'raw' ) {
+		foreach ( $GLOBALS['wp_test_registered_terms'][ $taxonomy ] ?? array() as $term ) {
+			if ( isset( $term->$field ) && (string) $term->$field === (string) $value ) {
+				return $term;
+			}
+		}
+
+		return false;
+	}
+
 	function get_term( $term_id, $taxonomy = '' ) {
 		$term_id = (int) $term_id;
 		if ( $taxonomy ) {
@@ -616,6 +692,19 @@ namespace {
 		foreach ( $GLOBALS['wp_test_registered_terms'] as $terms ) {
 			if ( isset( $terms[ $term_id ] ) ) {
 				return $terms[ $term_id ];
+			}
+		}
+
+		return null;
+	}
+
+	function term_exists( $term, $taxonomy = '', $parent_term = null ) {
+		foreach ( $GLOBALS['wp_test_registered_terms'][ $taxonomy ] ?? array() as $registered_term ) {
+			if ( (string) $registered_term->slug === (string) $term || (string) $registered_term->name === (string) $term ) {
+				return array(
+					'term_id'          => (string) $registered_term->term_id,
+					'term_taxonomy_id' => (string) $registered_term->term_id,
+				);
 			}
 		}
 
@@ -635,6 +724,53 @@ namespace {
 
 	function update_term_meta( $term_id, $meta_key, $meta_value, $prev_value = '' ) {
 		$GLOBALS['wp_test_term_meta'][ $term_id ][ $meta_key ] = $meta_value;
+		return true;
+	}
+
+	function delete_term_meta( $term_id, $meta_key, $meta_value = '' ) {
+		unset( $GLOBALS['wp_test_term_meta'][ $term_id ][ $meta_key ] );
+		return true;
+	}
+
+	function wp_insert_term( $term, $taxonomy, $args = array() ) {
+		$term_id = count( $GLOBALS['wp_test_registered_terms'][ $taxonomy ] ?? array() ) + 1;
+		$created = new WP_Term(
+			(object) array(
+				'term_id'  => $term_id,
+				'name'     => $term,
+				'slug'     => $args['slug'] ?? sanitize_title( $term ),
+				'taxonomy' => $taxonomy,
+			)
+		);
+		$GLOBALS['wp_test_registered_terms'][ $taxonomy ][ $term_id ] = $created;
+		return array(
+			'term_id'          => $term_id,
+			'term_taxonomy_id' => $term_id,
+		);
+	}
+
+	function wp_delete_term( $term, $taxonomy, $args = array() ) {
+		$term_id = (int) $term;
+		if ( empty( $GLOBALS['wp_test_registered_terms'][ $taxonomy ][ $term_id ] ) ) {
+			return false;
+		}
+
+		unset( $GLOBALS['wp_test_registered_terms'][ $taxonomy ][ $term_id ] );
+		unset( $GLOBALS['wp_test_term_meta'][ $term_id ] );
+		foreach ( $GLOBALS['wp_test_terms'] as $object_id => $taxonomies ) {
+			if ( empty( $taxonomies[ $taxonomy ] ) ) {
+				continue;
+			}
+			$GLOBALS['wp_test_terms'][ $object_id ][ $taxonomy ] = array_values(
+				array_filter(
+					$taxonomies[ $taxonomy ],
+					function ( $assigned_term_id ) use ( $term_id ) {
+						return (int) $assigned_term_id !== $term_id;
+					}
+				)
+			);
+		}
+
 		return true;
 	}
 
@@ -787,6 +923,39 @@ namespace {
 
 	function home_url( $path = '', $scheme = null ) {
 		return 'https://example.com' . $path;
+	}
+
+	function add_query_arg( ...$args ) {
+		if ( is_array( $args[0] ) ) {
+			$params = $args[0];
+			$url    = $args[1] ?? '';
+		} else {
+			$params = array( $args[0] => $args[1] ?? '' );
+			$url    = $args[2] ?? '';
+		}
+
+		$separator = false === strpos( $url, '?' ) ? '?' : '&';
+		return $url . $separator . http_build_query( $params );
+	}
+
+	function trailingslashit( $string ) {
+		return rtrim( $string, '/' ) . '/';
+	}
+
+	function wp_verify_nonce( $nonce, $action = -1 ) {
+		return hash_equals( 'nonce-' . $action, (string) $nonce ) ? 1 : false;
+	}
+
+	function wp_create_nonce( $action = -1 ) {
+		return 'nonce-' . $action;
+	}
+
+	function wp_nonce_field( $action = -1, $name = '_wpnonce', $referer = true, $display = true ) {
+		$field = '<input type="hidden" name="' . esc_attr( $name ) . '" value="' . esc_attr( wp_create_nonce( $action ) ) . '" />';
+		if ( $display ) {
+			echo $field;
+		}
+		return $field;
 	}
 
 	function sanitize_text_field( $str ) {

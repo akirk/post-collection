@@ -24,6 +24,13 @@ if ( ! $collection || ! $app->can_manage_collections() ) {
 $configured_mode = get_term_meta( $collection->term_id, 'post_collection_frontend_mode', true );
 $configured_view = get_term_meta( $collection->term_id, 'post_collection_frontend_view', true );
 $hide_from_home  = get_term_meta( $collection->term_id, 'post_collection_hide_from_home', true );
+$collection_posts_count = $app->count_collection_posts( $collection );
+$reassign_collections   = array_filter(
+	$app->get_collections(),
+	static function ( $candidate ) use ( $collection ) {
+		return (int) $candidate->term_id !== (int) $collection->term_id;
+	}
+);
 ?>
 <!DOCTYPE html>
 <html <?php echo wp_app_language_attributes(); ?>>
@@ -138,6 +145,38 @@ $hide_from_home  = get_term_meta( $collection->term_id, 'post_collection_hide_fr
 					<p class="pc-urlforwarder-note"><?php esc_html_e( 'The forwarded URL should be URL encoded.', 'post-collection' ); ?></p>
 				</div>
 			</div>
+		</section>
+		<section class="pc-settings-danger">
+			<h2><?php esc_html_e( 'Delete collection', 'post-collection' ); ?></h2>
+			<p><?php esc_html_e( 'Deleting this collection removes it from the app. Saved posts are not deleted.', 'post-collection' ); ?></p>
+			<form method="post" action="<?php echo esc_url( $app->get_collection_settings_url( $collection ) ); ?>" onsubmit="return window.confirm('<?php echo esc_js( __( 'Delete this collection? Saved posts will not be deleted.', 'post-collection' ) ); ?>');">
+				<input type="hidden" name="post_collection_action" value="delete-collection">
+				<input type="hidden" name="collection_term_id" value="<?php echo esc_attr( $collection->term_id ); ?>">
+				<?php wp_nonce_field( 'post-collection-delete-' . $collection->term_id ); ?>
+				<?php if ( $collection_posts_count > 0 ) : ?>
+					<label>
+						<span><?php esc_html_e( 'Saved posts', 'post-collection' ); ?></span>
+						<select name="reassign_collection_term_id">
+							<option value="0"><?php esc_html_e( 'Leave posts unassigned', 'post-collection' ); ?></option>
+							<?php foreach ( $reassign_collections as $reassign_collection ) : ?>
+								<option value="<?php echo esc_attr( $reassign_collection->term_id ); ?>"><?php echo esc_html( $reassign_collection->name ); ?></option>
+							<?php endforeach; ?>
+						</select>
+					</label>
+					<p class="pc-settings-danger-note">
+						<?php
+						echo esc_html(
+							sprintf(
+								// translators: %d is the number of posts in the collection being deleted.
+								_n( '%d saved post can be reassigned before deletion.', '%d saved posts can be reassigned before deletion.', $collection_posts_count, 'post-collection' ),
+								$collection_posts_count
+							)
+						);
+						?>
+					</p>
+				<?php endif; ?>
+				<button type="submit" class="pc-button pc-button-danger"><?php esc_html_e( 'Delete collection', 'post-collection' ); ?></button>
+			</form>
 		</section>
 	</main>
 	<?php wp_app_body_close(); ?>
