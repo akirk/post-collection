@@ -2,7 +2,7 @@
 /**
  * Plugin name: Post Collection
  * Plugin URI: https://github.com/akirk/post-collection
- * Version: 2.0.0
+ * Version: 2.0.0+6705ac269a05
  * Author: Alex Kirk
  * Author URI: https://alex.kirk.at/
  *
