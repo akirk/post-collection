@@ -1,5 +1,8 @@
 # Changelog
 
+## Unreleased
+- Add Bookmarks HTML and OPML export for collections, and OPML import
+
 ## 2.0.0
 - Post Collection now works as a standalone plugin without requiring the Friends plugin ([#7])
 - Renamed plugin from Friends Post Collection to Post Collection ([#12])

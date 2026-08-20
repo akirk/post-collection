@@ -96,12 +96,15 @@ class Post_Collection_App {
 		add_action( 'wp_ajax_post_collection_import_item', array( $this, 'wp_ajax_import_item' ) );
 		add_action( 'wp_ajax_post_collection_toggle_read_status', array( $this, 'wp_ajax_toggle_read_status' ) );
 		add_filter( 'private_title_format', array( $this, 'filter_private_title_format' ), 10, 2 );
+		add_action( 'wp_app_before_render', array( $this, 'add_collection_menu_items' ) );
 
 		$this->app->route( '' );
 		$this->app->route( 'new', 'new.php' );
 		$this->app->route( 'review', 'review.php' );
+		$this->app->route( 'export', 'export.php' );
 		$this->app->route( '{collection}/settings', 'settings.php' );
 		$this->app->route( '{collection}/import', 'import.php' );
+		$this->app->route( '{collection}/export', 'export.php' );
 		$this->app->route( '{collection}/review', 'review.php' );
 		$this->app->route( '{collection}', 'collection.php' );
 		$this->app->route( '{collection}/{post_id}', 'post.php' );
@@ -122,6 +125,11 @@ class Post_Collection_App {
 				'new-collection',
 				__( 'New Collection', 'post-collection' ),
 				$this->get_new_collection_url()
+			);
+			$this->app->add_menu_item(
+				'export-all',
+				__( 'Export All Collections', 'post-collection' ),
+				$this->get_export_url()
 			);
 		}
 
@@ -145,6 +153,38 @@ class Post_Collection_App {
 		}
 
 		$this->app->init();
+	}
+
+	/**
+	 * Add Import and Export entries to the app menu when a collection is in context.
+	 */
+	public function add_collection_menu_items() {
+		if ( ! $this->can_manage_collections() ) {
+			return;
+		}
+
+		$collection_slug = wp_app_get_route_var( 'collection' );
+		if ( ! $collection_slug ) {
+			return;
+		}
+
+		$collection = $this->get_collection_by_username( $collection_slug );
+		if ( ! $collection ) {
+			return;
+		}
+
+		$this->app->add_menu_item(
+			'import',
+			// translators: %s is the name of a post collection.
+			sprintf( __( 'Import to %s', 'post-collection' ), $collection->name ),
+			$this->get_collection_import_url( $collection )
+		);
+		$this->app->add_menu_item(
+			'export',
+			// translators: %s is the name of a post collection.
+			sprintf( __( 'Export %s', 'post-collection' ), $collection->name ),
+			$this->get_collection_export_url( $collection )
+		);
 	}
 
 	/**
@@ -248,6 +288,25 @@ class Post_Collection_App {
 	 */
 	public function get_collection_import_url( $collection ) {
 		return trailingslashit( $this->get_collection_url( $collection ) . 'import' );
+	}
+
+	/**
+	 * Get the URL of the export page for all collections.
+	 *
+	 * @return string
+	 */
+	public function get_export_url() {
+		return trailingslashit( $this->get_home_url() . 'export' );
+	}
+
+	/**
+	 * Get the export URL for a collection.
+	 *
+	 * @param \WP_Term $collection The collection term.
+	 * @return string
+	 */
+	public function get_collection_export_url( $collection ) {
+		return trailingslashit( $this->get_collection_url( $collection ) . 'export' );
 	}
 
 	/**
@@ -567,6 +626,113 @@ class Post_Collection_App {
 	}
 
 	/**
+	 * Export formats offered for a collection.
+	 *
+	 * @return array Format key => label, extension and MIME type.
+	 */
+	public function get_export_formats() {
+		return array(
+			'html' => array(
+				'label'       => __( 'Bookmarks HTML', 'post-collection' ),
+				'description' => __( 'Netscape bookmarks file. Import it into a browser, Pinboard, Raindrop or most reading list apps.', 'post-collection' ),
+				'extension'   => 'html',
+				'mime'        => 'text/html',
+			),
+			'opml' => array(
+				'label'       => __( 'OPML', 'post-collection' ),
+				'description' => __( 'Outline file with one link per article, for feed readers and outliners.', 'post-collection' ),
+				'extension'   => 'opml',
+				'mime'        => 'text/x-opml',
+			),
+		);
+	}
+
+	/**
+	 * Collect the items of a collection for export.
+	 *
+	 * @param \WP_Term $collection The collection term.
+	 * @return array Items with url, title, tags, created, modified, description and unread keys.
+	 */
+	public function get_collection_export_items( $collection ) {
+		$query = $this->query_collection_posts(
+			$collection,
+			array(
+				'posts_per_page'                => -1,
+				'paged'                         => 1,
+				'orderby'                       => 'date',
+				'order'                         => 'ASC',
+				'post_collection_apply_filters' => false,
+			)
+		);
+
+		$notes = $this->post_collection->get_article_notes();
+		$items = array();
+		foreach ( $query->posts as $post ) {
+			$url = $this->get_source_url( $post );
+			if ( ! $url ) {
+				continue;
+			}
+
+			$note = $notes ? $notes->get_note( $post->ID ) : null;
+
+			$items[] = array(
+				'url'         => $url,
+				'title'       => html_entity_decode( get_the_title( $post ), ENT_QUOTES, get_bloginfo( 'charset' ) ),
+				'tags'        => wp_list_pluck( $this->get_post_terms( $post ), 'name' ),
+				'created'     => (int) get_post_time( 'U', true, $post ),
+				'modified'    => (int) get_post_modified_time( 'U', true, $post ),
+				'description' => $note && ! empty( $note['notes'] ) ? $note['notes'] : '',
+				'unread'      => ! $note || Article_Notes::STATUS_UNREAD === $note['status'],
+			);
+		}
+
+		return $items;
+	}
+
+	/**
+	 * Build an export file for one or more collections.
+	 *
+	 * @param array  $collections Collection terms.
+	 * @param string $format      Format key from get_export_formats().
+	 * @return array|\WP_Error Array with content, filename and mime keys.
+	 */
+	public function export_collections( array $collections, $format ) {
+		$formats = $this->get_export_formats();
+		if ( ! isset( $formats[ $format ] ) ) {
+			return new \WP_Error( 'unsupported_export_format', __( 'Unsupported export format.', 'post-collection' ), array( 'status' => 400 ) );
+		}
+
+		$groups = array();
+		foreach ( $collections as $collection ) {
+			$groups[] = array(
+				'title' => $collection->name,
+				'items' => $this->get_collection_export_items( $collection ),
+			);
+		}
+
+		if ( 1 === count( $collections ) ) {
+			$collection = reset( $collections );
+			$title      = $collection->name;
+			$slug       = sanitize_title( $collection->slug ? $collection->slug : $collection->name );
+		} else {
+			$title = get_bloginfo( 'name' );
+			$slug  = 'post-collections';
+		}
+
+		if ( 'opml' === $format ) {
+			$content = $this->post_collection->build_opml_export( $groups, $title, get_bloginfo( 'name' ) );
+		} else {
+			$content = $this->post_collection->build_bookmarks_html_export( $groups );
+		}
+
+		return array(
+			'content'  => $content,
+			'filename' => ( $slug ? $slug : 'collection' ) . '-' . gmdate( 'Y-m-d' ) . '.' . $formats[ $format ]['extension'],
+			'mime'     => $formats[ $format ]['mime'],
+		);
+	}
+
+	/**
 	 * Read an uploaded import file.
 	 *
 	 * @param array $file Uploaded file data.
@@ -579,8 +745,8 @@ class Post_Collection_App {
 
 		$filename  = isset( $file['name'] ) ? sanitize_file_name( wp_unslash( $file['name'] ) ) : '';
 		$extension = strtolower( pathinfo( $filename, PATHINFO_EXTENSION ) );
-		if ( ! in_array( $extension, array( 'csv', 'html', 'htm', 'xml', 'rss', 'atom', 'txt' ), true ) ) {
-			return new \WP_Error( 'unsupported_import_file', __( 'Please upload a CSV, bookmarks HTML, RSS, Atom, XML, or text file.', 'post-collection' ), array( 'status' => 400 ) );
+		if ( ! in_array( $extension, array( 'csv', 'html', 'htm', 'xml', 'rss', 'atom', 'opml', 'txt' ), true ) ) {
+			return new \WP_Error( 'unsupported_import_file', __( 'Please upload a CSV, bookmarks HTML, RSS, Atom, OPML, XML, or text file.', 'post-collection' ), array( 'status' => 400 ) );
 		}
 
 		$max_size = (int) apply_filters( 'post_collection_import_upload_size_limit', 5 * 1024 * 1024 );
