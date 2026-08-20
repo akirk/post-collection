@@ -54,7 +54,7 @@ if ( ! $collection || ! $app->can_view_collection( $collection ) ) {
 					<span class="pc-import-file-control">
 						<span class="pc-import-file-button"><?php esc_html_e( 'Choose file', 'post-collection' ); ?></span>
 						<span class="pc-import-file-name" data-import-file-name><?php esc_html_e( 'No file selected', 'post-collection' ); ?></span>
-						<input id="pc-import-file" type="file" name="import_file" accept=".csv,.html,.htm,.xml,.rss,.atom,.txt,text/csv,text/html,application/rss+xml,application/atom+xml,application/xml,text/xml,text/plain">
+						<input id="pc-import-file" type="file" name="import_file" accept=".csv,.html,.htm,.xml,.rss,.atom,.opml,.txt,text/csv,text/html,application/rss+xml,application/atom+xml,text/x-opml,application/xml,text/xml,text/plain">
 					</span>
 				</label>
 				<label for="pc-import-urls">
@@ -92,6 +92,7 @@ if ( ! $collection || ! $app->can_view_collection( $collection ) ) {
 				<li><?php esc_html_e( 'Pocket CSV exports and other URL CSV files.', 'post-collection' ); ?></li>
 				<li><?php esc_html_e( 'Browser bookmarks.html exports.', 'post-collection' ); ?></li>
 				<li><?php esc_html_e( 'RSS or Atom feed files.', 'post-collection' ); ?></li>
+				<li><?php esc_html_e( 'OPML files, including exports from another collection.', 'post-collection' ); ?></li>
 			</ul>
 			<p><?php esc_html_e( 'Each URL is downloaded and article content is extracted as it imports, so large files can take a while.', 'post-collection' ); ?></p>
 		</aside>

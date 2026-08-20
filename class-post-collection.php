@@ -1796,6 +1796,10 @@ class Post_Collection {
 		}
 
 		$items = array();
+		if ( 'opml' === strtolower( $xml->getName() ) ) {
+			return $this->parse_opml_outlines( $xml->body );
+		}
+
 		if ( isset( $xml->channel->item ) ) {
 			foreach ( $xml->channel->item as $item ) {
 				$tags = array();
@@ -1837,6 +1841,195 @@ class Post_Collection {
 		}
 
 		return $items;
+	}
+
+	/**
+	 * Recursively collect link outlines from an OPML body.
+	 *
+	 * Outlines are read in document order. Each outline that carries a URL
+	 * becomes an item; nested outlines are visited too, so folders work.
+	 *
+	 * @param \SimpleXMLElement|null $node Parent element.
+	 * @return array Import items.
+	 */
+	private function parse_opml_outlines( $node ) {
+		$items = array();
+		if ( ! $node instanceof \SimpleXMLElement ) {
+			return $items;
+		}
+
+		foreach ( $node->outline as $outline ) {
+			$attrs = $outline->attributes();
+			$url   = '';
+			foreach ( array( 'url', 'htmlUrl', 'xmlUrl' ) as $attribute ) {
+				if ( isset( $attrs[ $attribute ] ) && trim( (string) $attrs[ $attribute ] ) ) {
+					$url = (string) $attrs[ $attribute ];
+					break;
+				}
+			}
+
+			if ( $url ) {
+				$title = isset( $attrs['title'] ) ? (string) $attrs['title'] : '';
+				if ( '' === $title && isset( $attrs['text'] ) ) {
+					$title = (string) $attrs['text'];
+				}
+
+				$tags = array();
+				if ( isset( $attrs['category'] ) ) {
+					foreach ( explode( ',', (string) $attrs['category'] ) as $category ) {
+						$tags[] = ltrim( trim( $category ), '/' );
+					}
+				}
+
+				$items[] = $this->normalize_import_item(
+					array(
+						'url'   => $url,
+						'title' => $title,
+						'tags'  => $tags,
+					)
+				);
+			}
+
+			$items = array_merge( $items, $this->parse_opml_outlines( $outline ) );
+		}
+
+		return $items;
+	}
+
+	/**
+	 * Build a Netscape bookmarks HTML file.
+	 *
+	 * This is the format browsers, Pinboard, Raindrop and most read-later
+	 * services import. Each group becomes a folder. Tags go into the TAGS
+	 * attribute, the note into DD and unread items are flagged with TOREAD,
+	 * all of which Pinboard-style importers understand and others ignore.
+	 *
+	 * @param array $groups Groups with title and items keys (see get_collection_export_items()).
+	 * @return string
+	 */
+	public function build_bookmarks_html_export( array $groups ) {
+		$now   = time();
+		$lines = array(
+			'<!DOCTYPE NETSCAPE-Bookmark-file-1>',
+			'<!-- This is an automatically generated file.',
+			'     It will be read and overwritten.',
+			'     DO NOT EDIT! -->',
+			'<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=UTF-8">',
+			'<TITLE>Bookmarks</TITLE>',
+			'<H1>Bookmarks</H1>',
+			'<DL><p>',
+		);
+
+		foreach ( $groups as $group ) {
+			$lines[] = '    <DT><H3 ADD_DATE="' . $now . '" LAST_MODIFIED="' . $now . '">' . esc_html( $group['title'] ) . '</H3>';
+			$lines[] = '    <DL><p>';
+
+			foreach ( $group['items'] as $item ) {
+				$item  = $this->normalize_export_item( $item );
+				$attrs = ' HREF="' . esc_url( $item['url'] ) . '" ADD_DATE="' . $item['created'] . '"';
+				if ( $item['modified'] ) {
+					$attrs .= ' LAST_MODIFIED="' . $item['modified'] . '"';
+				}
+				if ( $item['tags'] ) {
+					$attrs .= ' TAGS="' . esc_attr( implode( ',', $item['tags'] ) ) . '"';
+				}
+				if ( $item['unread'] ) {
+					$attrs .= ' TOREAD="1"';
+				}
+				$lines[] = '        <DT><A' . $attrs . '>' . esc_html( $item['title'] ? $item['title'] : $item['url'] ) . '</A>';
+				if ( '' !== $item['description'] ) {
+					$lines[] = '        <DD>' . esc_html( $item['description'] );
+				}
+			}
+
+			$lines[] = '    </DL><p>';
+		}
+
+		$lines[] = '</DL><p>';
+
+		return implode( "\n", $lines ) . "\n";
+	}
+
+	/**
+	 * Build an OPML 2.0 file of link outlines.
+	 *
+	 * Each group becomes an outline holding one outline of type "link" per
+	 * article; tags are in the OPML category attribute and the note in
+	 * description.
+	 *
+	 * @param array  $groups Groups with title and items keys (see get_collection_export_items()).
+	 * @param string $title  Document title.
+	 * @param string $owner  Optional owner name.
+	 * @return string
+	 */
+	public function build_opml_export( array $groups, $title, $owner = '' ) {
+		$now   = gmdate( DATE_RFC2822 );
+		$lines = array(
+			'<?xml version="1.0" encoding="UTF-8"?>',
+			'<opml version="2.0">',
+			'	<head>',
+			'		<title>' . esc_html( $title ) . '</title>',
+			'		<dateCreated>' . $now . '</dateCreated>',
+		);
+		if ( '' !== $owner ) {
+			$lines[] = '		<ownerName>' . esc_html( $owner ) . '</ownerName>';
+		}
+		$lines[] = '	</head>';
+		$lines[] = '	<body>';
+
+		foreach ( $groups as $group ) {
+			$lines[] = '		<outline text="' . esc_attr( $group['title'] ) . '" title="' . esc_attr( $group['title'] ) . '">';
+
+			foreach ( $group['items'] as $item ) {
+				$item  = $this->normalize_export_item( $item );
+				$label = esc_attr( $item['title'] ? $item['title'] : $item['url'] );
+				$attrs = ' type="link" text="' . $label . '" title="' . $label . '" url="' . esc_url( $item['url'] ) . '"';
+				$attrs .= ' created="' . gmdate( DATE_RFC2822, $item['created'] ) . '"';
+				if ( $item['tags'] ) {
+					$attrs .= ' category="' . esc_attr( implode( ',', $item['tags'] ) ) . '"';
+				}
+				if ( '' !== $item['description'] ) {
+					$attrs .= ' description="' . esc_attr( $item['description'] ) . '"';
+				}
+				$lines[] = '			<outline' . $attrs . '/>';
+			}
+
+			$lines[] = '		</outline>';
+		}
+
+		$lines[] = '	</body>';
+		$lines[] = '</opml>';
+
+		return implode( "\n", $lines ) . "\n";
+	}
+
+	/**
+	 * Fill in defaults for an export item.
+	 *
+	 * @param array $item Export item.
+	 * @return array
+	 */
+	private function normalize_export_item( array $item ) {
+		$item = wp_parse_args(
+			$item,
+			array(
+				'url'         => '',
+				'title'       => '',
+				'tags'        => array(),
+				'created'     => time(),
+				'modified'    => 0,
+				'description' => '',
+				'unread'      => false,
+			)
+		);
+
+		$item['tags']        = array_values( array_filter( array_map( 'strval', (array) $item['tags'] ) ) );
+		$item['created']     = (int) $item['created'];
+		$item['modified']    = (int) $item['modified'];
+		$item['description'] = trim( wp_strip_all_tags( (string) $item['description'] ) );
+		$item['unread']      = ! empty( $item['unread'] );
+
+		return $item;
 	}
 
 	/**

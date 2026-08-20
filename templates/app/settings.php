@@ -146,6 +146,14 @@ $reassign_collections   = array_filter(
 				</div>
 			</div>
 		</section>
+		<section class="pc-settings-export">
+			<h2><?php esc_html_e( 'Import and export', 'post-collection' ); ?></h2>
+			<p><?php esc_html_e( 'Bring links in from another reading list, or download this collection to take it elsewhere.', 'post-collection' ); ?></p>
+			<div class="pc-form-actions">
+				<a class="pc-button" href="<?php echo esc_url( $app->get_collection_import_url( $collection ) ); ?>"><?php esc_html_e( 'Import', 'post-collection' ); ?></a>
+				<a class="pc-button" href="<?php echo esc_url( $app->get_collection_export_url( $collection ) ); ?>"><?php esc_html_e( 'Export', 'post-collection' ); ?></a>
+			</div>
+		</section>
 		<section class="pc-settings-danger">
 			<h2><?php esc_html_e( 'Delete collection', 'post-collection' ); ?></h2>
 			<p><?php esc_html_e( 'Deleting this collection removes it from the app. Saved posts are not deleted.', 'post-collection' ); ?></p>

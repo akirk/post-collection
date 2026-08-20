@@ -986,6 +986,15 @@ namespace {
 		return $text;
 	}
 
+	if ( ! function_exists( 'wp_parse_args' ) ) {
+		function wp_parse_args( $args, $defaults = array() ) {
+			if ( is_object( $args ) ) {
+				$args = get_object_vars( $args );
+			}
+			return array_merge( (array) $defaults, (array) $args );
+		}
+	}
+
 	function wp_strip_all_tags( $text, $remove_breaks = false ) {
 		return strip_tags( (string) $text );
 	}
