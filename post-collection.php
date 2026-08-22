@@ -7,6 +7,7 @@
  * Author URI: https://alex.kirk.at/
  *
  * Description: Save articles from around the web, extract readable content, organize them into collections, and review them with notes in WordPress.
+ * Tested up to: 7.1
  * Requires PHP: 7.4
  *
  * License: GPL2
