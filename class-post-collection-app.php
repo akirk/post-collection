@@ -73,12 +73,16 @@ class Post_Collection_App {
 			POST_COLLECTION_PLUGIN_DIR . 'templates/app',
 			self::PATH,
 			array(
-				'app_name'                      => __( 'Post Collection', 'post-collection' ),
-				'my_apps'                       => __( 'Post Collection', 'post-collection' ),
-				'show_wp_logo'                  => false,
-				'show_site_name'                => true,
-				'show_dark_mode_toggle'         => true,
+				'app_name'                     => __( 'Post Collection', 'post-collection' ),
+				'launcher'                     => __( 'Post Collection', 'post-collection' ),
+				'show_wp_logo'                 => false,
+				'show_site_name'               => true,
+				'show_dark_mode_toggle'        => true,
 				'show_masterbar_for_anonymous' => true,
+				// Owned content: REST reads are gated with the app's capability and
+				// OpenStation keeps these menus out of its dock.
+				'post_types'                   => array( Post_Collection::CPT, Article_Notes::POST_TYPE ),
+				'taxonomies'                   => array( Post_Collection::COLLECTION_TAXONOMY ),
 			)
 		);
 	}
