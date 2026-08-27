@@ -10,6 +10,10 @@
 
 Collect posts from around the web.
 
+[Try it in WordPress Playground](https://playground.wordpress.net/?blueprint-url=https://raw.githubusercontent.com/akirk/post-collection/main/blueprint.json)
+
+[Try it in OpenStation](https://playground.wordpress.net/?blueprint-url=https://raw.githubusercontent.com/akirk/post-collection/main/blueprint-openstation.json) — the same app opened in desktop mode with the [OpenStation](https://github.com/WordPress/openstation) plugin.
+
 ## Description
 
 This plugin provides the facilities to store feed items in a separate post type. These can be used to create your own compilation of posts and re-publish them for friends.
