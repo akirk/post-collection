@@ -75,6 +75,11 @@ class Post_Collection_App {
 			array(
 				'app_name'                     => __( 'Post Collection', 'post-collection' ),
 				'launcher'                     => __( 'Post Collection', 'post-collection' ),
+				// Same tile as the WordPress/blueprints catalog entry.
+				'app_icon'                     => 'dashicons-book',
+				'app_icon_background'          => 'linear-gradient(135deg, #614385, #516395)',
+				'app_icon_color'               => '#fff',
+				'app_icon_shadow'              => true,
 				'show_wp_logo'                 => false,
 				'show_site_name'               => true,
 				'show_dark_mode_toggle'        => true,
