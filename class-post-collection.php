@@ -3371,17 +3371,24 @@ class Post_Collection {
 	public function my_apps_plugins( $apps ) {
 		if ( current_user_can( $this->get_required_role() ) ) {
 			$apps['post-collection-configure'] = array(
-				'name'     => __( 'Configure Post Collections', 'post-collection' ),
-				'url'      => home_url( '/post-collection/' ),
-				'dashicon' => 'dashicons-admin-settings',
+				'name'            => __( 'Configure Post Collections', 'post-collection' ),
+				'url'             => home_url( '/post-collection/' ),
+				'dashicon'        => 'dashicons-admin-settings',
+				'icon_background' => 'linear-gradient(135deg, #64748b, #334155)',
+				'icon_color'      => '#fff',
+				'icon_shadow'     => true,
 			);
 		}
 
 		foreach ( $this->get_post_collection_users()->get_results() as $user ) {
 			$apps[ 'post-collection-' . $user->ID ] = array(
-				'name'     => $user->display_name,
-				'url'      => $user->get_local_friends_page_url(),
-				'dashicon' => 'dashicons-book',
+				'name'            => $user->display_name,
+				'url'             => $user->get_local_friends_page_url(),
+				// Same tile as the WordPress/blueprints catalog entry.
+				'dashicon'        => 'dashicons-book',
+				'icon_background' => 'linear-gradient(135deg, #614385, #516395)',
+				'icon_color'      => '#fff',
+				'icon_shadow'     => true,
 			);
 		}
 
