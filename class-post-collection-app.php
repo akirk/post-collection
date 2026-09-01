@@ -146,18 +146,22 @@ class Post_Collection_App {
 			$style_path  = POST_COLLECTION_PLUGIN_DIR . 'assets/css/post-collection-app.css';
 			$script_path = POST_COLLECTION_PLUGIN_DIR . 'assets/js/post-collection-app.js';
 
+			// This runs at plugin load, before a route is known, so an omitted
+			// scope would resolve to '' and put the assets on every app's pages.
 			wp_app_enqueue_style(
 				'post-collection-app',
 				plugins_url( 'assets/css/post-collection-app.css', POST_COLLECTION_PLUGIN_FILE ),
 				array(),
-				file_exists( $style_path ) ? filemtime( $style_path ) : POST_COLLECTION_VERSION
+				file_exists( $style_path ) ? filemtime( $style_path ) : POST_COLLECTION_VERSION,
+				self::PATH
 			);
 			wp_app_enqueue_script(
 				'post-collection-app',
 				plugins_url( 'assets/js/post-collection-app.js', POST_COLLECTION_PLUGIN_FILE ),
 				array(),
 				file_exists( $script_path ) ? filemtime( $script_path ) : POST_COLLECTION_VERSION,
-				true
+				true,
+				self::PATH
 			);
 		}
 
