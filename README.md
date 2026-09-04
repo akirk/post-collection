@@ -1,27 +1,89 @@
 # Post Collection
 
-**Contributors:** akirk
-**Requires at least:** 5.0
-**Tested up to:** 7.1
-**Requires PHP:** 7.4
-**License:** GPLv2 or later
-**License URI:** http://www.gnu.org/licenses/gpl-2.0.html
-**Stable tag:** 2.0.0
+- Contributors: akirk
+- Tags: bookmarks, read-later, reading-list, rss, notes
+- Requires at least: 6.0
+- Requires PHP: 7.4
+- Tested up to: 7.1
+- Stable tag: 2.0.0
+- License: GPL-2.0-or-later
+- License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-Collect posts from around the web.
-
-[Try it in WordPress Playground](https://playground.wordpress.net/?blueprint-url=https://raw.githubusercontent.com/akirk/post-collection/main/blueprint.json)
-
-[Try it in OpenStation](https://playground.wordpress.net/?blueprint-url=https://raw.githubusercontent.com/akirk/post-collection/main/blueprint-openstation.json) — the same app opened in desktop mode with the [OpenStation](https://github.com/WordPress/openstation) plugin.
+Save articles from around the web, extract readable content, organize them into collections, and review them with notes in WordPress.
 
 ## Description
 
-This plugin provides the facilities to store feed items in a separate post type. These can be used to create your own compilation of posts and re-publish them for friends.
+[Try it in WordPress Playground](https://playground.wordpress.net/?blueprint-url=https://raw.githubusercontent.com/akirk/post-collection/main/blueprint.json) — or [in OpenStation](https://playground.wordpress.net/?blueprint-url=https://raw.githubusercontent.com/akirk/post-collection/main/blueprint-openstation.json), the same app opened in desktop mode with the [OpenStation](https://github.com/WordPress/openstation) plugin.
+
+Post Collection turns your WordPress into a read-it-later archive that you own. Give it the URL of an article and the plugin downloads the page, extracts the readable article text with [Readability](https://github.com/andreskrey/readability.php), and stores it as a collected post in your own database — so the article is still there when the original goes away.
+
+Collected posts live in their own custom post type and are grouped by a Post Collection taxonomy, so you can keep separate collections for separate topics and decide per collection whether it is publicly visible or private to you.
+
+### Save things
+
+- Save any URL from the **Post Collection** app on your site's frontend, from a bookmarklet in Tools, or from the [Friends browser extension](https://chromewebstore.google.com/detail/friends/ledbghpaplkpclndlommpbokndieflhl).
+- The article text is extracted from the page, and external images can be downloaded into your media library so the copy is self-contained.
+- Site configurations handle pages that do not yield to a plain fetch: YouTube videos are stored as embeds, archive.is snapshots are resolved, and there is a fallback path for Cloudflare-protected pages.
+- Archived copies of an original URL can be looked up in the Wayback Machine and on archive.is when the live page is gone.
+
+### Organize and review
+
+- The frontend app lists your collections, the articles in each one, and a review queue.
+- Each article can carry a **note** and a reading status — unread, read, skipped or archived — plus a rating, so a long backlog can be worked through instead of just growing.
+- Collections can be published so visitors can read your compilation, or kept hidden from the default view.
+- Tags on collected posts are kept alongside the article so a collection stays browsable.
+
+### Import and export
+
+- Bulk import from one URL per line, CSV exports from other reading list services, browser `bookmarks.html` files, RSS and Atom feeds, and OPML files. Each URL is fetched and its article content extracted as it imports.
+- Export a single collection or all of them as a Netscape **Bookmarks HTML** file (readable by browsers, Pinboard, Raindrop and most reading list apps) or as **OPML**. When exporting everything, each collection becomes its own folder.
+- Because everything is stored in ordinary WordPress posts and terms, the built-in WordPress export tool produces a full backup including the article text.
+
+### Works with other plugins
+
+Post Collection runs standalone, but it also integrates with the [Friends](https://wordpress.org/plugins/friends/) plugin: when Friends is active, every post in your feed gets a "Save to Post Collection" entry in its dropdown menu, and notes are shown underneath the post on the Friends frontend.
+
+The plugin also registers WordPress Abilities (listing, creating and updating collections, saving a URL, reading and editing collected articles and their notes), so an MCP client or another plugin can drive the collection programmatically.
+
+**Development of this plugin is done [on GitHub](https://github.com/akirk/post-collection). Pull requests welcome. Please see [issues](https://github.com/akirk/post-collection/issues) reported there before going to the plugin forum.**
+
+## Installation
+
+1. Upload the `post-collection` directory to the `/wp-content/plugins/` directory
+1. Activate the plugin through the 'Plugins' menu in WordPress
+1. Visit `/post-collection/` on your site to create your first collection
+
+## Frequently Asked Questions
+
+### Do I need the Friends plugin?
+
+No. Since version 2.0.0 Post Collection is a standalone plugin. If the Friends plugin happens to be installed, the two integrate: you can save posts from your feed into a collection and see your notes on the Friends frontend.
+
+### Does this plugin create custom database tables?
+
+No. Collected posts are a custom post type, collections are a taxonomy, and notes are a second custom post type. Deleting the plugin leaves your WordPress as slim as it was before.
+
+### Where does the article text come from?
+
+The plugin fetches the URL server-side and runs the page through the Readability library, which is the same approach reader modes in browsers use. If a site needs special handling — YouTube, archive.is, Cloudflare-protected pages — a site configuration takes over.
+
+### Can other people see my collections?
+
+Only if you let them. Each collection can be published or hidden, and the frontend app checks the viewer's access before showing a collection or an individual article.
+
+### Can I get my data out again?
+
+Yes. Every collection can be exported as a Bookmarks HTML file or as OPML, and the standard WordPress export tool produces a complete backup including the stored article content.
+
+## Screenshots
+
+1. A collection in the Post Collection app, listing the saved articles with their tags and notes.
 
 ## Changelog
 
 ### Unreleased
 - Add Bookmarks HTML and OPML export for collections, and OPML import
+- Prepare the plugin for the WordPress.org plugin directory
 
 ### 2.0.0
 - Post Collection now works as a standalone plugin without requiring the Friends plugin ([#7])
