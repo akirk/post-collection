@@ -1,7 +1,7 @@
 # Post Collection
 
 - Contributors: akirk
-- Tags: bookmarks, read-later, reading-list, rss, notes
+- Tags: bookmarks, read-later, reading-list, rss, wp-app
 - Requires at least: 6.0
 - Requires PHP: 7.4
 - Tested up to: 7.1
