@@ -5,6 +5,8 @@
 # IDE/Editor
 .vscode export-ignore
 .claude export-ignore
+.agents export-ignore
+.codex export-ignore
 
 # Testing
 .phpunit.* export-ignore
@@ -35,6 +37,12 @@ vendor/**/tests export-ignore
 vendor/**/Test export-ignore
 vendor/**/Tests export-ignore
 vendor.backup export-ignore
+
+# WordPress.org assets (deployed to the SVN assets/ directory, not shipped)
+.wordpress-org export-ignore
+
+# Docs that are not shipped with the plugin
+RELEASING.md export-ignore
 
 # Misc
 .DS_Store export-ignore

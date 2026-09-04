@@ -28,6 +28,10 @@ jobs:
           rsync -av --exclude='.git' \
                    --exclude='.github' \
                    --exclude='.claude' \
+                   --exclude='.agents' \
+                   --exclude='.codex' \
+                   --exclude='.wordpress-org' \
+                   --exclude='RELEASING.md' \
                    --exclude='node_modules' \
                    --exclude='tests' \
                    --exclude='bin' \
