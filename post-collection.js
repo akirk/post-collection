@@ -6,6 +6,7 @@ jQuery( function ( $ ) {
 		var $this = $( this );
 		wp.ajax.send( 'post-collection-mark-publish', {
 			data: {
+				_ajax_nonce: postCollection.nonce,
 				id: $this.data( 'id' ),
 			},
 			success: function ( response ) {
@@ -18,6 +19,7 @@ jQuery( function ( $ ) {
 		var $this = $( this );
 		wp.ajax.send( 'post-collection-mark-private', {
 			data: {
+				_ajax_nonce: postCollection.nonce,
 				id: $this.data( 'id' ),
 			},
 			success: function ( response ) {
@@ -33,6 +35,7 @@ jQuery( function ( $ ) {
 		}
 		wp.ajax.send( 'post-collection-change-author', {
 			data: {
+				_ajax_nonce: postCollection.nonce,
 				id: $this.data( 'id' ),
 				author: $this.data( 'author' ),
 				originalauthor: $this.data( 'originalauthor' )
@@ -56,6 +59,7 @@ jQuery( function ( $ ) {
 		}
 		wp.ajax.send( 'post-collection-save-to-collection', {
 			data: {
+				_ajax_nonce: postCollection.nonce,
 				id: $this.data( 'id' ),
 				collection: $this.data( 'collection' )
 			},
@@ -79,6 +83,7 @@ jQuery( function ( $ ) {
 		}
 		wp.ajax.send( 'post-collection-fetch-full-content', {
 			data: {
+				_ajax_nonce: postCollection.nonce,
 				id: $this.data( 'id' ),
 				author: $this.data( 'author' )
 			},
@@ -105,6 +110,7 @@ jQuery( function ( $ ) {
 		}
 		wp.ajax.send( 'post-collection-download-images', {
 			data: {
+				_ajax_nonce: postCollection.nonce,
 				id: $this.data( 'id' ),
 				author: $this.data( 'author' )
 			},
@@ -131,6 +137,7 @@ jQuery( function ( $ ) {
 		}
 		wp.ajax.send( 'post-collection-re-extract', {
 			data: {
+				_ajax_nonce: postCollection.nonce,
 				id: $this.data( 'id' )
 			},
 			beforeSend: function () {
