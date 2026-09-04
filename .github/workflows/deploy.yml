@@ -1,0 +1,57 @@
+name: Deploy to WordPress.org
+
+on:
+  release:
+    types:
+      - released
+  workflow_dispatch:
+    inputs:
+      dry-run:
+        description: 'Build and diff against SVN without committing'
+        required: false
+        default: true
+        type: boolean
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Deploy to WP.org
+    environment: production
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          tools: composer
+
+      # vendor/ is not committed, so what ships has to be built first. Building
+      # from git archive lets .gitattributes export-ignore decide the contents,
+      # which is the same rule the deploy action applies on its own.
+      - name: Build the release tree
+        run: |
+          mkdir -p "build/${{ github.event.repository.name }}"
+          git archive HEAD | tar -x -C "build/${{ github.event.repository.name }}"
+
+      - name: Install production dependencies
+        if: hashFiles(format('build/{0}/composer.json', github.event.repository.name)) != ''
+        working-directory: build/${{ github.event.repository.name }}
+        run: composer install --no-dev --optimize-autoloader --no-interaction
+
+      # Plugin files come from BUILD_DIR; the banner, icon and screenshots come
+      # from ASSETS_DIR in the checkout, which defaults to .wordpress-org and is
+      # export-ignored precisely so it stays out of the plugin ZIP.
+      - name: WordPress Plugin Deploy
+        uses: 10up/action-wordpress-plugin-deploy@stable
+        with:
+          dry-run: ${{ inputs.dry-run || false }}
+        env:
+          SVN_USERNAME: ${{ secrets.SVN_USERNAME }}
+          SVN_PASSWORD: ${{ secrets.SVN_PASSWORD }}
+          SLUG: ${{ github.event.repository.name }}
+          BUILD_DIR: build/${{ github.event.repository.name }}
