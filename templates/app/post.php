@@ -41,11 +41,11 @@ $notes_nonce      = $can_edit_notes ? wp_create_nonce( 'post-collection-article-
 $back_label       = 'bookmarks' === $mode ? __( 'Back to Bookmarks', 'post-collection' ) : __( 'Back to Collection', 'post-collection' );
 ?>
 <!DOCTYPE html>
-<html <?php echo wp_app_language_attributes(); ?>>
+<html <?php wp_app_language_attributes(); ?>>
 <head>
 	<meta charset="<?php bloginfo( 'charset' ); ?>">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
-	<title><?php echo wp_app_title( get_the_title( $post ) ); ?></title>
+	<title><?php echo esc_html( wp_app_title( get_the_title( $post ) ) ); ?></title>
 	<?php wp_app_head(); ?>
 </head>
 <body <?php body_class( 'wp-app-body post-collection-app pc-post-detail-page pc-mode-' . $mode ); ?>>
@@ -90,7 +90,7 @@ $back_label       = 'bookmarks' === $mode ? __( 'Back to Bookmarks', 'post-colle
 				<?php echo $embed_html; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
 			<?php endif; ?>
 			<?php if ( '' !== trim( $post->post_content ) ) : ?>
-				<?php echo apply_filters( 'the_content', $post->post_content ); ?>
+				<?php echo apply_filters( 'the_content', $post->post_content ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped, WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- the_content is a WordPress core filter and returns rendered post HTML. ?>
 			<?php endif; ?>
 		</article>
 		<?php if ( $can_edit_notes ) : ?>
@@ -105,7 +105,11 @@ $back_label       = 'bookmarks' === $mode ? __( 'Back to Bookmarks', 'post-colle
 					</div>
 					<div class="pc-note-rating" aria-label="<?php esc_attr_e( 'Rating', 'post-collection' ); ?>" data-rating="<?php echo esc_attr( $rating ); ?>">
 						<?php for ( $i = 1; $i <= 5; $i++ ) : ?>
-							<button type="button" class="pc-note-star<?php echo $i <= $rating ? ' is-active' : ''; ?>" data-rating="<?php echo esc_attr( $i ); ?>" aria-label="<?php echo esc_attr( sprintf( __( '%d stars', 'post-collection' ), $i ) ); ?>">
+							<?php
+							// translators: %d is a rating expressed as a number of stars, from 1 to 5.
+							$star_label = sprintf( __( '%d stars', 'post-collection' ), $i );
+							?>
+							<button type="button" class="pc-note-star<?php echo $i <= $rating ? ' is-active' : ''; ?>" data-rating="<?php echo esc_attr( $i ); ?>" aria-label="<?php echo esc_attr( $star_label ); ?>">
 								<?php echo $i <= $rating ? '&#9733;' : '&#9734;'; ?>
 							</button>
 						<?php endfor; ?>

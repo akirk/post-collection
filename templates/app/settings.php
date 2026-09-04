@@ -33,11 +33,15 @@ $reassign_collections   = array_filter(
 );
 ?>
 <!DOCTYPE html>
-<html <?php echo wp_app_language_attributes(); ?>>
+<html <?php wp_app_language_attributes(); ?>>
 <head>
 	<meta charset="<?php bloginfo( 'charset' ); ?>">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
-	<title><?php echo wp_app_title( sprintf( __( '%s Settings', 'post-collection' ), $collection->name ) ); ?></title>
+	<?php
+	// translators: %s is the name of a post collection.
+	$settings_title = sprintf( __( '%s Settings', 'post-collection' ), $collection->name );
+	?>
+	<title><?php echo esc_html( wp_app_title( $settings_title ) ); ?></title>
 	<?php wp_app_head(); ?>
 </head>
 <body <?php body_class( 'wp-app-body post-collection-app pc-settings-page' ); ?>>

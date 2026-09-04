@@ -10,11 +10,11 @@ defined( 'ABSPATH' ) || exit;
 $app = \PostCollection\Post_Collection_App::instance();
 ?>
 <!DOCTYPE html>
-<html <?php echo wp_app_language_attributes(); ?>>
+<html <?php wp_app_language_attributes(); ?>>
 <head>
 	<meta charset="<?php bloginfo( 'charset' ); ?>">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
-	<title><?php echo wp_app_title( __( 'Access Denied', 'post-collection' ) ); ?></title>
+	<title><?php echo esc_html( wp_app_title( __( 'Access Denied', 'post-collection' ) ) ); ?></title>
 	<?php wp_app_head(); ?>
 </head>
 <body <?php body_class( 'wp-app-body post-collection-app' ); ?>>
