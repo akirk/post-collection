@@ -72,12 +72,28 @@ class Test_App_E_Reader_Hooks extends TestCase {
 		return get_post( $post_id );
 	}
 
+	/**
+	 * Run a handler that answers with wp_send_json and return what it sent.
+	 *
+	 * @param callable $handler The handler.
+	 * @return array The decoded response.
+	 */
+	private function capture_json( $handler ) {
+		try {
+			call_user_func( $handler );
+		} catch ( WP_Test_Json_Response $response ) {
+			return $response->data;
+		}
+
+		$this->fail( 'The handler did not answer.' );
+	}
+
 	private function mark_read( $app, $post, $status ) {
 		$app->get_post_collection()->get_article_notes()->save_note( $post->ID, $status );
 	}
 
 	public function test_unread_posts_leave_out_what_has_been_read() {
-		$GLOBALS['wp_test_current_user_caps'] = array( 'edit_posts' => true );
+		$GLOBALS['wp_test_current_user_caps'] = array( 'edit_private_posts' => true );
 
 		$app        = $this->get_app();
 		$collection = $this->create_collection( 'Reading List' );
@@ -100,7 +116,7 @@ class Test_App_E_Reader_Hooks extends TestCase {
 	}
 
 	public function test_query_app_posts_is_restricted_to_one_collection() {
-		$GLOBALS['wp_test_current_user_caps'] = array( 'edit_posts' => true );
+		$GLOBALS['wp_test_current_user_caps'] = array( 'edit_private_posts' => true );
 
 		$app     = $this->get_app();
 		$reading = $this->create_collection( 'Reading List' );
@@ -140,7 +156,7 @@ class Test_App_E_Reader_Hooks extends TestCase {
 		$this->assertCount( 3, $ids );
 	}
 
-	public function test_nothing_is_rendered_without_an_integration() {
+	public function test_a_visitor_gets_no_actions_and_no_checkboxes() {
 		$app        = $this->get_app();
 		$collection = $this->create_collection( 'Reading List' );
 		$post       = $this->create_article( 'An article', $collection );
@@ -155,6 +171,82 @@ class Test_App_E_Reader_Hooks extends TestCase {
 		$output = ob_get_clean();
 
 		$this->assertSame( '', $output );
+	}
+
+	public function test_the_owner_can_act_on_a_selection_without_any_integration() {
+		$GLOBALS['wp_test_current_user_caps'] = array( 'edit_private_posts' => true );
+
+		$app        = $this->get_app();
+		$collection = $this->create_collection( 'Reading List' );
+		$post       = $this->create_article( 'An article', $collection );
+
+		// Setting the reading status of a batch is the app's own doing, so the
+		// checkboxes are there whether or not a plugin adds actions.
+		$this->assertFalse( $app->has_item_actions() );
+		$this->assertTrue( $app->has_selection_actions() );
+
+		ob_start();
+		$app->render_item_select( $post, 'links' );
+		$app->render_selection_bar( 'collection', $collection );
+		$output = ob_get_clean();
+
+		$this->assertStringContainsString( 'data-pc-select-item', $output );
+		foreach ( array_keys( $app->get_article_statuses() ) as $status ) {
+			$this->assertStringContainsString( 'data-pc-bulk-status="' . $status . '"', $output );
+		}
+	}
+
+	public function test_a_batch_takes_the_reading_status() {
+		$GLOBALS['wp_test_current_user_caps'] = array( 'edit_private_posts' => true );
+
+		$app        = $this->get_app();
+		$collection = $this->create_collection( 'Reading List' );
+		$first      = $this->create_article( 'First', $collection );
+		$second     = $this->create_article( 'Second', $collection );
+		$untouched  = $this->create_article( 'Untouched', $collection );
+
+		$_POST = array(
+			'_wpnonce' => wp_create_nonce( 'post-collection-bulk-read-status' ),
+			'status'   => Article_Notes::STATUS_READ,
+			'post_ids' => array( $first->ID, $second->ID ),
+		);
+
+		$result = $this->capture_json( array( $app, 'wp_ajax_bulk_read_status' ) );
+
+		$this->assertTrue( $result['success'] );
+		$this->assertCount( 2, $result['data']['items'] );
+		$this->assertSame( Article_Notes::STATUS_READ, $app->get_article_note_status( $first ) );
+		$this->assertSame( Article_Notes::STATUS_READ, $app->get_article_note_status( $second ) );
+		$this->assertSame( Article_Notes::STATUS_UNREAD, $app->get_article_note_status( $untouched ) );
+
+		$_POST = array();
+	}
+
+	public function test_a_batch_needs_a_nonce_and_a_real_status() {
+		$GLOBALS['wp_test_current_user_caps'] = array( 'edit_private_posts' => true );
+
+		$app        = $this->get_app();
+		$collection = $this->create_collection( 'Reading List' );
+		$post       = $this->create_article( 'An article', $collection );
+
+		$_POST = array(
+			'status'   => Article_Notes::STATUS_READ,
+			'post_ids' => array( $post->ID ),
+		);
+		$result = $this->capture_json( array( $app, 'wp_ajax_bulk_read_status' ) );
+		$this->assertFalse( $result['success'] );
+
+		$_POST = array(
+			'_wpnonce' => wp_create_nonce( 'post-collection-bulk-read-status' ),
+			'status'   => 'devoured',
+			'post_ids' => array( $post->ID ),
+		);
+		$result = $this->capture_json( array( $app, 'wp_ajax_bulk_read_status' ) );
+		$this->assertFalse( $result['success'] );
+
+		$this->assertSame( Article_Notes::STATUS_UNREAD, $app->get_article_note_status( $post ) );
+
+		$_POST = array();
 	}
 
 	public function test_an_integration_gets_its_actions_and_the_selection_rendered() {

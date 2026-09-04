@@ -104,6 +104,7 @@ class Post_Collection_App {
 		add_action( 'wp_ajax_post_collection_parse_import', array( $this, 'wp_ajax_parse_import' ) );
 		add_action( 'wp_ajax_post_collection_import_item', array( $this, 'wp_ajax_import_item' ) );
 		add_action( 'wp_ajax_post_collection_toggle_read_status', array( $this, 'wp_ajax_toggle_read_status' ) );
+		add_action( 'wp_ajax_post_collection_bulk_read_status', array( $this, 'wp_ajax_bulk_read_status' ) );
 		add_filter( 'private_title_format', array( $this, 'filter_private_title_format' ), 10, 2 );
 		add_action( 'template_redirect', array( $this, 'fire_app_request' ), 1 );
 		add_action( 'wp_app_before_render', array( $this, 'add_collection_menu_items' ) );
@@ -1500,12 +1501,16 @@ class Post_Collection_App {
 	}
 
 	/**
-	 * Whether an integration offers actions for a selection of items.
+	 * Whether a selection of items can be acted on.
+	 *
+	 * Whoever may edit the collection can set the reading status of a batch, and
+	 * an integration can add actions of its own; for a visitor who can do
+	 * neither there is nothing to tick a box for.
 	 *
 	 * @return bool
 	 */
 	public function has_selection_actions() {
-		return (bool) has_action( 'post_collection_app_selection_actions' );
+		return $this->can_manage_collections() || has_action( 'post_collection_app_selection_actions' );
 	}
 
 	/**
@@ -1577,6 +1582,7 @@ class Post_Collection_App {
 		<div class="pc-selection-bar" data-pc-selection-bar hidden>
 			<span class="pc-selection-count" data-pc-selection-count aria-live="polite"></span>
 			<div class="pc-selection-actions">
+				<?php $this->render_bulk_status_actions(); ?>
 				<?php
 				/**
 				 * Fires in the selection bar, once per app list that offers a selection.
@@ -1588,10 +1594,120 @@ class Post_Collection_App {
 				do_action( 'post_collection_app_selection_actions', $context, $collection, $this );
 				?>
 			</div>
+			<span class="pc-selection-status" aria-live="polite"></span>
 			<button type="button" class="pc-selection-link" data-pc-selection-all><?php esc_html_e( 'Select all', 'post-collection' ); ?></button>
 			<button type="button" class="pc-selection-link" data-pc-selection-clear><?php esc_html_e( 'Clear', 'post-collection' ); ?></button>
 		</div>
 		<?php
+	}
+
+	/**
+	 * Render the reading status actions for the current selection.
+	 *
+	 * Every row already carries a status of its own; this is the same thing for
+	 * a batch, so a stack of articles can be marked read or put back on the pile
+	 * without walking through them one at a time.
+	 */
+	public function render_bulk_status_actions() {
+		if ( ! $this->can_manage_collections() ) {
+			return;
+		}
+
+		$nonce = wp_create_nonce( 'post-collection-bulk-read-status' );
+		?>
+		<span class="pc-selection-group">
+			<span class="pc-selection-label"><?php esc_html_e( 'Mark as', 'post-collection' ); ?></span>
+		<?php
+		foreach ( $this->get_article_statuses() as $status => $label ) {
+			?>
+			<button
+				type="button"
+				class="pc-item-action pc-bulk-status"
+				data-pc-bulk-status="<?php echo esc_attr( $status ); ?>"
+				data-ajax-action="<?php echo esc_url( admin_url( 'admin-ajax.php' ) ); ?>"
+				data-nonce="<?php echo esc_attr( $nonce ); ?>"
+			><?php echo esc_html( $label ); ?></button>
+			<?php
+		}
+		?>
+		</span>
+		<?php
+	}
+
+	/**
+	 * Set the reading status of several collected posts at once.
+	 */
+	public function wp_ajax_bulk_read_status() {
+		if ( ! $this->can_manage_collections() ) {
+			wp_send_json_error(
+				array(
+					'message' => __( 'Sorry, you are not allowed to edit this collection.', 'post-collection' ),
+				),
+				403
+			);
+		}
+
+		if ( ! isset( $_POST['_wpnonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['_wpnonce'] ) ), 'post-collection-bulk-read-status' ) ) {
+			wp_send_json_error(
+				array(
+					'message' => __( 'The reading status request could not be verified.', 'post-collection' ),
+				),
+				403
+			);
+		}
+
+		$status = isset( $_POST['status'] ) ? sanitize_key( wp_unslash( $_POST['status'] ) ) : '';
+		if ( ! in_array( $status, array_keys( $this->get_article_statuses() ), true ) ) {
+			wp_send_json_error(
+				array(
+					'message' => __( 'That is not a reading status.', 'post-collection' ),
+				),
+				400
+			);
+		}
+
+		$post_ids = isset( $_POST['post_ids'] ) ? array_map( 'absint', (array) wp_unslash( $_POST['post_ids'] ) ) : array();
+		$notes    = $this->post_collection->get_article_notes();
+		$updated  = array();
+
+		foreach ( array_unique( array_filter( $post_ids ) ) as $post_id ) {
+			$post = get_post( $post_id );
+			if ( ! $post || Post_Collection::CPT !== $post->post_type ) {
+				continue;
+			}
+
+			if ( ! $notes->save_note( $post_id, $status ) ) {
+				continue;
+			}
+
+			$updated[] = array(
+				'id'          => $post_id,
+				'read_status' => $status,
+				'read_label'  => $this->get_article_note_status_label( $status ),
+			);
+		}
+
+		if ( empty( $updated ) ) {
+			wp_send_json_error(
+				array(
+					'message' => __( 'The reading status could not be saved.', 'post-collection' ),
+				),
+				500
+			);
+		}
+
+		wp_send_json_success(
+			array(
+				'items'   => $updated,
+				'status'  => $status,
+				'message' => sprintf(
+					/* translators: 1: how many articles were updated, 2: a reading status such as Read. */
+					_n( '%1$d article: %2$s', '%1$d articles: %2$s', count( $updated ), 'post-collection' ),
+					count( $updated ),
+					$this->get_article_note_status_label( $status )
+				),
+			)
+		);
 	}
 
 	/**

@@ -37,6 +37,14 @@ namespace {
 		return $text;
 	}
 
+	function admin_url( $path = '', $scheme = 'admin' ) {
+		return 'https://example.org/wp-admin/' . ltrim( (string) $path, '/' );
+	}
+
+	function _n( $single, $plural, $number, $domain = 'default' ) {
+		return 1 === (int) $number ? $single : $plural;
+	}
+
 	function _x( $text, $context, $domain = 'default' ) {
 		return $text;
 	}
@@ -121,6 +129,33 @@ namespace {
 
 	function get_query_var( $query_var, $fallback = '' ) {
 		return $GLOBALS['wp_test_query_vars'][ $query_var ] ?? $fallback;
+	}
+
+	class WP_Test_Json_Response extends \Exception {
+		public $data;
+
+		public function __construct( $data ) {
+			parent::__construct( 'json response' );
+			$this->data = $data;
+		}
+	}
+
+	function wp_send_json_success( $data = null, $status_code = null ) {
+		throw new WP_Test_Json_Response(
+			array(
+				'success' => true,
+				'data'    => $data,
+			)
+		);
+	}
+
+	function wp_send_json_error( $data = null, $status_code = null ) {
+		throw new WP_Test_Json_Response(
+			array(
+				'success' => false,
+				'data'    => $data,
+			)
+		);
 	}
 
 	function do_action( $tag, ...$args ) {

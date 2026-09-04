@@ -29,7 +29,7 @@ Collected posts live in their own custom post type and are grouped by a Post Col
 ### Organize and review
 
 - The frontend app lists your collections, the articles in each one, and a review queue.
-- Each article can carry a **note** and a reading status — unread, read, skipped or archived — plus a rating, so a long backlog can be worked through instead of just growing.
+- Each article can carry a **note** and a reading status — unread, read, skipped or archived — plus a rating, so a long backlog can be worked through instead of just growing. Tick several off in a list and set the status of the whole batch at once.
 - Collections can be published so visitors can read your compilation, or kept hidden from the default view.
 - Tags on collected posts are kept alongside the article so a collection stays browsable.
 
@@ -84,6 +84,7 @@ Yes. Every collection can be exported as a Bookmarks HTML file or as OPML, and t
 ## Changelog
 
 ### Unreleased
+- Tick off several articles in a collection or in the review queue and set their reading status in one go
 - Add e-reader actions to the app when the Send to E-Reader plugin is active: download a single article as ePub, tick off several and send them as one, and pull the unread ones from the e-reader over a download URL
 - Add Bookmarks HTML and OPML export for collections, and OPML import
 - Prepare the plugin for the WordPress.org plugin directory

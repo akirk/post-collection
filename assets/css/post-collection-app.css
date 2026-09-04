@@ -1997,3 +1997,34 @@ body.wp-app-body .pc-row-meta a.pc-row-source-link:focus {
 		margin-right: 0;
 	}
 }
+
+.pc-selection-status {
+	color: var(--pc-color-muted);
+	font-size: 0.85rem;
+}
+
+.pc-selection-status:empty {
+	display: none;
+}
+
+.pc-bulk-status:disabled {
+	cursor: wait;
+	opacity: 0.6;
+}
+
+.pc-selection-group {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	flex-wrap: wrap;
+}
+
+.pc-selection-label {
+	color: var(--pc-color-muted);
+	font-size: 0.85rem;
+}
+
+.pc-selection-actions .pc-selection-group:not(:last-child) {
+	padding-right: 12px;
+	border-right: 1px solid var(--pc-color-border);
+}

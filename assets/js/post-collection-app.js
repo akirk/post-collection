@@ -854,6 +854,11 @@
 
 		bar.hidden = 0 === items.length;
 
+		var status = bar.querySelector( '.pc-selection-status' );
+		if ( status && ! items.length ) {
+			status.textContent = '';
+		}
+
 		document.dispatchEvent(
 			new CustomEvent( 'post-collection-selection-change', {
 				detail: {
@@ -864,6 +869,73 @@
 				},
 			} )
 		);
+	}
+
+	function setSelectionStatus( message ) {
+		var bar = getSelectionBar();
+		var status = bar ? bar.querySelector( '.pc-selection-status' ) : null;
+		if ( status ) {
+			status.textContent = message || '';
+		}
+	}
+
+	function applyBulkStatus( button ) {
+		if ( button.disabled ) {
+			return;
+		}
+
+		var items = getSelectedItems();
+		if ( ! items.length ) {
+			return;
+		}
+
+		var data = new FormData();
+		data.append( 'action', 'post_collection_bulk_read_status' );
+		data.append( '_wpnonce', button.dataset.nonce || '' );
+		data.append( 'status', button.dataset.pcBulkStatus || '' );
+		items.forEach( function ( item ) {
+			data.append( 'post_ids[]', item.id );
+		} );
+
+		var buttons = document.querySelectorAll( '.pc-bulk-status' );
+		buttons.forEach( function ( other ) {
+			other.disabled = true;
+		} );
+		setSelectionStatus( 'Saving...' );
+
+		fetch( button.dataset.ajaxAction, {
+			method: 'POST',
+			credentials: 'same-origin',
+			body: data,
+		} )
+			.then( function ( response ) {
+				return response.json();
+			} )
+			.then( function ( result ) {
+				if ( ! result || ! result.success ) {
+					throw new Error( result && result.data && result.data.message ? result.data.message : 'Could not save the reading status.' );
+				}
+
+				result.data.items.forEach( function ( item ) {
+					updateReadStatusControls( item.id, item );
+					updateArticleNotesStatus( item.id, item.read_status );
+
+					var row = document.querySelector( '.pc-link-row[data-pc-item="' + item.id + '"]' );
+					if ( row ) {
+						updateReadStatus( row, item );
+					}
+				} );
+
+				setSelectionStatus( result.data.message || '' );
+			} )
+			.catch( function ( error ) {
+				setSelectionStatus( error.message );
+			} )
+			.finally( function () {
+				buttons.forEach( function ( other ) {
+					other.disabled = false;
+				} );
+			} );
 	}
 
 	window.postCollection = window.postCollection || {};
@@ -956,6 +1028,13 @@
 		if ( loadMoreReview ) {
 			event.preventDefault();
 			loadMoreReviewArticles( loadMoreReview );
+			return;
+		}
+
+		var bulkStatus = closest( event.target, '[data-pc-bulk-status]' );
+		if ( bulkStatus ) {
+			event.preventDefault();
+			applyBulkStatus( bulkStatus );
 			return;
 		}
 
