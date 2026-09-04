@@ -11,6 +11,9 @@
 	},
 	"landingPage": "/post-collection/",
 	"login": true,
+	"features": {
+		"networking": true
+	},
 	"steps": [
 		{
 			"step": "installPlugin",

@@ -10,6 +10,9 @@
 		]
 	},
 	"landingPage": "/wp-admin/index.php?desktop_mode_portal=1",
+	"features": {
+		"networking": true
+	},
 	"steps": [
 		{
 			"step": "installPlugin",
