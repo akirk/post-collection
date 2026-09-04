@@ -105,6 +105,7 @@ class Post_Collection_App {
 		add_action( 'wp_ajax_post_collection_import_item', array( $this, 'wp_ajax_import_item' ) );
 		add_action( 'wp_ajax_post_collection_toggle_read_status', array( $this, 'wp_ajax_toggle_read_status' ) );
 		add_filter( 'private_title_format', array( $this, 'filter_private_title_format' ), 10, 2 );
+		add_action( 'template_redirect', array( $this, 'fire_app_request' ), 1 );
 		add_action( 'wp_app_before_render', array( $this, 'add_collection_menu_items' ) );
 
 		$this->app->route( '' );
@@ -166,6 +167,77 @@ class Post_Collection_App {
 		}
 
 		$this->app->init();
+
+		// With Friends active the plugin is constructed on plugins_loaded, which
+		// is too early for integrations that load alongside it and for asking
+		// what the current user may do, so the announcement waits for init.
+		if ( did_action( 'init' ) ) {
+			$this->fire_app_loaded();
+		} else {
+			add_action( 'init', array( $this, 'fire_app_loaded' ), 20 );
+		}
+	}
+
+	/**
+	 * Announce that the app is ready for integrations to hook into.
+	 */
+	public function fire_app_loaded() {
+		/**
+		 * Fires once the frontend app has registered its routes and assets.
+		 *
+		 * Integrations use this to hook into the app: it runs late enough for
+		 * the current user to be known and early enough to enqueue assets for
+		 * the app path.
+		 *
+		 * @param Post_Collection_App $app The app instance.
+		 */
+		do_action( 'post_collection_app_loaded', $this );
+	}
+
+	/**
+	 * Let integrations answer an app request themselves.
+	 *
+	 * This runs before the app decides whether the visitor may see the page, so
+	 * that a listener can serve a request that carries its own credentials — an
+	 * e-reader fetching an ePub over a password URL, say. A listener that
+	 * produces a response is expected to exit; returning lets the app carry on.
+	 */
+	public function fire_app_request() {
+		if ( ! $this->is_app_request() ) {
+			return;
+		}
+
+		/**
+		 * Fires on an app request, before the app renders or redirects.
+		 *
+		 * @param Post_Collection_App $app        The app instance.
+		 * @param \WP_Term|null       $collection The collection the URL points at, if any.
+		 */
+		do_action( 'post_collection_app_request', $this, $this->get_requested_collection() );
+	}
+
+	/**
+	 * Get the collection the current app URL points at.
+	 *
+	 * The route is only matched once the app renders, so before that the
+	 * collection is read out of the request path the rewrite rule captured.
+	 *
+	 * @return \WP_Term|null The collection, or null on a page that spans all of them.
+	 */
+	public function get_requested_collection() {
+		$collection_slug = wp_app_get_route_var( 'collection' );
+
+		if ( ! $collection_slug ) {
+			$request = get_query_var( 'wp_app_request' );
+			if ( is_string( $request ) && '' !== trim( $request, '/' ) ) {
+				$segments = explode( '/', trim( $request, '/' ) );
+				if ( ! in_array( $segments[0], array( 'new', 'review', 'export' ), true ) ) {
+					$collection_slug = $segments[0];
+				}
+			}
+		}
+
+		return $collection_slug ? $this->get_collection_by_username( $collection_slug ) : null;
 	}
 
 	/**
@@ -418,7 +490,7 @@ class Post_Collection_App {
 	 *
 	 * @return bool
 	 */
-	private function is_app_request() {
+	public function is_app_request() {
 		if ( wp_doing_ajax() ) {
 			$action = isset( $_REQUEST['action'] ) && is_string( $_REQUEST['action'] ) ? sanitize_key( wp_unslash( $_REQUEST['action'] ) ) : '';
 			return 'post_collection_quick_edit' === $action;
@@ -1327,6 +1399,199 @@ class Post_Collection_App {
 		}
 
 		return new \WP_Query( $query_args );
+	}
+
+	/**
+	 * Query collected posts independently of the page currently being rendered.
+	 *
+	 * Integrations use this to assemble a list of posts for an export.
+	 *
+	 * @param \WP_Term|null $collection Optional collection to restrict the result to.
+	 * @param array         $args       Query args. Two extra keys are understood:
+	 *                                  post_collection_include_private includes private
+	 *                                  posts and posts in unpublished collections,
+	 *                                  post_collection_unread_only drops articles that
+	 *                                  have been read, skipped or archived.
+	 * @return \WP_Post[] The matching posts, newest first.
+	 */
+	public function query_app_posts( $collection = null, array $args = array() ) {
+		$include_private = ! empty( $args['post_collection_include_private'] ) || $this->can_manage_collections();
+		$unread_only     = ! empty( $args['post_collection_unread_only'] );
+		unset( $args['post_collection_include_private'], $args['post_collection_unread_only'] );
+
+		$query_args = wp_parse_args(
+			$args,
+			array(
+				'post_type'           => Post_Collection::CPT,
+				'post_status'         => $include_private ? array( 'publish', 'private' ) : array( 'publish' ),
+				'posts_per_page'      => -1,
+				'ignore_sticky_posts' => true,
+				'orderby'             => 'date',
+				'order'               => 'DESC',
+			)
+		);
+
+		$terms = array();
+		if ( $collection instanceof \WP_Term ) {
+			if ( ! $include_private && ! $this->can_view_collection( $collection ) ) {
+				return array();
+			}
+
+			$terms[] = $collection->term_id;
+		} elseif ( ! $include_private ) {
+			foreach ( $this->get_collections() as $term ) {
+				if ( $this->can_view_collection( $term ) ) {
+					$terms[] = $term->term_id;
+				}
+			}
+
+			if ( empty( $terms ) ) {
+				return array();
+			}
+		}
+
+		if ( ! empty( $terms ) ) {
+			$query_args['tax_query']   = isset( $query_args['tax_query'] ) ? (array) $query_args['tax_query'] : array();
+			$query_args['tax_query'][] = array(
+				'taxonomy' => Post_Collection::COLLECTION_TAXONOMY,
+				'field'    => 'term_id',
+				'terms'    => $terms,
+			);
+		}
+
+		if ( $unread_only ) {
+			$read_ids = $this->post_collection->get_article_notes()->get_read_article_ids();
+			if ( ! empty( $read_ids ) ) {
+				$query_args['post__not_in'] = array_merge(
+					isset( $query_args['post__not_in'] ) ? (array) $query_args['post__not_in'] : array(),
+					$read_ids
+				);
+			}
+		}
+
+		$query = new \WP_Query( $query_args );
+
+		return $query->get_posts();
+	}
+
+	/**
+	 * Get the collected posts that have not been read yet.
+	 *
+	 * Unread means an article that carries no note, or a note that is still on
+	 * the unread status: the same set the review queue works through.
+	 *
+	 * @param \WP_Term|null $collection Optional collection to restrict the result to.
+	 * @param array         $args       Additional query args for query_app_posts().
+	 * @return \WP_Post[] The unread posts, newest first.
+	 */
+	public function get_unread_posts( $collection = null, array $args = array() ) {
+		$args['post_collection_unread_only'] = true;
+
+		return $this->query_app_posts( $collection, $args );
+	}
+
+	/**
+	 * Whether an integration offers actions for individual items.
+	 *
+	 * @return bool
+	 */
+	public function has_item_actions() {
+		return (bool) has_action( 'post_collection_app_item_actions' );
+	}
+
+	/**
+	 * Whether an integration offers actions for a selection of items.
+	 *
+	 * @return bool
+	 */
+	public function has_selection_actions() {
+		return (bool) has_action( 'post_collection_app_selection_actions' );
+	}
+
+	/**
+	 * Render the actions an integration offers for a single item.
+	 *
+	 * @param \WP_Post $post    The item.
+	 * @param string   $context Where the item is being rendered: board, links,
+	 *                          reader, review or detail.
+	 */
+	public function render_item_actions( \WP_Post $post, $context = '' ) {
+		if ( ! $this->has_item_actions() ) {
+			return;
+		}
+
+		echo '<span class="pc-item-actions">';
+		/**
+		 * Fires in the action area of a single item in the app.
+		 *
+		 * @param \WP_Post            $post    The item.
+		 * @param string              $context Where the item is being rendered.
+		 * @param Post_Collection_App $app     The app instance.
+		 */
+		do_action( 'post_collection_app_item_actions', $post, $context, $this );
+		echo '</span>';
+	}
+
+	/**
+	 * Render the checkbox that puts an item into the current selection.
+	 *
+	 * @param \WP_Post $post    The item.
+	 * @param string   $context Where the item is being rendered.
+	 */
+	public function render_item_select( \WP_Post $post, $context = '' ) {
+		if ( ! $this->has_selection_actions() ) {
+			return;
+		}
+
+		?>
+		<label class="pc-select">
+			<input
+				type="checkbox"
+				class="pc-select-item"
+				value="<?php echo esc_attr( $post->ID ); ?>"
+				data-pc-select-item="<?php echo esc_attr( $context ); ?>"
+				data-post-title="<?php echo esc_attr( get_the_title( $post ) ); ?>"
+				aria-label="
+				<?php
+					// translators: %s is the title of a collected article.
+					echo esc_attr( sprintf( __( 'Select %s', 'post-collection' ), get_the_title( $post ) ) );
+				?>
+				"
+			>
+		</label>
+		<?php
+	}
+
+	/**
+	 * Render the bar that appears once items have been selected.
+	 *
+	 * @param string        $context    Which list the selection is made in.
+	 * @param \WP_Term|null $collection The collection in context, if any.
+	 */
+	public function render_selection_bar( $context = '', $collection = null ) {
+		if ( ! $this->has_selection_actions() ) {
+			return;
+		}
+
+		?>
+		<div class="pc-selection-bar" data-pc-selection-bar hidden>
+			<span class="pc-selection-count" data-pc-selection-count aria-live="polite"></span>
+			<div class="pc-selection-actions">
+				<?php
+				/**
+				 * Fires in the selection bar, once per app list that offers a selection.
+				 *
+				 * @param string              $context    Which list the selection is made in.
+				 * @param \WP_Term|null       $collection The collection in context, if any.
+				 * @param Post_Collection_App $app        The app instance.
+				 */
+				do_action( 'post_collection_app_selection_actions', $context, $collection, $this );
+				?>
+			</div>
+			<button type="button" class="pc-selection-link" data-pc-selection-all><?php esc_html_e( 'Select all', 'post-collection' ); ?></button>
+			<button type="button" class="pc-selection-link" data-pc-selection-clear><?php esc_html_e( 'Clear', 'post-collection' ); ?></button>
+		</div>
+		<?php
 	}
 
 	/**

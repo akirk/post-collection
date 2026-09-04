@@ -344,9 +344,9 @@
 		var rating = parseInt( article.rating, 10 ) || 0;
 		var status = article.status || 'unread';
 		var isCollapsed = 'read' === status || 'skipped' === status;
-		var html = '<article class="pc-review-item' + ( isCollapsed ? ' is-collapsed' : '' ) + ' pc-article-notes" data-article-id="' + article.id + '">';
+		var html = '<article class="pc-review-item' + ( isCollapsed ? ' is-collapsed' : '' ) + ' pc-article-notes" data-article-id="' + article.id + '" data-pc-item="' + article.id + '">';
 		html += '<div class="pc-review-item-main">';
-		html += '<div class="pc-review-title-block"><h2><a href="' + escapeHtml( article.permalink ) + '">' + escapeHtml( article.title ) + '</a></h2><p>' + escapeHtml( article.author || '' );
+		html += '<div class="pc-review-title-block"><h2>' + renderSelectCheckbox( article, 'review' ) + '<a href="' + escapeHtml( article.permalink ) + '">' + escapeHtml( article.title ) + '</a></h2><p>' + escapeHtml( article.author || '' );
 		if ( article.collection && article.collection !== article.author ) {
 			html += '<span>' + escapeHtml( article.collection ) + '</span>';
 		}
@@ -428,6 +428,8 @@
 				if ( ! result.data.has_more ) {
 					button.remove();
 				}
+
+				updateSelection();
 			} )
 			.catch( function () {
 				button.disabled = false;
@@ -795,6 +797,81 @@
 		}
 	}
 
+	function getSelectionBar() {
+		return document.querySelector( '[data-pc-selection-bar]' );
+	}
+
+	function getSelectionCheckboxes() {
+		return Array.prototype.slice.call( document.querySelectorAll( '[data-pc-select-item]' ) );
+	}
+
+	function getSelectedItems() {
+		return getSelectionCheckboxes()
+			.filter( function ( input ) {
+				return input.checked;
+			} )
+			.map( function ( input ) {
+				return {
+					id: parseInt( input.value, 10 ),
+					title: input.dataset.postTitle || '',
+				};
+			} );
+	}
+
+	function renderSelectCheckbox( article, context ) {
+		if ( ! getSelectionBar() ) {
+			return '';
+		}
+
+		var title = escapeHtml( article.title || '' );
+		return '<label class="pc-select"><input type="checkbox" class="pc-select-item" value="' + parseInt( article.id, 10 ) +
+			'" data-pc-select-item="' + escapeHtml( context ) + '" data-post-title="' + title + '" aria-label="Select ' + title + '"></label>';
+	}
+
+	function setAllSelected( selected ) {
+		getSelectionCheckboxes().forEach( function ( input ) {
+			input.checked = selected;
+		} );
+		updateSelection();
+	}
+
+	function updateSelection() {
+		var bar = getSelectionBar();
+		if ( ! bar ) {
+			return;
+		}
+
+		var items = getSelectedItems();
+		var count = bar.querySelector( '[data-pc-selection-count]' );
+		if ( count ) {
+			count.textContent = 1 === items.length ? '1 item selected' : items.length + ' items selected';
+		}
+
+		var selectAll = bar.querySelector( '[data-pc-selection-all]' );
+		if ( selectAll ) {
+			selectAll.hidden = items.length === getSelectionCheckboxes().length;
+		}
+
+		bar.hidden = 0 === items.length;
+
+		document.dispatchEvent(
+			new CustomEvent( 'post-collection-selection-change', {
+				detail: {
+					items: items,
+					ids: items.map( function ( item ) {
+						return item.id;
+					} ),
+				},
+			} )
+		);
+	}
+
+	window.postCollection = window.postCollection || {};
+	window.postCollection.getSelection = getSelectedItems;
+	window.postCollection.clearSelection = function () {
+		setAllSelected( false );
+	};
+
 	function setupInfiniteScroll() {
 		if ( infiniteObserver ) {
 			infiniteObserver.disconnect();
@@ -879,6 +956,20 @@
 		if ( loadMoreReview ) {
 			event.preventDefault();
 			loadMoreReviewArticles( loadMoreReview );
+			return;
+		}
+
+		var selectAll = closest( event.target, '[data-pc-selection-all]' );
+		if ( selectAll ) {
+			event.preventDefault();
+			setAllSelected( true );
+			return;
+		}
+
+		var clearSelection = closest( event.target, '[data-pc-selection-clear]' );
+		if ( clearSelection ) {
+			event.preventDefault();
+			setAllSelected( false );
 			return;
 		}
 
@@ -995,6 +1086,11 @@
 	} );
 
 	document.addEventListener( 'change', function ( event ) {
+		if ( matches( event.target, '[data-pc-select-item]' ) ) {
+			updateSelection();
+			return;
+		}
+
 		if ( ! matches( event.target, '.pc-import-file-control input[type="file"]' ) ) {
 			return;
 		}

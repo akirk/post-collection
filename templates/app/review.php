@@ -51,7 +51,7 @@ $get_article_url = static function ( $article ) use ( $app ) {
 	return $article['permalink'];
 };
 
-$render_article = static function ( $article ) use ( $statuses, $get_article_url ) {
+$render_article = static function ( $article ) use ( $app, $statuses, $get_article_url ) {
 	$rating = isset( $article['rating'] ) ? (int) $article['rating'] : 0;
 	$status = isset( $article['status'] ) ? $article['status'] : \PostCollection\Article_Notes::STATUS_UNREAD;
 	$url    = $get_article_url( $article );
@@ -59,10 +59,18 @@ $render_article = static function ( $article ) use ( $statuses, $get_article_url
 	$summary_word_count = isset( $article['summary_word_count'] ) ? (int) $article['summary_word_count'] : 0;
 	$collapsed_status_label = $is_collapsed && isset( $statuses[ $status ] ) ? $statuses[ $status ] : '';
 	?>
-	<article class="pc-review-item<?php echo $is_collapsed ? ' is-collapsed' : ''; ?> pc-article-notes" data-article-id="<?php echo esc_attr( $article['id'] ); ?>">
+	<article class="pc-review-item<?php echo $is_collapsed ? ' is-collapsed' : ''; ?> pc-article-notes" data-article-id="<?php echo esc_attr( $article['id'] ); ?>" data-pc-item="<?php echo esc_attr( $article['id'] ); ?>">
 		<div class="pc-review-item-main">
 			<div class="pc-review-title-block">
-				<h2><a href="<?php echo esc_url( $url ); ?>"><?php echo esc_html( $article['title'] ); ?></a></h2>
+				<h2>
+					<?php
+					$article_post = get_post( $article['id'] );
+					if ( $article_post ) {
+						$app->render_item_select( $article_post, 'review' );
+					}
+					?>
+					<a href="<?php echo esc_url( $url ); ?>"><?php echo esc_html( $article['title'] ); ?></a>
+				</h2>
 				<p>
 					<?php echo esc_html( $article['author'] ); ?>
 					<?php if ( ! empty( $article['collection'] ) && $article['collection'] !== $article['author'] ) : ?>
@@ -166,6 +174,9 @@ $render_article = static function ( $article ) use ( $statuses, $get_article_url
 	</header>
 
 	<main class="pc-shell pc-review-shell" data-nonce="<?php echo esc_attr( $nonce ); ?>" data-ajax-action="<?php echo esc_url( admin_url( 'admin-ajax.php' ) ); ?>" data-statuses="<?php echo esc_attr( wp_json_encode( $statuses ) ); ?>" data-collection-id="<?php echo esc_attr( $collection ? $collection->term_id : 0 ); ?>">
+		<?php if ( ! empty( $review_articles ) ) : ?>
+			<?php $app->render_selection_bar( 'review', $collection ); ?>
+		<?php endif; ?>
 		<div class="pc-review-list" data-review-list="review">
 			<?php foreach ( $review_articles as $article ) : ?>
 				<?php $render_article( $article ); ?>

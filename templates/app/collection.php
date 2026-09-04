@@ -148,6 +148,9 @@ if ( '' !== $active_tag ) {
 	</header>
 
 	<main class="pc-shell">
+		<?php if ( $query->have_posts() ) : ?>
+			<?php $app->render_selection_bar( 'collection', $collection ); ?>
+		<?php endif; ?>
 		<?php if ( ! $query->have_posts() ) : ?>
 			<section class="pc-empty">
 				<?php if ( '' !== $search || '' !== $active_tag ) : ?>
@@ -202,7 +205,7 @@ if ( '' !== $active_tag ) {
 					$word_count_label = $app->get_post_word_count_label( $post );
 					$read_time_label  = $app->get_post_read_time_label( $post );
 					?>
-					<article class="pc-bookmark-card">
+					<article class="pc-bookmark-card" data-pc-item="<?php echo esc_attr( $post->ID ); ?>">
 						<?php if ( $embed_html ) : ?>
 							<div class="pc-card-embed"><?php echo $embed_html; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?></div>
 						<?php elseif ( $image_url ) : ?>
@@ -221,10 +224,12 @@ if ( '' !== $active_tag ) {
 								<p><?php echo esc_html( $excerpt ); ?></p>
 							<?php endif; ?>
 							<div class="pc-card-actions">
+								<?php $app->render_item_select( $post, 'collection' ); ?>
 								<a href="<?php echo esc_url( $app->get_collection_url( $collection, $post->ID ) ); ?>"><?php esc_html_e( 'Details', 'post-collection' ); ?></a>
 								<span class="pc-reading-meta"><?php echo esc_html( $word_count_label ); ?></span>
 								<span class="pc-reading-meta"><?php echo esc_html( $read_time_label ); ?></span>
 								<?php $app->render_article_note_status_toggle( $post, $read_status ); ?>
+								<?php $app->render_item_actions( $post, 'board' ); ?>
 								<?php if ( 'private' === $post->post_status && $app->can_manage_collections() ) : ?>
 									<span><?php esc_html_e( 'Private', 'post-collection' ); ?></span>
 								<?php endif; ?>
@@ -250,9 +255,10 @@ if ( '' !== $active_tag ) {
 					$edit_url         = add_query_arg( array( 'pc-view' => 'links', 'pc-edit' => $post->ID ) ) . '#pc-link-' . $post->ID;
 					$cancel_url       = remove_query_arg( 'pc-edit' ) . '#pc-link-' . $post->ID;
 					?>
-					<article id="pc-link-<?php echo esc_attr( $post->ID ); ?>" class="pc-link-row<?php echo 'private' === $post->post_status ? ' is-private' : ''; ?><?php echo $is_editing ? ' is-editing' : ''; ?>">
+					<article id="pc-link-<?php echo esc_attr( $post->ID ); ?>" class="pc-link-row<?php echo 'private' === $post->post_status ? ' is-private' : ''; ?><?php echo $is_editing ? ' is-editing' : ''; ?>" data-pc-item="<?php echo esc_attr( $post->ID ); ?>">
 						<div class="pc-link-main">
 							<div class="pc-link-title-line">
+								<?php $app->render_item_select( $post, 'collection' ); ?>
 								<span class="pc-link-marker" aria-hidden="true"></span>
 								<h2><a class="pc-link-title" href="<?php echo esc_url( $source_url ); ?>" target="_blank" rel="noopener noreferrer"><?php echo esc_html( get_the_title( $post ) ); ?></a></h2>
 							</div>
@@ -273,6 +279,7 @@ if ( '' !== $active_tag ) {
 								<span class="pc-link-private"><?php esc_html_e( 'private', 'post-collection' ); ?></span>
 							<?php endif; ?>
 							<a href="<?php echo esc_url( $app->get_collection_url( $collection, $post->ID ) ); ?>"><?php esc_html_e( 'Details', 'post-collection' ); ?></a>
+							<?php $app->render_item_actions( $post, 'links' ); ?>
 							<?php if ( $app->can_manage_collections() ) : ?>
 								<?php if ( $is_editing ) : ?>
 									<a class="pc-quick-edit-cancel" href="<?php echo esc_url( $cancel_url ); ?>" data-edit-url="<?php echo esc_url( $edit_url ); ?>" data-cancel-url="<?php echo esc_url( $cancel_url ); ?>" data-edit-label="<?php esc_attr_e( 'Edit', 'post-collection' ); ?>" data-cancel-label="<?php esc_attr_e( 'Cancel edit', 'post-collection' ); ?>"><?php esc_html_e( 'Cancel edit', 'post-collection' ); ?></a>
@@ -346,7 +353,7 @@ if ( '' !== $active_tag ) {
 					$word_count_label = $app->get_post_word_count_label( $post );
 					$read_time_label  = $app->get_post_read_time_label( $post );
 					?>
-					<article class="pc-post-row<?php echo $image_url || $embed_html ? ' has-image' : ' is-text-only'; ?>">
+					<article class="pc-post-row<?php echo $image_url || $embed_html ? ' has-image' : ' is-text-only'; ?>" data-pc-item="<?php echo esc_attr( $post->ID ); ?>">
 						<?php if ( $embed_html ) : ?>
 							<div class="pc-post-embed"><?php echo $embed_html; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?></div>
 						<?php elseif ( $image_url ) : ?>
@@ -361,10 +368,12 @@ if ( '' !== $active_tag ) {
 								<p><?php echo esc_html( $excerpt ); ?></p>
 							<?php endif; ?>
 							<div class="pc-row-meta">
+								<?php $app->render_item_select( $post, 'collection' ); ?>
 								<time datetime="<?php echo esc_attr( get_the_date( DATE_W3C, $post ) ); ?>"><?php echo esc_html( get_the_date( '', $post ) ); ?></time>
 								<span class="pc-reading-meta"><?php echo esc_html( $word_count_label ); ?></span>
 								<span class="pc-reading-meta"><?php echo esc_html( $read_time_label ); ?></span>
 								<?php $app->render_article_note_status_toggle( $post, $read_status ); ?>
+								<?php $app->render_item_actions( $post, 'reader' ); ?>
 								<a class="pc-row-source-link" href="<?php echo esc_url( $source_url ); ?>" target="_blank" rel="noopener noreferrer"><?php echo esc_html( $host ); ?></a>
 							</div>
 						</div>
