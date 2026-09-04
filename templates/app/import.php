@@ -33,7 +33,7 @@ if ( ! $collection || ! $app->can_view_collection( $collection ) ) {
 <head>
 	<meta charset="<?php bloginfo( 'charset' ); ?>">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
-	<title><?php echo esc_html( wp_app_title( __( 'Import URLs', 'post-collection' ) ) ); ?></title>
+	<title><?php wp_app_the_title( __( 'Import URLs', 'post-collection' ) ); ?></title>
 	<?php wp_app_head(); ?>
 </head>
 <body <?php body_class( 'wp-app-body post-collection-app pc-import-page' ); ?>>

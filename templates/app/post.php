@@ -45,7 +45,7 @@ $back_label       = 'bookmarks' === $mode ? __( 'Back to Bookmarks', 'post-colle
 <head>
 	<meta charset="<?php bloginfo( 'charset' ); ?>">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
-	<title><?php echo esc_html( wp_app_title( get_the_title( $post ) ) ); ?></title>
+	<title><?php wp_app_the_title( get_the_title( $post ) ); ?></title>
 	<?php wp_app_head(); ?>
 </head>
 <body <?php body_class( 'wp-app-body post-collection-app pc-post-detail-page pc-mode-' . $mode ); ?>>

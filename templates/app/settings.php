@@ -41,7 +41,7 @@ $reassign_collections   = array_filter(
 	// translators: %s is the name of a post collection.
 	$settings_title = sprintf( __( '%s Settings', 'post-collection' ), $collection->name );
 	?>
-	<title><?php echo esc_html( wp_app_title( $settings_title ) ); ?></title>
+	<title><?php wp_app_the_title( $settings_title ); ?></title>
 	<?php wp_app_head(); ?>
 </head>
 <body <?php body_class( 'wp-app-body post-collection-app pc-settings-page' ); ?>>

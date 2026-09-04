@@ -80,7 +80,7 @@ $render_collection_card = static function ( $collection ) use ( $app ) {
 <head>
 	<meta charset="<?php bloginfo( 'charset' ); ?>">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
-	<title><?php echo esc_html( wp_app_title( __( 'Post Collection', 'post-collection' ) ) ); ?></title>
+	<title><?php wp_app_the_title( __( 'Post Collection', 'post-collection' ) ); ?></title>
 	<?php wp_app_head(); ?>
 </head>
 <body <?php body_class( 'wp-app-body post-collection-app' ); ?>>
