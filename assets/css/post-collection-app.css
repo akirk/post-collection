@@ -1951,6 +1951,9 @@ body.wp-app-body .pc-row-meta a.pc-row-source-link:focus {
 	border-radius: 8px;
 	background: var(--pc-color-surface);
 	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+	/* Everything in the bar sizes off this, so the actions cannot end up at the
+	page's own font size next to the smaller Select all and Clear. */
+	font-size: 0.85rem;
 }
 
 .pc-selection-bar[hidden] {
@@ -1959,6 +1962,7 @@ body.wp-app-body .pc-row-meta a.pc-row-source-link:focus {
 
 .pc-selection-count {
 	font-weight: 600;
+	white-space: nowrap;
 }
 
 .pc-selection-actions {
@@ -1975,7 +1979,7 @@ body.wp-app-body .pc-row-meta a.pc-row-source-link:focus {
 	background: none;
 	color: var(--pc-color-link);
 	font-family: inherit;
-	font-size: 0.85rem;
+	font-size: inherit;
 	cursor: pointer;
 	text-decoration: underline;
 	text-underline-offset: 3px;
@@ -2000,7 +2004,6 @@ body.wp-app-body .pc-row-meta a.pc-row-source-link:focus {
 
 .pc-selection-status {
 	color: var(--pc-color-muted);
-	font-size: 0.85rem;
 }
 
 .pc-selection-status:empty {
@@ -2021,10 +2024,10 @@ body.wp-app-body .pc-row-meta a.pc-row-source-link:focus {
 
 .pc-selection-label {
 	color: var(--pc-color-muted);
-	font-size: 0.85rem;
 }
 
+/* No divider after the group: the bar wraps on a narrow screen and a border
+would be left dangling at the end of a line. The label does the grouping. */
 .pc-selection-actions .pc-selection-group:not(:last-child) {
-	padding-right: 12px;
-	border-right: 1px solid var(--pc-color-border);
+	padding-right: 6px;
 }
