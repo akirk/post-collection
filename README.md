@@ -13,7 +13,7 @@ Save articles from around the web, extract readable content, organize them into 
 
 ## Description
 
-[Try it in WordPress Playground](https://playground.wordpress.net/?blueprint-url=https://raw.githubusercontent.com/akirk/post-collection/main/blueprint.json) — or [in OpenStation](https://playground.wordpress.net/?blueprint-url=https://raw.githubusercontent.com/akirk/post-collection/main/blueprint-openstation.json), the same app opened in desktop mode with the [OpenStation](https://github.com/WordPress/openstation) plugin.
+[Try it in WordPress Playground](https://playground.wordpress.net/?blueprint-url=https://raw.githubusercontent.com/akirk/post-collection/main/blueprint.json) — or [with demo data](https://playground.wordpress.net/?blueprint-url=https://raw.githubusercontent.com/akirk/post-collection/main/demo.json), or [in OpenStation](https://playground.wordpress.net/?blueprint-url=https://raw.githubusercontent.com/akirk/post-collection/main/blueprint-openstation.json), the same app opened in desktop mode with the [OpenStation](https://github.com/WordPress/openstation) plugin.
 
 Post Collection turns your WordPress into a read-it-later archive that you own. Give it the URL of an article and the plugin downloads the page, extracts the readable article text with [Readability](https://github.com/andreskrey/readability.php), and stores it as a collected post in your own database — so the article is still there when the original goes away.
 
