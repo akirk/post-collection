@@ -113,7 +113,11 @@ $render_article = static function ( $article ) use ( $statuses, $get_article_url
 			</div>
 			<div class="pc-note-rating" aria-label="<?php esc_attr_e( 'Rating', 'post-collection' ); ?>" data-rating="<?php echo esc_attr( $rating ); ?>">
 				<?php for ( $i = 1; $i <= 5; $i++ ) : ?>
-					<button type="button" class="pc-note-star<?php echo $i <= $rating ? ' is-active' : ''; ?>" data-rating="<?php echo esc_attr( $i ); ?>" aria-label="<?php echo esc_attr( sprintf( __( '%d stars', 'post-collection' ), $i ) ); ?>">
+					<?php
+					// translators: %d is a rating expressed as a number of stars, from 1 to 5.
+					$star_label = sprintf( __( '%d stars', 'post-collection' ), $i );
+					?>
+					<button type="button" class="pc-note-star<?php echo $i <= $rating ? ' is-active' : ''; ?>" data-rating="<?php echo esc_attr( $i ); ?>" aria-label="<?php echo esc_attr( $star_label ); ?>">
 						<?php echo $i <= $rating ? '&#9733;' : '&#9734;'; ?>
 					</button>
 				<?php endfor; ?>
@@ -132,11 +136,11 @@ $render_article = static function ( $article ) use ( $statuses, $get_article_url
 };
 ?>
 <!DOCTYPE html>
-<html <?php echo wp_app_language_attributes(); ?>>
+<html <?php wp_app_language_attributes(); ?>>
 <head>
 	<meta charset="<?php bloginfo( 'charset' ); ?>">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
-	<title><?php echo wp_app_title( __( 'Review Articles', 'post-collection' ) ); ?></title>
+	<title><?php wp_app_the_title( __( 'Review Articles', 'post-collection' ) ); ?></title>
 	<?php wp_app_head(); ?>
 </head>
 <body <?php body_class( 'wp-app-body post-collection-app pc-review-page' ); ?>>
@@ -150,7 +154,15 @@ $render_article = static function ( $article ) use ( $statuses, $get_article_url
 			<?php endif; ?>
 		</div>
 		<p class="pc-kicker"><?php esc_html_e( 'Article notes', 'post-collection' ); ?></p>
-		<h1><?php echo esc_html( $collection ? sprintf( __( 'Review %s', 'post-collection' ), $collection->name ) : __( 'Review Articles', 'post-collection' ) ); ?></h1>
+		<?php
+		if ( $collection ) {
+			// translators: %s is the name of a post collection.
+			$review_heading = sprintf( __( 'Review %s', 'post-collection' ), $collection->name );
+		} else {
+			$review_heading = __( 'Review Articles', 'post-collection' );
+		}
+		?>
+		<h1><?php echo esc_html( $review_heading ); ?></h1>
 	</header>
 
 	<main class="pc-shell pc-review-shell" data-nonce="<?php echo esc_attr( $nonce ); ?>" data-ajax-action="<?php echo esc_url( admin_url( 'admin-ajax.php' ) ); ?>" data-statuses="<?php echo esc_attr( wp_json_encode( $statuses ) ); ?>" data-collection-id="<?php echo esc_attr( $collection ? $collection->term_id : 0 ); ?>">

@@ -32,10 +32,14 @@ if ( empty( $article ) ) {
 
 		<div class="post-collection-rating" data-rating="<?php echo esc_attr( $article['rating'] ); ?>">
 			<?php for ( $i = 1; $i <= 5; $i++ ) : ?>
+				<?php
+				// translators: %d is a rating expressed as a number of stars, from 1 to 5.
+				$star_label = sprintf( __( '%d stars', 'post-collection' ), $i );
+				?>
 				<button type="button"
 					class="post-collection-star <?php echo $i <= $article['rating'] ? 'active' : ''; ?>"
 					data-rating="<?php echo esc_attr( $i ); ?>"
-					title="<?php echo esc_attr( sprintf( __( '%d stars', 'post-collection' ), $i ) ); ?>">
+					title="<?php echo esc_attr( $star_label ); ?>">
 					<?php echo $i <= $article['rating'] ? '&#9733;' : '&#9734;'; ?>
 				</button>
 			<?php endfor; ?>

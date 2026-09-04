@@ -1,18 +1,18 @@
 <?php
 /**
- * Plugin name: Post Collection
+ * Plugin Name: Post Collection
  * Plugin URI: https://github.com/akirk/post-collection
- * Version: 2.0.0
- * Author: Alex Kirk
- * Author URI: https://alex.kirk.at/
- *
  * Description: Save articles from around the web, extract readable content, organize them into collections, and review them with notes in WordPress.
+ * Version: 2.0.0
+ * Requires at least: 6.0
  * Tested up to: 7.1
  * Requires PHP: 7.4
- *
- * License: GPL2
+ * Author: Alex Kirk
+ * Author URI: https://alex.kirk.at/
+ * License: GPL-2.0-or-later
+ * License URI: https://www.gnu.org/licenses/gpl-2.0.html
  * Text Domain: post-collection
- * Domain Path: /languages/
+ * Domain Path: /languages
  *
  * @package Post_Collection
  */

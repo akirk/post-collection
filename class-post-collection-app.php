@@ -420,15 +420,15 @@ class Post_Collection_App {
 	 */
 	private function is_app_request() {
 		if ( wp_doing_ajax() ) {
-			$action = isset( $_REQUEST['action'] ) ? wp_unslash( $_REQUEST['action'] ) : '';
-			return is_string( $action ) && 'post_collection_quick_edit' === sanitize_key( $action );
+			$action = isset( $_REQUEST['action'] ) && is_string( $_REQUEST['action'] ) ? sanitize_key( wp_unslash( $_REQUEST['action'] ) ) : '';
+			return 'post_collection_quick_edit' === $action;
 		}
 
 		if ( empty( $_SERVER['REQUEST_URI'] ) ) {
 			return false;
 		}
 
-		$path = wp_parse_url( wp_unslash( $_SERVER['REQUEST_URI'] ), PHP_URL_PATH );
+		$path = wp_parse_url( esc_url_raw( wp_unslash( $_SERVER['REQUEST_URI'] ) ), PHP_URL_PATH );
 		if ( ! $path ) {
 			return false;
 		}
@@ -519,7 +519,7 @@ class Post_Collection_App {
 			update_term_meta( $collection->term_id, 'post_collection_frontend_view', $frontend_view );
 		}
 
-		if ( isset( $_POST['hide_from_home'] ) && $_POST['hide_from_home'] ) {
+		if ( ! empty( $_POST['hide_from_home'] ) ) {
 			update_term_meta( $collection->term_id, 'post_collection_hide_from_home', true );
 		} else {
 			delete_term_meta( $collection->term_id, 'post_collection_hide_from_home' );
@@ -543,7 +543,8 @@ class Post_Collection_App {
 
 		$result = $this->delete_collection_from_request( $_POST );
 		if ( is_wp_error( $result ) ) {
-			wp_die( esc_html( $result->get_error_message() ), '', array( 'response' => $result->get_error_data( 'status' ) ? $result->get_error_data( 'status' ) : 400 ) );
+			$status_code = $result->get_error_data( 'status' );
+			wp_die( esc_html( $result->get_error_message() ), '', array( 'response' => absint( $status_code ? $status_code : 400 ) ) );
 		}
 
 		wp_safe_redirect( add_query_arg( 'pc-collection-deleted', '1', $this->get_home_url() ) );
@@ -799,6 +800,7 @@ class Post_Collection_App {
 		}
 
 		$sources    = array();
+		// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- A pasted export file, parsed structurally below; every extracted URL, title and tag is sanitized by normalize_import_item().
 		$raw_import = isset( $_POST['import_urls'] ) ? wp_unslash( $_POST['import_urls'] ) : '';
 		if ( trim( (string) $raw_import ) ) {
 			$sources[] = array(
@@ -808,6 +810,7 @@ class Post_Collection_App {
 		}
 
 		if ( isset( $_FILES['import_file'] ) && isset( $_FILES['import_file']['error'] ) && UPLOAD_ERR_NO_FILE !== (int) $_FILES['import_file']['error'] ) {
+			// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- get_import_upload_source() validates the upload and sanitizes the file name.
 			$file_source = $this->get_import_upload_source( $_FILES['import_file'] );
 			if ( is_wp_error( $file_source ) ) {
 				wp_send_json_error(
@@ -845,8 +848,9 @@ class Post_Collection_App {
 		}
 
 		$item = array(
-			'url'   => isset( $_POST['url'] ) ? wp_unslash( $_POST['url'] ) : '',
-			'title' => isset( $_POST['title'] ) ? wp_unslash( $_POST['title'] ) : '',
+			'url'   => isset( $_POST['url'] ) ? esc_url_raw( wp_unslash( $_POST['url'] ) ) : '',
+			'title' => isset( $_POST['title'] ) ? sanitize_text_field( wp_unslash( $_POST['title'] ) ) : '',
+			// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Either a comma separated string or an array; both are sanitized by sanitize_import_tags() via normalize_import_item().
 			'tags'  => isset( $_POST['tags'] ) ? wp_unslash( $_POST['tags'] ) : array(),
 		);
 
@@ -905,7 +909,8 @@ class Post_Collection_App {
 
 		$result = $this->create_collection_from_request( $_POST );
 		if ( is_wp_error( $result ) ) {
-			wp_die( wp_kses_post( $result->get_error_message() ), '', array( 'response' => $result->get_error_data( 'status' ) ? $result->get_error_data( 'status' ) : 400 ) );
+			$status_code = $result->get_error_data( 'status' );
+			wp_die( wp_kses_post( $result->get_error_message() ), '', array( 'response' => absint( $status_code ? $status_code : 400 ) ) );
 		}
 
 		wp_safe_redirect( $this->get_collection_url( $result ) );
@@ -1018,7 +1023,8 @@ class Post_Collection_App {
 		$post_id = isset( $_POST['post_id'] ) ? absint( wp_unslash( $_POST['post_id'] ) ) : 0;
 		$result = $this->update_quick_edit_post( $_POST );
 		if ( is_wp_error( $result ) ) {
-			wp_die( esc_html( $result->get_error_message() ), '', array( 'response' => $result->get_error_data( 'status' ) ? $result->get_error_data( 'status' ) : 400 ) );
+			$status_code = $result->get_error_data( 'status' );
+			wp_die( esc_html( $result->get_error_message() ), '', array( 'response' => absint( $status_code ? $status_code : 400 ) ) );
 		}
 
 		$redirect = wp_get_referer();
@@ -1251,6 +1257,9 @@ class Post_Collection_App {
 
 		$status = $status ? $status : $this->get_article_note_status( $post );
 		$label  = $this->get_article_note_status_label( $status );
+
+		// translators: %s is the title of a collected article.
+		$toggle_label = sprintf( __( 'Toggle reading status for %s', 'post-collection' ), get_the_title( $post ) );
 		?>
 		<button
 			type="button"
@@ -1259,7 +1268,7 @@ class Post_Collection_App {
 			data-post-id="<?php echo esc_attr( $post->ID ); ?>"
 			data-nonce="<?php echo esc_attr( wp_create_nonce( 'post-collection-toggle-read-status-' . $post->ID ) ); ?>"
 			data-read-status="<?php echo esc_attr( $status ); ?>"
-			aria-label="<?php echo esc_attr( sprintf( __( 'Toggle reading status for %s', 'post-collection' ), get_the_title( $post ) ) ); ?>"
+			aria-label="<?php echo esc_attr( $toggle_label ); ?>"
 		><?php echo esc_html( $label ); ?></button>
 		<?php
 	}
@@ -1305,7 +1314,7 @@ class Post_Collection_App {
 
 		$query_args = wp_parse_args( $args, $defaults );
 
-		if ( $apply_filters && isset( $_GET['pc-search'] ) && '' !== trim( wp_unslash( $_GET['pc-search'] ) ) ) {
+		if ( $apply_filters && isset( $_GET['pc-search'] ) && '' !== trim( sanitize_text_field( wp_unslash( $_GET['pc-search'] ) ) ) ) {
 			$query_args['s'] = sanitize_text_field( wp_unslash( $_GET['pc-search'] ) );
 		}
 
@@ -1532,13 +1541,16 @@ class Post_Collection_App {
 		$title     = $title ? $title : __( 'YouTube video', 'post-collection' );
 		$embed_url = add_query_arg( 'rel', '0', 'https://www.youtube-nocookie.com/embed/' . rawurlencode( $video_id ) );
 
+		// translators: %s is the title of a YouTube video.
+		$iframe_title = sprintf( __( 'YouTube video: %s', 'post-collection' ), $title );
+
 		return sprintf(
 			'<div class="pc-youtube-embed pc-youtube-embed-%1$s">' .
 				'<iframe src="%2$s" title="%3$s" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>' .
 			'</div>',
 			esc_attr( $context ),
 			esc_url( $embed_url ),
-			esc_attr( sprintf( __( 'YouTube video: %s', 'post-collection' ), $title ) )
+			esc_attr( $iframe_title )
 		);
 	}
 
@@ -1749,6 +1761,7 @@ class Post_Collection_App {
 
 		$post_ids = array_map( 'absint', $query->posts );
 		$placeholders = implode( ',', array_fill( 0, count( $post_ids ), '%d' ) );
+		// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- $placeholders only ever holds a comma separated list of %d placeholders; the values themselves go through prepare().
 		$sql = $wpdb->prepare(
 			"SELECT t.term_id, COUNT(*) AS collection_count
 			FROM {$wpdb->terms} t
@@ -1761,6 +1774,8 @@ class Post_Collection_App {
 			LIMIT 100",
 			array_merge( array( $taxonomy ), $post_ids )
 		);
+		// phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- $sql is the return value of $wpdb->prepare() directly above.
 		$rows = $wpdb->get_results( $sql );
 
 		if ( ! $rows ) {

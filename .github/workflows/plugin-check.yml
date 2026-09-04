@@ -1,0 +1,58 @@
+name: Plugin Check
+
+on:
+  push:
+    branches-ignore:
+      - 'dist/**'
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: plugin-check-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  plugin-check:
+    name: wordpress.org directory checks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          tools: composer
+
+      # Check the tree that actually ships. git archive applies the
+      # export-ignore rules from .gitattributes, so development-only files are
+      # absent here exactly as they are in the release ZIP. Checking the working
+      # copy instead reports .gitattributes and phpunit.xml.dist as errors that
+      # no directory reviewer will ever see.
+      - name: Build the release tree
+        run: |
+          mkdir -p "build/${{ github.event.repository.name }}"
+          git archive HEAD | tar -x -C "build/${{ github.event.repository.name }}"
+
+      - name: Install production dependencies
+        if: hashFiles(format('build/{0}/composer.json', github.event.repository.name)) != ''
+        working-directory: build/${{ github.event.repository.name }}
+        run: composer install --no-dev --optimize-autoloader --no-interaction
+
+      - name: Run Plugin Check
+        uses: wordpress/plugin-check-action@v1
+        with:
+          build-dir: ./build/${{ github.event.repository.name }}
+          # Errors block a directory submission; warnings do not. The template
+          # layer trips PrefixAllGlobals in the hundreds, so gating on warnings
+          # would leave this permanently red without telling anyone anything.
+          ignore-warnings: true

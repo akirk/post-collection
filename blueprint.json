@@ -10,6 +10,9 @@
 		]
 	},
 	"landingPage": "/post-collection/",
+	"features": {
+		"networking": true
+	},
 	"steps": [
 		{
 			"step": "installPlugin",
