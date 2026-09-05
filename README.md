@@ -79,7 +79,9 @@ Yes. Every collection can be exported as a Bookmarks HTML file or as OPML, and t
 
 ## Screenshots
 
-1. A collection in the Post Collection app, listing the saved articles with their tags and notes.
+1. A collection in the Post Collection app: the field that saves a URL, the board, links and reader views, and a saved article with its word count and read time.
+2. A saved article in the reader, extracted from the page it came from, with a link back to the original.
+3. The app on a phone, with each collection and what it holds most recently.
 
 ## Changelog
 
