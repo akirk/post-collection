@@ -344,9 +344,9 @@
 		var rating = parseInt( article.rating, 10 ) || 0;
 		var status = article.status || 'unread';
 		var isCollapsed = 'read' === status || 'skipped' === status;
-		var html = '<article class="pc-review-item' + ( isCollapsed ? ' is-collapsed' : '' ) + ' pc-article-notes" data-article-id="' + article.id + '">';
+		var html = '<article class="pc-review-item' + ( isCollapsed ? ' is-collapsed' : '' ) + ' pc-article-notes" data-article-id="' + article.id + '" data-pc-item="' + article.id + '">';
 		html += '<div class="pc-review-item-main">';
-		html += '<div class="pc-review-title-block"><h2><a href="' + escapeHtml( article.permalink ) + '">' + escapeHtml( article.title ) + '</a></h2><p>' + escapeHtml( article.author || '' );
+		html += '<div class="pc-review-title-block"><h2>' + renderSelectCheckbox( article, 'review' ) + '<a href="' + escapeHtml( article.permalink ) + '">' + escapeHtml( article.title ) + '</a></h2><p>' + escapeHtml( article.author || '' );
 		if ( article.collection && article.collection !== article.author ) {
 			html += '<span>' + escapeHtml( article.collection ) + '</span>';
 		}
@@ -428,6 +428,8 @@
 				if ( ! result.data.has_more ) {
 					button.remove();
 				}
+
+				updateSelection();
 			} )
 			.catch( function () {
 				button.disabled = false;
@@ -795,6 +797,153 @@
 		}
 	}
 
+	function getSelectionBar() {
+		return document.querySelector( '[data-pc-selection-bar]' );
+	}
+
+	function getSelectionCheckboxes() {
+		return Array.prototype.slice.call( document.querySelectorAll( '[data-pc-select-item]' ) );
+	}
+
+	function getSelectedItems() {
+		return getSelectionCheckboxes()
+			.filter( function ( input ) {
+				return input.checked;
+			} )
+			.map( function ( input ) {
+				return {
+					id: parseInt( input.value, 10 ),
+					title: input.dataset.postTitle || '',
+				};
+			} );
+	}
+
+	function renderSelectCheckbox( article, context ) {
+		if ( ! getSelectionBar() ) {
+			return '';
+		}
+
+		var title = escapeHtml( article.title || '' );
+		return '<label class="pc-select"><input type="checkbox" class="pc-select-item" value="' + parseInt( article.id, 10 ) +
+			'" data-pc-select-item="' + escapeHtml( context ) + '" data-post-title="' + title + '" aria-label="Select ' + title + '"></label>';
+	}
+
+	function setAllSelected( selected ) {
+		getSelectionCheckboxes().forEach( function ( input ) {
+			input.checked = selected;
+		} );
+		updateSelection();
+	}
+
+	function updateSelection() {
+		var bar = getSelectionBar();
+		if ( ! bar ) {
+			return;
+		}
+
+		var items = getSelectedItems();
+		var count = bar.querySelector( '[data-pc-selection-count]' );
+		if ( count ) {
+			count.textContent = 1 === items.length ? '1 item selected' : items.length + ' items selected';
+		}
+
+		var selectAll = bar.querySelector( '[data-pc-selection-all]' );
+		if ( selectAll ) {
+			selectAll.hidden = items.length === getSelectionCheckboxes().length;
+		}
+
+		bar.hidden = 0 === items.length;
+
+		var status = bar.querySelector( '.pc-selection-status' );
+		if ( status && ! items.length ) {
+			status.textContent = '';
+		}
+
+		document.dispatchEvent(
+			new CustomEvent( 'post-collection-selection-change', {
+				detail: {
+					items: items,
+					ids: items.map( function ( item ) {
+						return item.id;
+					} ),
+				},
+			} )
+		);
+	}
+
+	function setSelectionStatus( message ) {
+		var bar = getSelectionBar();
+		var status = bar ? bar.querySelector( '.pc-selection-status' ) : null;
+		if ( status ) {
+			status.textContent = message || '';
+		}
+	}
+
+	function applyBulkStatus( button ) {
+		if ( button.disabled ) {
+			return;
+		}
+
+		var items = getSelectedItems();
+		if ( ! items.length ) {
+			return;
+		}
+
+		var data = new FormData();
+		data.append( 'action', 'post_collection_bulk_read_status' );
+		data.append( '_wpnonce', button.dataset.nonce || '' );
+		data.append( 'status', button.dataset.pcBulkStatus || '' );
+		items.forEach( function ( item ) {
+			data.append( 'post_ids[]', item.id );
+		} );
+
+		var buttons = document.querySelectorAll( '.pc-bulk-status' );
+		buttons.forEach( function ( other ) {
+			other.disabled = true;
+		} );
+		setSelectionStatus( 'Saving...' );
+
+		fetch( button.dataset.ajaxAction, {
+			method: 'POST',
+			credentials: 'same-origin',
+			body: data,
+		} )
+			.then( function ( response ) {
+				return response.json();
+			} )
+			.then( function ( result ) {
+				if ( ! result || ! result.success ) {
+					throw new Error( result && result.data && result.data.message ? result.data.message : 'Could not save the reading status.' );
+				}
+
+				result.data.items.forEach( function ( item ) {
+					updateReadStatusControls( item.id, item );
+					updateArticleNotesStatus( item.id, item.read_status );
+
+					var row = document.querySelector( '.pc-link-row[data-pc-item="' + item.id + '"]' );
+					if ( row ) {
+						updateReadStatus( row, item );
+					}
+				} );
+
+				setSelectionStatus( result.data.message || '' );
+			} )
+			.catch( function ( error ) {
+				setSelectionStatus( error.message );
+			} )
+			.finally( function () {
+				buttons.forEach( function ( other ) {
+					other.disabled = false;
+				} );
+			} );
+	}
+
+	window.postCollection = window.postCollection || {};
+	window.postCollection.getSelection = getSelectedItems;
+	window.postCollection.clearSelection = function () {
+		setAllSelected( false );
+	};
+
 	function setupInfiniteScroll() {
 		if ( infiniteObserver ) {
 			infiniteObserver.disconnect();
@@ -879,6 +1028,27 @@
 		if ( loadMoreReview ) {
 			event.preventDefault();
 			loadMoreReviewArticles( loadMoreReview );
+			return;
+		}
+
+		var bulkStatus = closest( event.target, '[data-pc-bulk-status]' );
+		if ( bulkStatus ) {
+			event.preventDefault();
+			applyBulkStatus( bulkStatus );
+			return;
+		}
+
+		var selectAll = closest( event.target, '[data-pc-selection-all]' );
+		if ( selectAll ) {
+			event.preventDefault();
+			setAllSelected( true );
+			return;
+		}
+
+		var clearSelection = closest( event.target, '[data-pc-selection-clear]' );
+		if ( clearSelection ) {
+			event.preventDefault();
+			setAllSelected( false );
 			return;
 		}
 
@@ -995,6 +1165,11 @@
 	} );
 
 	document.addEventListener( 'change', function ( event ) {
+		if ( matches( event.target, '[data-pc-select-item]' ) ) {
+			updateSelection();
+			return;
+		}
+
 		if ( ! matches( event.target, '.pc-import-file-control input[type="file"]' ) ) {
 			return;
 		}

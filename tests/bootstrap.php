@@ -30,9 +30,19 @@ namespace {
 	$GLOBALS['wp_test_registered_terms']   = array();
 	$GLOBALS['wp_test_users']              = array();
 	$GLOBALS['wp_test_user_options']       = array();
+	$GLOBALS['wp_test_query_vars']         = array();
+	$GLOBALS['wp_test_doing_ajax']         = false;
 
 	function __( $text, $domain = 'default' ) {
 		return $text;
+	}
+
+	function admin_url( $path = '', $scheme = 'admin' ) {
+		return 'https://example.org/wp-admin/' . ltrim( (string) $path, '/' );
+	}
+
+	function _n( $single, $plural, $number, $domain = 'default' ) {
+		return 1 === (int) $number ? $single : $plural;
 	}
 
 	function _x( $text, $context, $domain = 'default' ) {
@@ -99,6 +109,68 @@ namespace {
 	function add_filter( $tag, $function_to_add, $priority = 10, $accepted_args = 1 ) {
 		$GLOBALS['wp_test_filters'][ $tag ][] = compact( 'function_to_add', 'priority', 'accepted_args' );
 		return true;
+	}
+
+	function wp_list_pluck( $items, $field ) {
+		return array_map(
+			function ( $item ) use ( $field ) {
+				if ( is_object( $item ) ) {
+					return $item->$field;
+				}
+				return $item[ $field ] ?? null;
+			},
+			array_values( (array) $items )
+		);
+	}
+
+	function wp_doing_ajax() {
+		return ! empty( $GLOBALS['wp_test_doing_ajax'] );
+	}
+
+	function get_query_var( $query_var, $fallback = '' ) {
+		return $GLOBALS['wp_test_query_vars'][ $query_var ] ?? $fallback;
+	}
+
+	class WP_Test_Json_Response extends \Exception {
+		public $data;
+
+		public function __construct( $data ) {
+			parent::__construct( 'json response' );
+			$this->data = $data;
+		}
+	}
+
+	function wp_send_json_success( $data = null, $status_code = null ) {
+		throw new WP_Test_Json_Response(
+			array(
+				'success' => true,
+				'data'    => $data,
+			)
+		);
+	}
+
+	function wp_send_json_error( $data = null, $status_code = null ) {
+		throw new WP_Test_Json_Response(
+			array(
+				'success' => false,
+				'data'    => $data,
+			)
+		);
+	}
+
+	function do_action( $tag, ...$args ) {
+		$GLOBALS['wp_test_did_actions'][ $tag ] = ( $GLOBALS['wp_test_did_actions'][ $tag ] ?? 0 ) + 1;
+
+		foreach ( $GLOBALS['wp_test_actions'][ $tag ] ?? array() as $action ) {
+			call_user_func_array(
+				$action['function_to_add'],
+				array_slice( $args, 0, $action['accepted_args'] )
+			);
+		}
+	}
+
+	function has_action( $tag, $function_to_check = false ) {
+		return ! empty( $GLOBALS['wp_test_actions'][ $tag ] );
 	}
 
 	function apply_filters( $tag, $value, ...$args ) {
@@ -424,6 +496,16 @@ namespace {
 					$posts,
 					function ( $post ) use ( $post_ids ) {
 						return in_array( (int) $post->ID, $post_ids, true );
+					}
+				);
+			}
+
+			if ( ! empty( $args['post__not_in'] ) ) {
+				$excluded_ids = array_map( 'intval', (array) $args['post__not_in'] );
+				$posts = array_filter(
+					$posts,
+					function ( $post ) use ( $excluded_ids ) {
+						return ! in_array( (int) $post->ID, $excluded_ids, true );
 					}
 				);
 			}

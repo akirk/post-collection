@@ -29,7 +29,7 @@ Collected posts live in their own custom post type and are grouped by a Post Col
 ### Organize and review
 
 - The frontend app lists your collections, the articles in each one, and a review queue.
-- Each article can carry a **note** and a reading status — unread, read, skipped or archived — plus a rating, so a long backlog can be worked through instead of just growing.
+- Each article can carry a **note** and a reading status — unread, read, skipped or archived — plus a rating, so a long backlog can be worked through instead of just growing. Tick several off in a list and set the status of the whole batch at once.
 - Collections can be published so visitors can read your compilation, or kept hidden from the default view.
 - Tags on collected posts are kept alongside the article so a collection stays browsable.
 
@@ -42,6 +42,8 @@ Collected posts live in their own custom post type and are grouped by a Post Col
 ### Works with other plugins
 
 Post Collection runs standalone, but it also integrates with the [Friends](https://wordpress.org/plugins/friends/) plugin: when Friends is active, every post in your feed gets a "Save to Post Collection" entry in its dropdown menu, and notes are shown underneath the post on the Friends frontend.
+
+With the [Send to E-Reader](https://wordpress.org/plugins/send-to-e-reader/) plugin the app grows e-reader actions: an article in a collection gets a *Download ePub* entry (and one per configured device), and items can be ticked off in a collection or in the review queue and sent as one multi-chapter ePub. There is also a download URL an e-reader's own browser can open to pull the unread articles across without any clicking on the site; it is shown on the Send to E-Reader settings screen.
 
 The plugin also registers WordPress Abilities (listing, creating and updating collections, saving a URL, reading and editing collected articles and their notes), so an MCP client or another plugin can drive the collection programmatically.
 
@@ -82,6 +84,8 @@ Yes. Every collection can be exported as a Bookmarks HTML file or as OPML, and t
 ## Changelog
 
 ### Unreleased
+- Tick off several articles in a collection or in the review queue and set their reading status in one go
+- Add e-reader actions to the app when the Send to E-Reader plugin is active: download a single article as ePub, tick off several and send them as one, and pull the unread ones from the e-reader over a download URL
 - Add Bookmarks HTML and OPML export for collections, and OPML import
 - Prepare the plugin for the WordPress.org plugin directory
 

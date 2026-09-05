@@ -73,6 +73,7 @@ $back_label       = 'bookmarks' === $mode ? __( 'Back to Bookmarks', 'post-colle
 		<div class="pc-detail-actions">
 			<a class="pc-button pc-button-primary" href="<?php echo esc_url( $source_url ); ?>" target="_blank" rel="noopener noreferrer"><?php esc_html_e( 'Open Original', 'post-collection' ); ?></a>
 			<a class="pc-button" href="<?php echo esc_url( $app->get_collection_url( $collection ) ); ?>"><?php echo esc_html( $back_label ); ?></a>
+			<?php $app->render_item_actions( $post, 'detail' ); ?>
 		</div>
 		<?php if ( ! empty( $terms ) ) : ?>
 			<nav class="pc-tag-strip pc-detail-tags" aria-label="<?php esc_attr_e( 'Tags', 'post-collection' ); ?>">

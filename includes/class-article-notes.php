@@ -381,6 +381,44 @@ class Article_Notes {
 	}
 
 	/**
+	 * Get the IDs of the articles that are no longer unread.
+	 *
+	 * An article counts as read once its note leaves the unread status, whether
+	 * it was read, skipped or archived. Articles without a note are not in here,
+	 * so subtracting this from a query leaves the unread ones.
+	 *
+	 * @return int[] Article IDs.
+	 */
+	public function get_read_article_ids() {
+		// The notes are asked for in full rather than by id: a note points at
+		// its article through post_parent, and reading that off the objects
+		// keeps this to one query however long the archive gets.
+		$notes = get_posts(
+			array(
+				'post_type'      => self::POST_TYPE,
+				'posts_per_page' => -1,
+				'post_status'    => 'publish',
+				'meta_query'     => array(
+					array(
+						'key'     => self::STATUS_META,
+						'value'   => array( self::STATUS_READ, self::STATUS_SKIPPED, self::STATUS_ARCHIVED ),
+						'compare' => 'IN',
+					),
+				),
+			)
+		);
+
+		$article_ids = array();
+		foreach ( $notes as $note ) {
+			if ( ! empty( $note->post_parent ) ) {
+				$article_ids[] = (int) $note->post_parent;
+			}
+		}
+
+		return array_values( array_unique( $article_ids ) );
+	}
+
+	/**
 	 * Get the unified review queue, including pending, unread, read, and skipped articles.
 	 *
 	 * @param int $limit  Maximum number of articles to return.
