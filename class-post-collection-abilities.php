@@ -307,9 +307,9 @@ class Post_Collection_Abilities {
 				'category'            => self::CATEGORY,
 				'input_schema'        => array(
 					'type'                 => 'object',
-					'required'             => array( 'article_id' ),
+					'required'             => array( 'id' ),
 					'properties'           => array(
-						'article_id' => array(
+						'id'         => array(
 							'type'        => 'integer',
 							'description' => __( 'Collected article post ID from post-collection/list-articles or post-collection/save-url.', 'post-collection' ),
 						),
@@ -341,9 +341,9 @@ class Post_Collection_Abilities {
 				'category'            => self::CATEGORY,
 				'input_schema'        => array(
 					'type'                 => 'object',
-					'required'             => array( 'article_id', 'post_status' ),
+					'required'             => array( 'id', 'post_status' ),
 					'properties'           => array(
-						'article_id'  => array(
+						'id'          => array(
 							'type'        => 'integer',
 							'description' => __( 'Collected article post ID.', 'post-collection' ),
 						),
@@ -380,9 +380,9 @@ class Post_Collection_Abilities {
 				'category'            => self::CATEGORY,
 				'input_schema'        => array(
 					'type'                 => 'object',
-					'required'             => array( 'article_id' ),
+					'required'             => array( 'id' ),
 					'properties'           => array(
-						'article_id'   => array(
+						'id'           => array(
 							'type'        => 'integer',
 							'description' => __( 'Collected article post ID.', 'post-collection' ),
 						),
@@ -442,9 +442,9 @@ class Post_Collection_Abilities {
 				'category'            => self::CATEGORY,
 				'input_schema'        => array(
 					'type'                 => 'object',
-					'required'             => array( 'article_id' ),
+					'required'             => array( 'id' ),
 					'properties'           => array(
-						'article_id' => array(
+						'id'         => array(
 							'type'        => 'integer',
 							'description' => __( 'Collected article post ID.', 'post-collection' ),
 						),
@@ -767,7 +767,7 @@ class Post_Collection_Abilities {
 	 */
 	public function ability_get_article( $input ) {
 		$input = is_array( $input ) ? $input : array();
-		$post = $this->get_collected_article( $input['article_id'] ?? 0 );
+		$post = $this->get_collected_article( $input['id'] ?? 0 );
 		if ( is_wp_error( $post ) ) {
 			return $post;
 		}
@@ -785,7 +785,7 @@ class Post_Collection_Abilities {
 	 */
 	public function ability_update_article_visibility( $input ) {
 		$input = is_array( $input ) ? $input : array();
-		$post = $this->get_collected_article( $input['article_id'] ?? 0 );
+		$post = $this->get_collected_article( $input['id'] ?? 0 );
 		if ( is_wp_error( $post ) ) {
 			return $post;
 		}
@@ -824,7 +824,7 @@ class Post_Collection_Abilities {
 	 */
 	public function ability_update_article_content( $input ) {
 		$input = is_array( $input ) ? $input : array();
-		$post = $this->get_collected_article( $input['article_id'] ?? 0 );
+		$post = $this->get_collected_article( $input['id'] ?? 0 );
 		if ( is_wp_error( $post ) ) {
 			return $post;
 		}
@@ -911,7 +911,7 @@ class Post_Collection_Abilities {
 	 */
 	public function ability_update_note( $input ) {
 		$input = is_array( $input ) ? $input : array();
-		$post = $this->get_collected_article( $input['article_id'] ?? 0 );
+		$post = $this->get_collected_article( $input['id'] ?? 0 );
 		if ( is_wp_error( $post ) ) {
 			return $post;
 		}

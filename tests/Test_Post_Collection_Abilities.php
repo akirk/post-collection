@@ -85,6 +85,12 @@ class Test_Post_Collection_Abilities extends TestCase {
 		$this->assertTrue( $GLOBALS['wp_test_abilities']['post-collection/list-articles']['meta']['annotations']['readonly'] );
 		$this->assertFalse( $GLOBALS['wp_test_abilities']['post-collection/update-note']['meta']['annotations']['destructive'] );
 		$this->assertTrue( $GLOBALS['wp_test_abilities']['post-collection/update-note']['meta']['annotations']['idempotent'] );
+		foreach ( array( 'get-article', 'update-article-visibility', 'update-article-content', 'update-note' ) as $ability ) {
+			$schema = $GLOBALS['wp_test_abilities'][ 'post-collection/' . $ability ]['input_schema'];
+			$this->assertContains( 'id', $schema['required'] );
+			$this->assertArrayHasKey( 'id', $schema['properties'] );
+			$this->assertArrayNotHasKey( 'article_id', $schema['properties'] );
+		}
 	}
 
 	public function test_registers_ai_assistant_domain_and_instructions() {
@@ -138,7 +144,7 @@ class Test_Post_Collection_Abilities extends TestCase {
 
 		$result = $this->abilities->ability_update_article_content(
 			array(
-				'article_id'  => $article->ID,
+				'id'          => $article->ID,
 				'title'       => 'Updated Title',
 				'source_url'  => 'https://example.com/updated',
 				'excerpt'     => 'Updated excerpt',
@@ -158,6 +164,34 @@ class Test_Post_Collection_Abilities extends TestCase {
 		$this->assertSame( array( 'AI', 'Reading' ), $GLOBALS['wp_test_terms'][ $article->ID ][ $this->plugin->get_tag_taxonomy() ] );
 		$this->assertSame( '<p>Updated body</p>', $result['article']['content'] );
 		$this->assertSame( 'https://example.com/updated', $result['article']['source_url'] );
+	}
+
+	public function test_article_abilities_accept_generic_id_alias() {
+		$collection = $this->create_collection_user( 6, 'aliases', 'Aliases' );
+		$this->plugin->collection_users = array( $collection );
+		$article = $this->create_article( 106, $collection->ID, 'Alias Article' );
+
+		$result = $this->abilities->ability_get_article( array( 'id' => $article->ID ) );
+		$this->assertFalse( is_wp_error( $result ) );
+		$this->assertSame( $article->ID, $result['article']['id'] );
+
+		$result = $this->abilities->ability_update_article_visibility(
+			array(
+				'id'          => $article->ID,
+				'post_status' => 'publish',
+			)
+		);
+		$this->assertFalse( is_wp_error( $result ) );
+		$this->assertSame( 'publish', $result['article']['post_status'] );
+
+		$result = $this->abilities->ability_update_article_content(
+			array(
+				'id'      => $article->ID,
+				'excerpt' => 'Updated through the id alias',
+			)
+		);
+		$this->assertFalse( is_wp_error( $result ) );
+		$this->assertSame( 'Updated through the id alias', $result['article']['excerpt'] );
 	}
 
 	public function test_list_articles_unread_includes_articles_without_notes() {
