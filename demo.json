@@ -1,36 +1,36 @@
 {
-	"$schema": "https://playground.wordpress.net/blueprint-schema.json",
-	"meta": {
-		"title": "Post Collection (Demo)",
-		"description": "Save articles from around the web, extract readable content, organize them into collections, and review them with notes in WordPress. Pre-loaded with two collections whose articles are fetched live from the web so you can explore right away.",
-		"author": "Alex Kirk",
-		"categories": [
-			"Apps",
-			"Education"
-		]
-	},
-	"landingPage": "/post-collection/",
-	"login": true,
-	"features": {
-		"networking": true
-	},
-	"steps": [
-		{
-			"step": "installPlugin",
-			"pluginData": {
-				"resource": "git:directory",
-				"url": "https://github.com/akirk/post-collection",
-				"ref": "dist/main",
-				"refType": "branch"
-			},
-			"options": {
-				"activate": true,
-				"targetFolderName": "post-collection"
-			}
-		},
-		{
-			"step": "runPHP",
-			"code": "<?php\nrequire_once '/wordpress/wp-load.php';\n\nif ( ! post_type_exists( 'collected_post' ) || ! class_exists( '\\PostCollection\\Post_Collection_App' ) ) {\n\treturn;\n}\n\n$app = \\PostCollection\\Post_Collection_App::instance();\nif ( ! $app ) {\n\treturn;\n}\n\n$post_collection = $app->get_post_collection();\n\n$owner    = get_user_by( 'login', 'admin' );\n$owner_id = $owner ? $owner->ID : 1;\n\n// A saved article is authored by whoever saves it, and nobody is logged in while\n// the blueprint runs, so the demo posts would otherwise have no author.\nwp_set_current_user( $owner_id );\n\n$collections = array(\n\tarray(\n\t\t'name'  => 'Collected Posts',\n\t\t'slug'  => 'collected-posts',\n\t\t'mode'  => 'posts',\n\t\t'view'  => 'reader',\n\t\t'items' => array(\n\t\t\tarray(\n\t\t\t\t'url'      => 'https://alex.kirk.at/2026/04/14/why-my-wordpress/',\n\t\t\t\t'fallback' => 'Why My WordPress?',\n\t\t\t\t'status'   => 'read',\n\t\t\t\t'rating'   => 5,\n\t\t\t\t'notes'    => 'Why a WordPress can be worth running for yourself rather than for an audience. Read it here, in the copy this site keeps.',\n\t\t\t),\n\t\t),\n\t),\n\tarray(\n\t\t'name'  => 'Bookmarks',\n\t\t'slug'  => 'bookmarks',\n\t\t'mode'  => 'bookmarks',\n\t\t'view'  => 'links',\n\t\t'items' => array(\n\t\t\tarray(\n\t\t\t\t'url'      => 'https://wpapps.kirk.at/',\n\t\t\t\t'fallback' => 'WP Apps',\n\t\t\t),\n\t\t),\n\t),\n);\n\nforeach ( $collections as $definition ) {\n\t$created = wp_insert_term(\n\t\t$definition['name'],\n\t\t\\PostCollection\\Post_Collection::COLLECTION_TAXONOMY,\n\t\tarray(\n\t\t\t'slug' => $definition['slug'],\n\t\t)\n\t);\n\n\tif ( is_wp_error( $created ) ) {\n\t\tcontinue;\n\t}\n\n\t$collection = get_term( $created['term_id'], \\PostCollection\\Post_Collection::COLLECTION_TAXONOMY );\n\tif ( ! $collection || is_wp_error( $collection ) ) {\n\t\tcontinue;\n\t}\n\n\tupdate_term_meta( $collection->term_id, 'post_collection_frontend_mode', $definition['mode'] );\n\tupdate_term_meta( $collection->term_id, 'post_collection_frontend_view', $definition['view'] );\n\tupdate_term_meta( $collection->term_id, 'friends_publish_post_collection', true );\n\n\tforeach ( $definition['items'] as $item ) {\n\t\t// Fetch the page and extract the article text, exactly as saving a URL in the app does.\n\t\t$saved = $post_collection->import_item_to_collection( $collection, array( 'url' => $item['url'] ) );\n\n\t\tif ( is_wp_error( $saved ) ) {\n\t\t\t// The page could not be fetched: keep the link so the collection is not empty.\n\t\t\t$post_id = $post_collection->save_url_to_collection_term_without_content(\n\t\t\t\t$item['url'],\n\t\t\t\t$collection,\n\t\t\t\tarray(\n\t\t\t\t\t'title' => $item['fallback'],\n\t\t\t\t)\n\t\t\t);\n\t\t} else {\n\t\t\t$post_id = (int) $saved['post_id'];\n\t\t}\n\n\t\tif ( ! $post_id || is_wp_error( $post_id ) ) {\n\t\t\tcontinue;\n\t\t}\n\n\t\tif ( isset( $item['status'] ) ) {\n\t\t\t$post_collection->get_article_notes()->save_note(\n\t\t\t\t$post_id,\n\t\t\t\t$item['status'],\n\t\t\t\tisset( $item['rating'] ) ? $item['rating'] : null,\n\t\t\t\tisset( $item['notes'] ) ? $item['notes'] : null\n\t\t\t);\n\t\t}\n\t}\n}\n"
-		}
-	]
+    "$schema": "https://playground.wordpress.net/blueprint-schema.json",
+    "meta": {
+        "title": "Post Collection (Demo)",
+        "description": "Save articles from around the web, extract readable content, organize them into collections, and review them with notes in WordPress. Pre-loaded with two collections whose articles are fetched live from the web so you can explore right away.",
+        "author": "Alex Kirk",
+        "categories": [
+            "Apps",
+            "Education"
+        ]
+    },
+    "landingPage": "/post-collection/",
+    "login": true,
+    "features": {
+        "networking": true
+    },
+    "steps": [
+        {
+            "step": "installPlugin",
+            "pluginData": {
+                "resource": "git:directory",
+                "url": "https://github.com/akirk/post-collection",
+                "ref": "dist/main",
+                "refType": "branch"
+            },
+            "options": {
+                "activate": true,
+                "targetFolderName": "post-collection"
+            }
+        },
+        {
+            "step": "runPHP",
+            "code": "<?php\nrequire_once '/wordpress/wp-load.php';\n\nif ( ! post_type_exists( 'collected_post' ) || ! class_exists( '\\PostCollection\\Post_Collection_App' ) ) {\n\treturn;\n}\n\n$app = \\PostCollection\\Post_Collection_App::instance();\nif ( ! $app ) {\n\treturn;\n}\n\n$post_collection = $app->get_post_collection();\n\n$owner    = get_user_by( 'login', 'admin' );\n$owner_id = $owner ? $owner->ID : 1;\n\n// A saved article is authored by whoever saves it, and nobody is logged in while\n// the blueprint runs, so the demo posts would otherwise have no author.\nwp_set_current_user( $owner_id );\n\n$collections = array(\n\tarray(\n\t\t'name'  => 'Collected Posts',\n\t\t'slug'  => 'collected-posts',\n\t\t'mode'  => 'posts',\n\t\t'view'  => 'reader',\n\t\t'items' => array(\n\t\t\tarray(\n\t\t\t\t'url'      => 'https://alex.kirk.at/2026/04/14/why-my-wordpress/',\n\t\t\t\t'fallback' => 'Why My WordPress?',\n\t\t\t\t'status'   => 'read',\n\t\t\t\t'rating'   => 5,\n\t\t\t\t'notes'    => 'Why a WordPress can be worth running for yourself rather than for an audience. Read it here, in the copy this site keeps.',\n\t\t\t),\n\t\t),\n\t),\n\tarray(\n\t\t'name'  => 'Bookmarks',\n\t\t'slug'  => 'bookmarks',\n\t\t'mode'  => 'bookmarks',\n\t\t'view'  => 'links',\n\t\t'items' => array(\n\t\t\tarray(\n\t\t\t\t'url'      => 'https://wpapps.kirk.at/',\n\t\t\t\t'fallback' => 'WP Apps',\n\t\t\t),\n\t\t),\n\t),\n);\n\nforeach ( $collections as $definition ) {\n\t$created = wp_insert_term(\n\t\t$definition['name'],\n\t\t\\PostCollection\\Post_Collection::COLLECTION_TAXONOMY,\n\t\tarray(\n\t\t\t'slug' => $definition['slug'],\n\t\t)\n\t);\n\n\tif ( is_wp_error( $created ) ) {\n\t\tcontinue;\n\t}\n\n\t$collection = get_term( $created['term_id'], \\PostCollection\\Post_Collection::COLLECTION_TAXONOMY );\n\tif ( ! $collection || is_wp_error( $collection ) ) {\n\t\tcontinue;\n\t}\n\n\tupdate_term_meta( $collection->term_id, 'post_collection_frontend_mode', $definition['mode'] );\n\tupdate_term_meta( $collection->term_id, 'post_collection_frontend_view', $definition['view'] );\n\tupdate_term_meta( $collection->term_id, 'friends_publish_post_collection', true );\n\n\tforeach ( $definition['items'] as $item ) {\n\t\t// Fetch the page and extract the article text, exactly as saving a URL in the app does.\n\t\t$saved = $post_collection->import_item_to_collection( $collection, array( 'url' => $item['url'] ) );\n\n\t\tif ( is_wp_error( $saved ) ) {\n\t\t\t// The page could not be fetched: keep the link so the collection is not empty.\n\t\t\t$post_id = $post_collection->save_url_to_collection_term_without_content(\n\t\t\t\t$item['url'],\n\t\t\t\t$collection,\n\t\t\t\tarray(\n\t\t\t\t\t'title' => $item['fallback'],\n\t\t\t\t)\n\t\t\t);\n\t\t} else {\n\t\t\t$post_id = (int) $saved['post_id'];\n\t\t}\n\n\t\tif ( ! $post_id || is_wp_error( $post_id ) ) {\n\t\t\tcontinue;\n\t\t}\n\n\t\tif ( isset( $item['status'] ) ) {\n\t\t\t$post_collection->get_article_notes()->save_note(\n\t\t\t\t$post_id,\n\t\t\t\t$item['status'],\n\t\t\t\tisset( $item['rating'] ) ? $item['rating'] : null,\n\t\t\t\tisset( $item['notes'] ) ? $item['notes'] : null\n\t\t\t);\n\t\t}\n\t}\n}\n"
+        }
+    ]
 }
