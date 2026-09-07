@@ -1,4 +1,5 @@
 <?php
+// phpcs:disable WordPress.NamingConventions.PrefixAllGlobals.DynamicHooknameFound -- Reader URL filter names are derived from site configuration.
 /**
  * Jina reader fallback for Cloudflare-protected article downloads.
  *

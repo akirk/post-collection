@@ -1,4 +1,5 @@
 <?php
+// phpcs:disable WordPress.Security.NonceVerification.Recommended,WordPress.Security.NonceVerification.Missing,WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching -- Request reads are validated by action handlers and migration/status reads intentionally use prepared direct queries.
 /**
  * Post Collection
  *

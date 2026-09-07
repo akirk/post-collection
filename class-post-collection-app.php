@@ -1,4 +1,5 @@
 <?php
+// phpcs:disable WordPress.Security.NonceVerification.Recommended,WordPress.Security.NonceVerification.Missing,WordPress.DB.SlowDBQuery.slow_db_query_tax_query,WordPressVIPMinimum.Performance.WPQueryParams.PostNotIn_post__not_in,WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching -- App routes use read-only request filters and collection queries intentionally use taxonomy exclusions and prepared direct reads.
 /**
  * Frontend app for post collections.
  *

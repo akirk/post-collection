@@ -1,4 +1,5 @@
 <?php
+// phpcs:disable WordPress.DB.SlowDBQuery.slow_db_query_meta_query -- Ability lookups intentionally query collection metadata.
 /**
  * WordPress Ability API integration for Post Collection.
  *

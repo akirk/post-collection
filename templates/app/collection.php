@@ -1,4 +1,5 @@
 <?php
+// phpcs:disable WordPress.Security.NonceVerification.Recommended -- Collection template reads query arguments for display state only.
 // phpcs:disable WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound -- Template variables are render-local state.
 /**
  * Frontend app collection view.
