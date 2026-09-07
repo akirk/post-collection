@@ -1,4 +1,6 @@
 <?php
+// phpcs:disable WordPress.Security.NonceVerification.Recommended -- App template reads query arguments for display state only.
+// phpcs:disable WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound -- Template variables are render-local state.
 /**
  * Frontend app collection overview.
  *
