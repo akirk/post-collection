@@ -52,7 +52,3 @@ jobs:
         uses: wordpress/plugin-check-action@v1
         with:
           build-dir: ./build/${{ github.event.repository.name }}
-          # Errors block a directory submission; warnings do not. The template
-          # layer trips PrefixAllGlobals in the hundreds, so gating on warnings
-          # would leave this permanently red without telling anyone anything.
-          ignore-warnings: true
