@@ -1,7 +1,7 @@
 <?php
 /**
  * Plugin Name: Post Collection
- * Plugin URI: https://github.com/akirk/post-collection
+ * Plugin URI: https://wpapps.kirk.at/apps/post-collection/
  * Description: Save articles from around the web, extract readable content, organize them into collections, and review them with notes in WordPress.
  * Version: 2.0.0
  * Requires at least: 6.0
