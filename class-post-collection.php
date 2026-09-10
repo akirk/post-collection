@@ -786,6 +786,15 @@ class Post_Collection {
 
 	public function render_edit_post_collection() {
 		$user = $this->check_edit_post_collection();
+
+		wp_enqueue_script(
+			'post-collection-admin',
+			plugins_url( 'post-collection-admin.js', __FILE__ ),
+			array(),
+			filemtime( __DIR__ . '/post-collection-admin.js' ),
+			true
+		);
+
 		$args = array(
 			'user'                => $user,
 			'inactive'            => get_user_option( 'friends_post_collection_inactive', $user->ID ),

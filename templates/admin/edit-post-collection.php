@@ -139,18 +139,7 @@ defined( 'ABSPATH' ) || exit;
 				<th><label><?php esc_html_e( 'Other tools', 'post-collection' ); ?></label></th>
 				<td>
 					<input type="text" id="friends-search-placeholder-url" value="<?php echo esc_attr( $args['post_collection_url'] . '&amp;url=%s' ); ?>" style="width: 30em" />
-					<button type="button" class="button" onclick="copyToClipboard()"><?php esc_html_e( 'Copy to clipboard', 'post-collection' ); ?></button>
-					<script>
-						function copyToClipboard() {
-							var input = document.getElementById("friends-search-placeholder-url");
-							input.select();
-
-							try {
-								var success = document.execCommand("copy");
-							} catch (err) {
-							}
-						}
-					</script>
+					<button type="button" class="button" data-post-collection-copy-url="#friends-search-placeholder-url"><?php esc_html_e( 'Copy to clipboard', 'post-collection' ); ?></button>
 					<p class="description">
 						<?php
 						echo wp_kses(
