@@ -13,6 +13,7 @@
 	"features": {
 		"networking": true
 	},
+	"login": true,
 	"steps": [
 		{
 			"step": "installPlugin",
@@ -29,13 +30,40 @@
 			"pluginData": {
 				"resource": "git:directory",
 				"url": "https://github.com/akirk/post-collection",
-				"ref": "dist/main",
+				"ref": "main",
 				"refType": "branch"
 			},
 			"options": {
-				"activate": true,
+				"activate": false,
 				"targetFolderName": "post-collection"
 			}
+		},
+		{
+			"step": "installPlugin",
+			"pluginData": {
+				"resource": "git:directory",
+				"url": "https://github.com/akirk/wp-app",
+				"ref": "main",
+				"refType": "branch",
+				"path": "src"
+			},
+			"options": {
+				"activate": false,
+				"targetFolderName": "post-collection/vendor/akirk/wp-app"
+			}
+		},
+		{
+			"step": "mkdir",
+			"path": "wordpress/wp-content/plugins/post-collection/vendor"
+		},
+		{
+			"step": "writeFile",
+			"path": "/wordpress/wp-content/plugins/post-collection/vendor/autoload.php",
+			"data": "<?php\nrequire_once __DIR__ . '/akirk/wp-app/functions.php';\nspl_autoload_register( static function ( $class ) {\n\t$map = [\n\t\t'WpApp\\\\BaseApp' => 'abstract-baseapp.php',\n\t\t'WpApp\\\\BaseStorage' => 'BaseStorage.php',\n\t\t'WpApp\\\\Masterbar' => 'class-masterbar.php',\n\t\t'WpApp\\\\Openstation' => 'class-openstation.php',\n\t\t'WpApp\\\\Pwa' => 'class-pwa.php',\n\t\t'WpApp\\\\Registry' => 'class-registry.php',\n\t\t'WpApp\\\\Router' => 'class-router.php',\n\t\t'WpApp\\\\Settings' => 'class-settings.php',\n\t\t'WpApp\\\\WpApp' => 'class-wpapp.php',\n\t\t'WpApp\\\\Rest\\\\Access' => 'rest/class-access.php',\n\t\t'WpApp\\\\Rest\\\\Private_Posts_Controller' => 'rest/class-private-posts-controller.php',\n\t\t'WpApp\\\\Rest\\\\Private_Terms_Controller' => 'rest/class-private-terms-controller.php',\n\t];\n\tif ( isset( $map[ $class ] ) ) {\n\t\trequire_once __DIR__ . '/akirk/wp-app/' . $map[ $class ];\n\t}\n} );\n"
+		},
+		{
+			"step": "activatePlugin",
+			"pluginPath": "post-collection/post-collection.php"
 		}
 	]
 }
