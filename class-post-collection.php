@@ -270,12 +270,10 @@ class Post_Collection {
 		add_action( 'pre_get_posts', array( $this, 'filter_collection_friend_posts_query' ), 20 );
 		add_action( 'tool_box', array( $this, 'toolbox_bookmarklet' ) );
 		add_filter( 'user_row_actions', array( $this, 'user_row_actions' ), 10, 2 );
-		add_action( 'admin_menu', array( $this, 'admin_menu' ), 50 );
 		add_action( 'admin_bar_menu', array( $this, 'admin_bar_new_content' ), 72 );
 		add_action( 'enqueue_block_editor_assets', array( $this, 'enqueue_block_editor_assets' ) );
 		add_action( 'wp_enqueue_scripts', array( $this, 'enqueue_scripts' ), 99999 );
 		add_action( 'wp_loaded', array( $this, 'save_url_endpoint' ), 100 );
-		add_filter( 'get_edit_user_link', array( $this, 'edit_post_collection_link' ), 10, 2 );
 		add_action( 'friend_post_edit_link', array( $this, 'allow_post_editing' ), 10, 2 );
 		add_action( 'friends_show_author_edit', array( $this, 'friends_show_author_edit' ), 10, 2 );
 		add_action( 'friends_entry_dropdown_menu', array( $this, 'entry_dropdown_menu' ), 10, 2 );
@@ -552,9 +550,15 @@ class Post_Collection {
 		if ( $is_collected_post && $is_post_collection_user ) {
 			echo wp_kses( $divider, $list_tags );
 			$divider = '';
-			?>
-			<li class="menu-item"><a href="<?php echo esc_url( get_edit_user_link( $user_id ) ); ?>"><?php esc_html_e( 'Edit Post Collection', 'post-collection' ); ?></a></li>
-			<?php
+			$terms    = get_the_terms( $post, self::COLLECTION_TAXONOMY );
+			$app      = class_exists( __NAMESPACE__ . '\Post_Collection_App' ) ? Post_Collection_App::instance() : null;
+			$term     = is_array( $terms ) && ! empty( $terms ) ? reset( $terms ) : null;
+			$edit_url = $app && $term && ! is_wp_error( $term ) ? $app->get_collection_settings_url( $term ) : '';
+			if ( $edit_url ) :
+				?>
+				<li class="menu-item"><a href="<?php echo esc_url( $edit_url ); ?>"><?php esc_html_e( 'Edit Post Collection', 'post-collection' ); ?></a></li>
+				<?php
+			endif;
 			if ( 'private' === get_post_status() ) {
 				?>
 				<li class="menu-item"><a href="#" data-id="<?php echo esc_attr( get_the_ID() ); ?>" class="post-collection-mark-publish"><?php esc_html_e( 'Show post in the feed', 'post-collection' ); ?></a></li>
@@ -665,21 +669,6 @@ class Post_Collection {
 		return User::get_post_author( $post );
 	}
 
-	public function edit_post_collection_link( $link, $user_id ) {
-		$user = new \WP_User( $user_id );
-		if ( is_multisite() && is_super_admin( $user->ID ) ) {
-			return $link;
-		}
-		if (
-			! $user->has_cap( 'post_collection' )
-		) {
-			return $link;
-		}
-
-		return self_admin_url( 'admin.php?page=edit-post-collection&user=' . $user_id );
-	}
-
-
 	public function is_post_collection_user( $user_id ) {
 		static $cache = array();
 
@@ -689,249 +678,6 @@ class Post_Collection {
 		}
 
 		return $cache[ $user_id ];
-	}
-
-	/**
-	 * Process access for the Friends Edit User page
-	 */
-	private function check_edit_post_collection() {
-		if ( ! current_user_can( $this->get_required_role() ) ) {
-			wp_die( esc_html__( 'Sorry, you are not allowed to edit this user.' ) ); // phpcs:ignore WordPress.WP.I18n.MissingArgDomain
-		}
-
-		if ( ! isset( $_GET['user'] ) || ! is_numeric( $_GET['user'] ) ) {
-			wp_die( esc_html__( 'Invalid user ID.' ) ); // phpcs:ignore WordPress.WP.I18n.MissingArgDomain
-		}
-
-		$user = new User( intval( $_GET['user'] ) );
-		if ( ! $user || is_wp_error( $user ) ) {
-			wp_die( esc_html__( 'Invalid user ID.' ) ); // phpcs:ignore WordPress.WP.I18n.MissingArgDomain
-		}
-
-		if ( is_multisite() && is_super_admin( intval( $_GET['user'] ) ) ) {
-			wp_die( esc_html__( 'Invalid user ID.' ) ); // phpcs:ignore WordPress.WP.I18n.MissingArgDomain
-		}
-
-		if (
-			! $user->has_cap( 'post_collection' )
-		) {
-			wp_die( esc_html__( 'This is not a user related to this plugin.', 'post-collection' ) );
-		}
-
-		return $user;
-	}
-
-	/**
-	 * Process the Friends Edit Post Collection page
-	 */
-	public function process_edit_post_collection() {
-		$user    = $this->check_edit_post_collection();
-		$arg       = 'updated';
-		$arg_value = 1;
-
-		if ( isset( $_POST['_wpnonce'] ) && wp_verify_nonce( sanitize_key( wp_unslash( $_POST['_wpnonce'] ) ), 'edit-post-collection-' . $user->ID ) ) {
-
-			$display_name = isset( $_POST['display_name'] ) ? trim( sanitize_text_field( wp_unslash( $_POST['display_name'] ) ) ) : '';
-			if ( $display_name ) {
-				$user->display_name = $display_name;
-			}
-			$user->description = isset( $_POST['description'] ) ? trim( sanitize_textarea_field( wp_unslash( $_POST['description'] ) ) ) : '';
-			wp_update_user( $user );
-
-			if ( ! empty( $_POST['publish_post_collection'] ) ) {
-				update_user_option( $user->ID, 'friends_publish_post_collection', true );
-			} else {
-				delete_user_option( $user->ID, 'friends_publish_post_collection' );
-			}
-			$frontend_mode = isset( $_POST['frontend_mode'] ) ? sanitize_key( wp_unslash( $_POST['frontend_mode'] ) ) : 'posts';
-			if ( in_array( $frontend_mode, array( 'bookmarks', 'posts' ), true ) ) {
-				update_user_option( $user->ID, 'post_collection_frontend_mode', $frontend_mode );
-			}
-			$frontend_view = isset( $_POST['frontend_view'] ) ? sanitize_key( wp_unslash( $_POST['frontend_view'] ) ) : 'reader';
-			if ( in_array( $frontend_view, array( 'board', 'links', 'reader' ), true ) ) {
-				update_user_option( $user->ID, 'post_collection_frontend_view', $frontend_view );
-			}
-			if ( ! empty( $_POST['hide_from_home'] ) ) {
-				update_user_option( $user->ID, 'post_collection_hide_from_home', true );
-			} else {
-				delete_user_option( $user->ID, 'post_collection_hide_from_home' );
-			}
-			if ( isset( $_POST['dropdown'] ) ) {
-				switch ( sanitize_key( wp_unslash( $_POST['dropdown'] ) ) ) {
-					case 'inactive':
-						update_user_option( $user->ID, 'friends_post_collection_inactive', true );
-						break;
-					case 'move':
-						delete_user_option( $user->ID, 'friends_post_collection_inactive' );
-						delete_user_option( $user->ID, 'friends_post_collection_copy_mode' );
-						break;
-					case 'copy':
-						delete_user_option( $user->ID, 'friends_post_collection_inactive' );
-						update_user_option( $user->ID, 'friends_post_collection_copy_mode', true );
-						break;
-				}
-			}
-		} else {
-			return;
-		}
-
-		if ( isset( $_GET['wp_http_referer'] ) ) {
-			wp_safe_redirect( esc_url_raw( wp_unslash( $_GET['wp_http_referer'] ) ) );
-		} else {
-			$request_uri = isset( $_SERVER['REQUEST_URI'] ) ? esc_url_raw( wp_unslash( $_SERVER['REQUEST_URI'] ) ) : '';
-			wp_safe_redirect( add_query_arg( $arg, $arg_value, remove_query_arg( array( 'wp_http_referer', '_wpnonce' ), $request_uri ) ) );
-		}
-		exit;
-	}
-
-	public function render_edit_post_collection() {
-		$user = $this->check_edit_post_collection();
-
-		wp_enqueue_script(
-			'post-collection-admin',
-			plugins_url( 'post-collection-admin.js', __FILE__ ),
-			array(),
-			filemtime( __DIR__ . '/post-collection-admin.js' ),
-			true
-		);
-
-		$args = array(
-			'user'                => $user,
-			'inactive'            => get_user_option( 'friends_post_collection_inactive', $user->ID ),
-			'copy_mode'           => get_user_option( 'friends_post_collection_copy_mode', $user->ID ),
-			'posts'               => new \WP_Query(
-				array(
-					'post_type'   => self::CPT,
-					'post_status' => array( 'publish', 'private' ),
-					'author'      => $user->ID,
-				)
-			),
-			'post_collection_url' => home_url( '/?user=' . $user->ID ),
-			'bookmarklet_js'      => $this->get_bookmarklet_js(),
-			'frontend_mode'       => get_user_option( 'post_collection_frontend_mode', $user->ID ),
-			'frontend_view'       => get_user_option( 'post_collection_frontend_view', $user->ID ),
-			'hide_from_home'      => get_user_option( 'post_collection_hide_from_home', $user->ID ),
-			'frontend_url'        => class_exists( __NAMESPACE__ . '\Post_Collection_App' ) && Post_Collection_App::instance() ? Post_Collection_App::instance()->get_collection_url( $user ) : '',
-		);
-
-		?>
-		<h1><?php echo esc_html( $user->user_login ); ?></h1>
-		<?php
-
-		if ( isset( $_GET['updated'] ) ) {
-			?>
-			<div id="message" class="updated notice is-dismissible"><p><?php esc_html_e( 'User was updated.', 'post-collection' ); ?></p></div>
-			<?php
-		} elseif ( isset( $_GET['error'] ) ) {
-			?>
-			<div id="message" class="updated error is-dismissible"><p><?php esc_html_e( 'An error occurred.', 'post-collection' ); ?></p></div>
-			<?php
-		}
-
-		$this->template_loader()->get_template_part( 'admin/edit-post-collection', null, $args );
-	}
-
-	/**
-	 * Process access for the Friends create User page
-	 */
-	private function check_create_post_collection() {
-		if ( ! current_user_can( $this->get_required_role() ) ) {
-			wp_die( esc_html__( 'Sorry, you are not allowed to create this user.' ) ); // phpcs:ignore WordPress.WP.I18n.MissingArgDomain
-		}
-
-		$user = (object) array(
-			'user_login'   => null,
-			'display_name' => null,
-		);
-		if ( isset( $_POST['display_name'] ) ) {
-			$user->display_name = sanitize_text_field( wp_unslash( $_POST['display_name'] ) );
-		}
-
-		if ( isset( $_POST['user_login'] ) ) {
-			$user->user_login = sanitize_user( wp_unslash( $_POST['user_login'] ) );
-			if ( ! $user->user_login && $user->display_name ) {
-				$user->user_login = User::sanitize_username( $user->display_name );
-			}
-		}
-		return $user;
-	}
-
-	/**
-	 * Process the Friends Create Post Collection page
-	 */
-	public function process_create_post_collection() {
-		$errors = new \WP_Error();
-		$user   = $this->check_create_post_collection();
-
-		if ( ! $user->user_login ) {
-			$errors->add( 'user_login', __( '<strong>Error</strong>: This username is invalid because it uses illegal characters. Please enter a valid username.' ) ); // phpcs:ignore WordPress.WP.I18n.MissingArgDomain
-		} elseif ( username_exists( $user->user_login ) ) {
-			$errors->add( 'user_login', __( '<strong>Error</strong>: This username is already registered. Please choose another one.' ) ); // phpcs:ignore WordPress.WP.I18n.MissingArgDomain
-		} elseif ( ! $user->display_name ) {
-			$errors->add( 'user_login', __( '<strong>Error</strong>: Please enter a valid display name.' ) ); // phpcs:ignore WordPress.WP.I18n.MissingArgDomain
-		}
-
-		if ( ! $errors->has_errors() ) {
-			$userdata  = array(
-				'user_login'   => $user->user_login,
-				'display_name' => $user->display_name,
-				'user_pass'    => wp_generate_password( 256 ),
-				'role'         => 'post_collection',
-			);
-			$user_id = wp_insert_user( $userdata );
-			if ( is_wp_error( $user_id ) ) {
-				return $user_id;
-			}
-			wp_safe_redirect( self_admin_url( 'admin.php?page=edit-post-collection&user=' . $user_id ) );
-			exit;
-		}
-
-		return $errors;
-	}
-
-	public function render_create_post_collection() {
-		$response = null;
-		$user     = $this->check_create_post_collection();
-
-		if ( ! empty( $_POST ) ) {
-			if ( ! isset( $_POST['_wpnonce'] ) || ! wp_verify_nonce( sanitize_key( wp_unslash( $_POST['_wpnonce'] ) ), 'create-post-collection' ) ) {
-				$response = new \WP_Error( 'invalid-nonce', __( 'For security reasons, please verify the URL and click next if you want to proceed.', 'post-collection' ) );
-			} else {
-				$response = $this->process_create_post_collection();
-			}
-		}
-
-		?>
-		<h1><?php esc_html_e( 'Create Post Collection', 'post-collection' ); ?></h1>
-		<?php
-
-		if ( is_wp_error( $response ) ) {
-			?>
-			<div id="message" class="updated notice is-dismissible"><p>
-			<?php
-			echo wp_kses(
-				$response->get_error_message(),
-				array(
-					'strong' => array(),
-					'a'      => array(
-						'href'   => array(),
-						'rel'    => array(),
-						'target' => array(),
-					),
-				)
-			);
-			?>
-				</p>
-			</div>
-			<?php
-		}
-
-		$args = array(
-			'user_login'   => $user->user_login,
-			'display_name' => $user->display_name,
-		);
-
-		$this->template_loader()->get_template_part( 'admin/create-post-collection', null, $args );
 	}
 
 	public function enqueue_scripts() {
@@ -1013,29 +759,6 @@ class Post_Collection {
 		return '';
 	}
 
-	public function admin_menu() {
-		if ( $this->friends ) {
-			add_submenu_page(
-				'',
-				__( 'Create Post Collection', 'post-collection' ),
-				__( 'Create Post Collection', 'post-collection' ),
-				$this->get_required_role(),
-				'create-post-collection',
-				array( $this, 'render_create_post_collection' )
-			);
-
-			add_submenu_page(
-				'',
-				__( 'Edit Post Collection', 'post-collection' ),
-				__( 'Edit Post Collection', 'post-collection' ),
-				$this->get_required_role(),
-				'edit-post-collection',
-				array( $this, 'render_edit_post_collection' )
-			);
-		}
-	}
-
-
 	/**
 	 * Add a Post Collection entry to the New Content admin section
 	 *
@@ -1068,14 +791,6 @@ class Post_Collection {
 			)
 		) {
 			return $actions;
-		}
-
-		if ( is_multisite() ) {
-			if ( is_super_admin( $user->ID ) ) {
-				return $actions;
-			}
-
-			$actions = array_merge( array( 'edit' => '<a href="' . esc_url( self_admin_url( 'admin.php?page=edit-post-collection&user=' . $user->ID ) ) . '">' . __( 'Edit' ) . '</a>' ), $actions ); // phpcs:ignore WordPress.WP.I18n.MissingArgDomain
 		}
 
 		$friend_user = new User( $user );

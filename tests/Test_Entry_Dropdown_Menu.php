@@ -69,7 +69,7 @@ class Test_Entry_Dropdown_Menu extends TestCase {
 
 		$output = $this->render_dropdown( $post, $collection_user );
 
-		$this->assertStringContainsString( 'Edit Post Collection', $output );
+		$this->assertStringNotContainsString( 'Edit Post Collection', $output );
 		$this->assertStringContainsString( 'Hide post from the feed', $output );
 		$this->assertStringNotContainsString( 'Move to Bookmarks', $output );
 		$this->assertStringContainsString( 'Move to Saved Posts', $output );
