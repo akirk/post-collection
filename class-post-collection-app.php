@@ -569,38 +569,89 @@ class Post_Collection_App {
 			return;
 		}
 
-		if ( ! $this->can_manage_collections() ) {
-			wp_die( esc_html__( 'Sorry, you are not allowed to edit this collection.', 'post-collection' ), '', array( 'response' => 403 ) );
+		$result = $this->update_collection_settings_from_request( $_POST );
+		if ( is_wp_error( $result ) ) {
+			$status_code = $result->get_error_data( 'status' );
+			wp_die( esc_html( $result->get_error_message() ), '', array( 'response' => absint( $status_code ? $status_code : 400 ) ) );
 		}
 
-		$term_id = isset( $_POST['collection_term_id'] ) ? absint( wp_unslash( $_POST['collection_term_id'] ) ) : 0;
-		if ( ! $term_id || ! isset( $_POST['_wpnonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['_wpnonce'] ) ), 'post-collection-settings-' . $term_id ) ) {
-			wp_die( esc_html__( 'The collection settings request could not be verified.', 'post-collection' ), '', array( 'response' => 403 ) );
+		wp_safe_redirect( add_query_arg( 'pc-settings-updated', '1', $this->get_collection_settings_url( $result ) ) );
+		exit;
+	}
+
+	/**
+	 * Update a post collection term from settings request data.
+	 *
+	 * @param array $data Request data.
+	 * @return \WP_Term|\WP_Error
+	 */
+	public function update_collection_settings_from_request( array $data ) {
+		if ( ! $this->can_manage_collections() ) {
+			return new \WP_Error( 'forbidden', __( 'Sorry, you are not allowed to edit this collection.', 'post-collection' ), array( 'status' => 403 ) );
+		}
+
+		$term_id = isset( $data['collection_term_id'] ) ? absint( wp_unslash( $data['collection_term_id'] ) ) : 0;
+		if ( ! $term_id || ! isset( $data['_wpnonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $data['_wpnonce'] ) ), 'post-collection-settings-' . $term_id ) ) {
+			return new \WP_Error( 'invalid_nonce', __( 'The collection settings request could not be verified.', 'post-collection' ), array( 'status' => 403 ) );
 		}
 
 		$collection = get_term( $term_id, Post_Collection::COLLECTION_TAXONOMY );
 		if ( ! $collection || is_wp_error( $collection ) ) {
-			wp_die( esc_html__( 'Invalid post collection.', 'post-collection' ), '', array( 'response' => 404 ) );
+			return new \WP_Error( 'invalid_collection', __( 'Invalid post collection.', 'post-collection' ), array( 'status' => 404 ) );
 		}
 
-		$frontend_mode = isset( $_POST['frontend_mode'] ) ? sanitize_key( wp_unslash( $_POST['frontend_mode'] ) ) : 'posts';
+		$display_name = isset( $data['display_name'] ) ? sanitize_text_field( wp_unslash( $data['display_name'] ) ) : $collection->name;
+		if ( '' === $display_name ) {
+			return new \WP_Error( 'invalid_display_name', __( 'Please enter a display name.', 'post-collection' ), array( 'status' => 400 ) );
+		}
+
+		$user_login = isset( $data['user_login'] ) ? sanitize_user( wp_unslash( $data['user_login'] ) ) : $collection->slug;
+		if ( '' === $user_login ) {
+			return new \WP_Error( 'invalid_collection_slug', __( 'Please enter a valid collection slug.', 'post-collection' ), array( 'status' => 400 ) );
+		}
+
+		$existing_slug = get_term_by( 'slug', $user_login, Post_Collection::COLLECTION_TAXONOMY );
+		if ( $existing_slug && ! is_wp_error( $existing_slug ) && (int) $existing_slug->term_id !== (int) $collection->term_id ) {
+			return new \WP_Error( 'existing_collection_slug', __( 'That collection slug already exists. Please choose another one.', 'post-collection' ), array( 'status' => 400 ) );
+		}
+
+		if ( $display_name !== $collection->name || $user_login !== $collection->slug ) {
+			$updated = wp_update_term(
+				$collection->term_id,
+				Post_Collection::COLLECTION_TAXONOMY,
+				array(
+					'name' => $display_name,
+					'slug' => $user_login,
+				)
+			);
+
+			if ( is_wp_error( $updated ) ) {
+				return $updated;
+			}
+
+			$collection = get_term( $collection->term_id, Post_Collection::COLLECTION_TAXONOMY );
+			if ( ! $collection || is_wp_error( $collection ) ) {
+				return new \WP_Error( 'collection_not_found', __( 'The collection was updated but could not be loaded.', 'post-collection' ), array( 'status' => 500 ) );
+			}
+		}
+
+		$frontend_mode = isset( $data['frontend_mode'] ) ? sanitize_key( wp_unslash( $data['frontend_mode'] ) ) : 'posts';
 		if ( in_array( $frontend_mode, array( 'bookmarks', 'posts' ), true ) ) {
 			update_term_meta( $collection->term_id, 'post_collection_frontend_mode', $frontend_mode );
 		}
 
-		$frontend_view = isset( $_POST['frontend_view'] ) ? sanitize_key( wp_unslash( $_POST['frontend_view'] ) ) : 'reader';
+		$frontend_view = isset( $data['frontend_view'] ) ? sanitize_key( wp_unslash( $data['frontend_view'] ) ) : 'reader';
 		if ( in_array( $frontend_view, array( 'board', 'links', 'reader' ), true ) ) {
 			update_term_meta( $collection->term_id, 'post_collection_frontend_view', $frontend_view );
 		}
 
-		if ( ! empty( $_POST['hide_from_home'] ) ) {
+		if ( ! empty( $data['hide_from_home'] ) ) {
 			update_term_meta( $collection->term_id, 'post_collection_hide_from_home', true );
 		} else {
 			delete_term_meta( $collection->term_id, 'post_collection_hide_from_home' );
 		}
 
-		wp_safe_redirect( add_query_arg( 'pc-settings-updated', '1', $this->get_collection_settings_url( $collection ) ) );
-		exit;
+		return $collection;
 	}
 
 	/**

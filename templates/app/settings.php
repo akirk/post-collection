@@ -63,6 +63,14 @@ $reassign_collections   = array_filter(
 			<input type="hidden" name="collection_term_id" value="<?php echo esc_attr( $collection->term_id ); ?>">
 			<?php wp_nonce_field( 'post-collection-settings-' . $collection->term_id ); ?>
 			<label>
+				<span><?php esc_html_e( 'Display name', 'post-collection' ); ?></span>
+				<input type="text" name="display_name" value="<?php echo esc_attr( $collection->name ); ?>" required>
+			</label>
+			<label>
+				<span><?php esc_html_e( 'Slug', 'post-collection' ); ?></span>
+				<input type="text" name="user_login" value="<?php echo esc_attr( $collection->slug ); ?>" required>
+			</label>
+			<label>
 				<span><?php esc_html_e( 'Type', 'post-collection' ); ?></span>
 				<select name="frontend_mode">
 					<option value="posts"<?php selected( 'posts', $configured_mode ?: 'posts' ); ?>><?php esc_html_e( 'Posts', 'post-collection' ); ?></option>

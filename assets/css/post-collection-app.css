@@ -428,9 +428,10 @@ body.pc-new-collection-page .pc-detail-header {
 	text-transform: uppercase;
 }
 
+.pc-settings-page-form.pc-collection-settings input[type="text"],
 .pc-settings-page-form.pc-collection-settings select {
 	max-width: 420px;
-	background-color: var(--pc-color-background);
+	background-color: var(--pc-color-surface);
 }
 
 .pc-settings-page-form .pc-form-actions {
@@ -686,6 +687,7 @@ body.pc-new-collection-page .pc-detail-header {
 	margin: 0;
 }
 
+.pc-collection-settings input[type="text"],
 .pc-collection-settings select,
 .pc-create-collection-form input,
 .pc-create-collection-form select,
@@ -702,6 +704,7 @@ body.pc-new-collection-page .pc-detail-header {
 	font: inherit;
 }
 
+.pc-collection-settings input[type="text"]:focus,
 .pc-collection-settings select:focus,
 .pc-create-collection-form input:focus,
 .pc-create-collection-form select:focus,
