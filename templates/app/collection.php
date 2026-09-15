@@ -93,6 +93,16 @@ if ( '' !== $active_tag ) {
 			</form>
 		<?php endif; ?>
 
+		<?php
+		/**
+		 * Fires where integrations can expose collection-specific download URLs.
+		 *
+		 * @param \PostCollection\Post_Collection_App $app        The app instance.
+		 * @param \WP_Term                           $collection The collection in context.
+		 */
+		do_action( 'post_collection_app_download_urls', $app, $collection );
+		?>
+
 		<form class="pc-filter-bar" method="get" action="<?php echo esc_url( $base_url ); ?>">
 			<label class="screen-reader-text" for="pc-search"><?php esc_html_e( 'Search this collection', 'post-collection' ); ?></label>
 			<input id="pc-search" type="search" name="pc-search" value="<?php echo esc_attr( $search ); ?>" placeholder="<?php esc_attr_e( 'Search saved items', 'post-collection' ); ?>">
