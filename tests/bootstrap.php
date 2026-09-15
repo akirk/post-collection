@@ -831,6 +831,27 @@ namespace {
 		);
 	}
 
+	function wp_update_term( $term_id, $taxonomy, $args = array() ) {
+		$term_id = (int) $term_id;
+		if ( empty( $GLOBALS['wp_test_registered_terms'][ $taxonomy ][ $term_id ] ) ) {
+			return new WP_Error( 'invalid_term', 'Invalid term.' );
+		}
+
+		$term = $GLOBALS['wp_test_registered_terms'][ $taxonomy ][ $term_id ];
+		if ( isset( $args['name'] ) ) {
+			$term->name = $args['name'];
+		}
+		if ( isset( $args['slug'] ) ) {
+			$term->slug = $args['slug'];
+		}
+		$GLOBALS['wp_test_registered_terms'][ $taxonomy ][ $term_id ] = $term;
+
+		return array(
+			'term_id'          => $term_id,
+			'term_taxonomy_id' => $term_id,
+		);
+	}
+
 	function wp_delete_term( $term, $taxonomy, $args = array() ) {
 		$term_id = (int) $term;
 		if ( empty( $GLOBALS['wp_test_registered_terms'][ $taxonomy ][ $term_id ] ) ) {
