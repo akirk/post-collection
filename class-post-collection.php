@@ -975,6 +975,7 @@ class Post_Collection {
 	public function save_url_endpoint() {
 		$delimiter = '===BODY===';
 		$url = false;
+		$body = false;
 		$shared_title = '';
 		$collection = null;
 		if ( isset( $_REQUEST['collect-post'], $_REQUEST['collection'] ) ) {
@@ -986,6 +987,10 @@ class Post_Collection {
 			$shared_payload = $this->parse_shared_url_payload( wp_unslash( $_REQUEST['collect-post'] ) );
 			$url            = $shared_payload['url'];
 			$shared_title   = $shared_payload['title'];
+			if ( isset( $_POST['body'] ) ) {
+				// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- The raw page HTML is input for the Readability extractor; the extracted result is run through wp_kses_post() before it is saved.
+				$body = wp_unslash( $_POST['body'] );
+			}
 		}
 		if ( isset( $_REQUEST['collect-post'] ) && isset( $_REQUEST['user'] ) ) {
 			if ( ! intval( $_REQUEST['user'] ) ) {
@@ -996,7 +1001,6 @@ class Post_Collection {
 			list( $last_url, $last_body ) = explode( $delimiter, $saved_body ? $saved_body : $delimiter, 2 );
 			// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Validated with check_url() before it is stored or fetched.
 			$url = wp_unslash( $_REQUEST['collect-post'] );
-			$body = false;
 			if ( isset( $_POST['body'] ) ) {
 				// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- The raw page HTML is input for the Readability extractor; the extracted result is run through wp_kses_post() before it is saved.
 				$body = wp_unslash( $_POST['body'] );
@@ -1030,7 +1034,9 @@ class Post_Collection {
 		}
 
 		if ( $body ) {
-			update_user_option( absint( wp_unslash( $_REQUEST['user'] ) ), 'post-collection_last_save', $url . $delimiter . $body );
+			if ( isset( $_REQUEST['user'] ) ) {
+				update_user_option( absint( wp_unslash( $_REQUEST['user'] ) ), 'post-collection_last_save', $url . $delimiter . $body );
+			}
 		}
 
 		if ( ! current_user_can( $this->get_required_role() ) ) {
@@ -1284,6 +1290,8 @@ class Post_Collection {
 				}
 			}
 
+			$this->update_existing_extracted_item_meta( $post_id, $url, $content );
+
 			if ( $return_details ) {
 				return array(
 					'post_id'           => (int) $post_id,
@@ -1350,9 +1358,7 @@ class Post_Collection {
 			$content_extracted = true;
 		}
 
-		if ( $item->author ) {
-			update_post_meta( $post_id, 'author', $item->author );
-		}
+		$this->update_extracted_item_meta( $post_id, $item );
 
 		if ( $tags ) {
 			$terms = wp_set_post_terms( $post_id, $tags, $this->get_tag_taxonomy(), true );
@@ -1371,6 +1377,41 @@ class Post_Collection {
 		}
 
 		return (int) $post_id;
+	}
+
+	/**
+	 * Store metadata extracted from the original article.
+	 *
+	 * @param int           $post_id Saved post ID.
+	 * @param ExtractedPage $item    Extracted article item.
+	 */
+	private function update_extracted_item_meta( $post_id, ExtractedPage $item ) {
+		if ( $item->author ) {
+			update_post_meta( $post_id, 'author', wp_strip_all_tags( trim( $item->author ) ) );
+		}
+		if ( $item->published_time ) {
+			update_post_meta( $post_id, 'published_time', $item->published_time );
+		}
+	}
+
+	/**
+	 * Refresh extracted metadata for an already-saved item when posted HTML is available.
+	 *
+	 * @param int    $post_id Saved post ID.
+	 * @param string $url     Source URL.
+	 * @param string $content Optional posted HTML content.
+	 */
+	private function update_existing_extracted_item_meta( $post_id, $url, $content ) {
+		if ( ! is_string( $content ) || '' === trim( $content ) ) {
+			return;
+		}
+
+		$item = $this->download( $url, $content );
+		if ( is_wp_error( $item ) ) {
+			return;
+		}
+
+		$this->update_extracted_item_meta( $post_id, $item );
 	}
 
 	/**
@@ -2120,9 +2161,7 @@ class Post_Collection {
 				$content_extracted = true;
 			}
 
-			if ( $item->author ) {
-				update_post_meta( $post_id, 'author', $item->author );
-			}
+			$this->update_extracted_item_meta( $post_id, $item );
 			$created = true;
 		} elseif ( $title_override ) {
 			$updated_post = wp_update_post(
@@ -2135,6 +2174,10 @@ class Post_Collection {
 			if ( is_wp_error( $updated_post ) ) {
 				return $updated_post;
 			}
+		}
+
+		if ( ! $created ) {
+			$this->update_existing_extracted_item_meta( $post_id, $url, $content );
 		}
 
 		wp_untrash_post( $post_id );
@@ -2444,6 +2487,7 @@ class Post_Collection {
 	 */
 	public function extract_content( $html, $url ) {
 		$item = new ExtractedPage( $url );
+		$metadata = $this->extract_article_metadata( $html );
 		$html = $this->prepare_html_for_readability( $html );
 
 		$config = new \andreskrey\Readability\Configuration();
@@ -2461,6 +2505,12 @@ class Post_Collection {
 			$item->title = $readability->getTitle();
 			$item->content = $readability->getContent();
 			$item->author = $readability->getAuthor();
+			if ( ! $item->author && ! empty( $metadata['author'] ) ) {
+				$item->author = $metadata['author'];
+			}
+			if ( ! empty( $metadata['published_time'] ) ) {
+				$item->published_time = $metadata['published_time'];
+			}
 
 			$item->content = str_replace( '&#xD;', '', $item->content );
 			$item->content = $this->remove_artificial_line_breaks( $item->content );
@@ -2493,6 +2543,269 @@ class Post_Collection {
 		}
 
 		return $item;
+	}
+
+	/**
+	 * Extract article metadata from common HTML sources.
+	 *
+	 * @param string $html Raw article HTML.
+	 * @return array Extracted metadata.
+	 */
+	private function extract_article_metadata( $html ) {
+		$metadata = array(
+			'author'         => '',
+			'published_time' => '',
+		);
+
+		if ( ! class_exists( '\DOMDocument' ) || ! class_exists( '\DOMXPath' ) ) {
+			return $metadata;
+		}
+
+		$previous_errors = libxml_use_internal_errors( true );
+		$dom             = new \DOMDocument();
+		$loaded          = $dom->loadHTML( '<?xml encoding="UTF-8">' . $html, LIBXML_NOWARNING | LIBXML_NOERROR );
+		if ( ! $loaded ) {
+			libxml_clear_errors();
+			libxml_use_internal_errors( $previous_errors );
+			return $metadata;
+		}
+
+		$xpath = new \DOMXPath( $dom );
+		$metadata['author'] = $this->get_first_meta_content(
+			$xpath,
+			array(
+				'name:author',
+				'property:article:author',
+				'name:parsely-author',
+				'name:sailthru.author',
+			)
+		);
+		$metadata['published_time'] = $this->get_first_meta_content(
+			$xpath,
+			array(
+				'property:article:published_time',
+				'name:article:published_time',
+				'name:pubdate',
+				'name:publishdate',
+				'name:date',
+				'itemprop:datePublished',
+			)
+		);
+
+		$this->add_json_ld_article_metadata( $xpath, $metadata );
+
+		if ( ! $metadata['author'] ) {
+			$metadata['author'] = $this->get_first_text_content(
+				$xpath,
+				array(
+					'//article//*[contains(concat(" ", normalize-space(@class), " "), " entry-author ")]',
+					'//article//*[@rel="author"]',
+					'//article//*[contains(concat(" ", normalize-space(@class), " "), " byline ")]//*[contains(concat(" ", normalize-space(@class), " "), " author ")]',
+					'//article//*[contains(concat(" ", normalize-space(@class), " "), " author ")]',
+					'//*[contains(concat(" ", normalize-space(@class), " "), " entry-author ")]',
+					'//*[@rel="author"]',
+				)
+			);
+		}
+		if ( ! $metadata['published_time'] ) {
+			$metadata['published_time'] = $this->get_first_attribute_content(
+				$xpath,
+				array(
+					'//article//time[@datetime]',
+					'//time[@datetime]',
+				),
+				'datetime'
+			);
+		}
+
+		$metadata['author'] = $metadata['author'] ? wp_strip_all_tags( trim( html_entity_decode( $metadata['author'], ENT_QUOTES, 'UTF-8' ) ) ) : '';
+		$metadata['published_time'] = $this->normalize_published_time( $metadata['published_time'] );
+
+		libxml_clear_errors();
+		libxml_use_internal_errors( $previous_errors );
+
+		return $metadata;
+	}
+
+	/**
+	 * Get the first matching meta content value.
+	 *
+	 * @param \DOMXPath $xpath DOM XPath instance.
+	 * @param array     $candidates Attribute/value candidates.
+	 * @return string Meta content.
+	 */
+	private function get_first_meta_content( \DOMXPath $xpath, array $candidates ) {
+		foreach ( $candidates as $candidate ) {
+			list( $attribute, $value ) = explode( ':', $candidate, 2 );
+			$query = sprintf( '//meta[translate(@%1$s, "ABCDEFGHIJKLMNOPQRSTUVWXYZ", "abcdefghijklmnopqrstuvwxyz") = "%2$s"]/@content', $attribute, strtolower( $value ) );
+			$nodes = $xpath->query( $query );
+			if ( $nodes && $nodes->length ) {
+				$content = trim( $nodes->item( 0 )->nodeValue );
+				if ( $content ) {
+					return $content;
+				}
+			}
+		}
+
+		return '';
+	}
+
+	/**
+	 * Get the first matching text content value.
+	 *
+	 * @param \DOMXPath $xpath DOM XPath instance.
+	 * @param array     $queries XPath queries.
+	 * @return string Text content.
+	 */
+	private function get_first_text_content( \DOMXPath $xpath, array $queries ) {
+		foreach ( $queries as $query ) {
+			$nodes = $xpath->query( $query );
+			if ( ! $nodes ) {
+				continue;
+			}
+			foreach ( $nodes as $node ) {
+				$text = trim( preg_replace( '/\s+/', ' ', $node->textContent ) );
+				if ( $text ) {
+					return $text;
+				}
+			}
+		}
+
+		return '';
+	}
+
+	/**
+	 * Get the first matching attribute content value.
+	 *
+	 * @param \DOMXPath $xpath     DOM XPath instance.
+	 * @param array     $queries   XPath queries.
+	 * @param string    $attribute Attribute name.
+	 * @return string Attribute content.
+	 */
+	private function get_first_attribute_content( \DOMXPath $xpath, array $queries, $attribute ) {
+		foreach ( $queries as $query ) {
+			$nodes = $xpath->query( $query );
+			if ( ! $nodes ) {
+				continue;
+			}
+			foreach ( $nodes as $node ) {
+				if ( $node instanceof \DOMElement ) {
+					$value = trim( $node->getAttribute( $attribute ) );
+					if ( $value ) {
+						return $value;
+					}
+				}
+			}
+		}
+
+		return '';
+	}
+
+	/**
+	 * Add metadata from JSON-LD article blocks.
+	 *
+	 * @param \DOMXPath $xpath    DOM XPath instance.
+	 * @param array     $metadata Metadata to populate.
+	 */
+	private function add_json_ld_article_metadata( \DOMXPath $xpath, array &$metadata ) {
+		$scripts = $xpath->query( '//script[@type="application/ld+json"]' );
+		if ( ! $scripts ) {
+			return;
+		}
+
+		foreach ( $scripts as $script ) {
+			$data = json_decode( trim( $script->textContent ), true );
+			if ( ! is_array( $data ) ) {
+				continue;
+			}
+			foreach ( $this->flatten_json_ld_nodes( $data ) as $node ) {
+				if ( ! is_array( $node ) ) {
+					continue;
+				}
+				if ( empty( $metadata['published_time'] ) && ! empty( $node['datePublished'] ) ) {
+					$metadata['published_time'] = is_array( $node['datePublished'] ) ? reset( $node['datePublished'] ) : $node['datePublished'];
+				}
+				if ( empty( $metadata['author'] ) && ! empty( $node['author'] ) ) {
+					$metadata['author'] = $this->get_json_ld_author_name( $node['author'] );
+				}
+				if ( $metadata['author'] && $metadata['published_time'] ) {
+					return;
+				}
+			}
+		}
+	}
+
+	/**
+	 * Flatten JSON-LD graph nodes.
+	 *
+	 * @param array $data JSON-LD data.
+	 * @return array Nodes.
+	 */
+	private function flatten_json_ld_nodes( array $data ) {
+		$nodes = array();
+		if ( isset( $data['@graph'] ) && is_array( $data['@graph'] ) ) {
+			foreach ( $data['@graph'] as $node ) {
+				if ( is_array( $node ) ) {
+					$nodes[] = $node;
+				}
+			}
+		}
+		if ( array_keys( $data ) !== range( 0, count( $data ) - 1 ) ) {
+			$nodes[] = $data;
+		} else {
+			foreach ( $data as $node ) {
+				if ( is_array( $node ) ) {
+					$nodes[] = $node;
+				}
+			}
+		}
+
+		return $nodes;
+	}
+
+	/**
+	 * Get an author name from JSON-LD author data.
+	 *
+	 * @param mixed $author Author data.
+	 * @return string Author name.
+	 */
+	private function get_json_ld_author_name( $author ) {
+		if ( is_string( $author ) ) {
+			return $author;
+		}
+		if ( isset( $author['name'] ) ) {
+			return is_array( $author['name'] ) ? reset( $author['name'] ) : $author['name'];
+		}
+		if ( is_array( $author ) ) {
+			foreach ( $author as $entry ) {
+				$name = $this->get_json_ld_author_name( $entry );
+				if ( $name ) {
+					return $name;
+				}
+			}
+		}
+
+		return '';
+	}
+
+	/**
+	 * Normalize a published time value for storage.
+	 *
+	 * @param string $value Date/time value.
+	 * @return string Normalized date/time.
+	 */
+	private function normalize_published_time( $value ) {
+		$value = trim( (string) $value );
+		if ( ! $value ) {
+			return '';
+		}
+
+		$timestamp = strtotime( $value );
+		if ( false === $timestamp ) {
+			return $value;
+		}
+
+		return gmdate( DATE_ATOM, $timestamp );
 	}
 
 	/**
@@ -3600,6 +3913,7 @@ class Post_Collection {
 		);
 
 		wp_update_post( $post_data );
+		$this->update_extracted_item_meta( $post->ID, $item );
 
 		wp_send_json_success(
 			array(
@@ -3687,6 +4001,7 @@ class Post_Collection {
 		}
 
 		wp_update_post( $post_data );
+		$this->update_extracted_item_meta( $post->ID, $item );
 
 		wp_send_json_success(
 			array(

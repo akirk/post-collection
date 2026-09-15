@@ -2085,6 +2085,39 @@ class Post_Collection_App {
 	}
 
 	/**
+	 * Get display metadata for a collected post date.
+	 *
+	 * The collection stays sorted by the saved post date. When the original
+	 * article date is available, this returns that date for display and marks it
+	 * so the UI can signal the distinction.
+	 *
+	 * @param \WP_Post $post The post.
+	 * @return array Date display data.
+	 */
+	public function get_post_display_date( \WP_Post $post ) {
+		$published_time = get_post_meta( $post->ID, 'published_time', true );
+		if ( $published_time ) {
+			$timestamp = is_numeric( $published_time ) ? (int) $published_time : strtotime( (string) $published_time );
+			if ( $timestamp ) {
+				$date_format = function_exists( 'get_option' ) ? get_option( 'date_format' ) : 'F j, Y';
+				return array(
+					'datetime'    => gmdate( DATE_W3C, $timestamp ),
+					'label'       => date_i18n( $date_format, $timestamp ),
+					'title'       => __( 'Original article date', 'post-collection' ),
+					'is_original' => true,
+				);
+			}
+		}
+
+		return array(
+			'datetime'    => get_the_date( DATE_W3C, $post ),
+			'label'       => get_the_date( '', $post ),
+			'title'       => '',
+			'is_original' => false,
+		);
+	}
+
+	/**
 	 * Calculate estimated read time in seconds.
 	 *
 	 * Based on the Friends plugin formula.

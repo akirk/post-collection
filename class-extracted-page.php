@@ -9,6 +9,7 @@ class ExtractedPage {
 	public $content;
 	public $url;
 	public $author;
+	public $published_time;
 	public $post_format = 'standard';
 	public $raw_html;
 

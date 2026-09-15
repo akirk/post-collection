@@ -53,6 +53,8 @@ class Test_Browser_Extension_Action extends TestCase {
 			'Source Title',
 			'<article><p>One two three.</p><p>Four &amp; five.</p></article>'
 		);
+		$this->plugin->download_item->author         = 'Source Author';
+		$this->plugin->download_item->published_time = '2026-06-29T16:44:13+00:00';
 
 		$result = $this->plugin->friends_browser_extension_action_save(
 			null,
@@ -66,6 +68,9 @@ class Test_Browser_Extension_Action extends TestCase {
 		$this->assertSame( 5, $result['word_count'] );
 		$this->assertSame( '5 words', $result['word_count_label'] );
 		$this->assertStringContainsString( '5 words', $result['message'] );
+		$saved_post = reset( $GLOBALS['wp_test_posts'] );
+		$this->assertSame( 'Source Author', get_post_meta( $saved_post->ID, 'author', true ) );
+		$this->assertSame( '2026-06-29T16:44:13+00:00', get_post_meta( $saved_post->ID, 'published_time', true ) );
 	}
 
 	public function test_existing_url_response_reports_existing_post_word_count() {
@@ -85,6 +90,13 @@ class Test_Browser_Extension_Action extends TestCase {
 		$GLOBALS['wp_test_posts'][ $post->ID ] = $post;
 		$GLOBALS['wp_test_terms'][ $post->ID ][ Post_Collection::COLLECTION_TAXONOMY ] = array( $collection->term_id );
 		$this->plugin->existing_post_id       = $post->ID;
+		$this->plugin->download_item = new ExtractedPage(
+			'https://source.example/post',
+			'Existing',
+			'<article><p>Updated article metadata.</p></article>'
+		);
+		$this->plugin->download_item->author         = 'Updated Source Author';
+		$this->plugin->download_item->published_time = '2026-07-01T08:30:00+00:00';
 
 		$result = $this->plugin->friends_browser_extension_action_save(
 			null,
@@ -98,6 +110,8 @@ class Test_Browser_Extension_Action extends TestCase {
 		$this->assertSame( 4, $result['word_count'] );
 		$this->assertSame( '4 words', $result['word_count_label'] );
 		$this->assertStringContainsString( 'already in the collection', $result['message'] );
+		$this->assertSame( 'Updated Source Author', get_post_meta( $post->ID, 'author', true ) );
+		$this->assertSame( '2026-07-01T08:30:00+00:00', get_post_meta( $post->ID, 'published_time', true ) );
 	}
 
 	public function test_archive_is_save_uses_original_url_from_posted_html() {

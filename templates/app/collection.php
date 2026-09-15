@@ -263,6 +263,7 @@ if ( '' !== $active_tag ) {
 					$read_status      = $app->get_article_note_status( $post );
 					$word_count_label = $app->get_post_word_count_label( $post );
 					$read_time_label  = $app->get_post_read_time_label( $post );
+					$display_date     = $app->get_post_display_date( $post );
 					$is_editing       = $quick_edit && intval( $post->ID ) === intval( $quick_edit_post_id );
 					$edit_url         = add_query_arg( array( 'pc-view' => 'links', 'pc-edit' => $post->ID ) ) . '#pc-link-' . $post->ID;
 					$cancel_url       = remove_query_arg( 'pc-edit' ) . '#pc-link-' . $post->ID;
@@ -282,7 +283,7 @@ if ( '' !== $active_tag ) {
 							<?php endif; ?>
 						</div>
 						<div class="pc-link-meta">
-							<time datetime="<?php echo esc_attr( get_the_date( DATE_W3C, $post ) ); ?>"><?php echo esc_html( get_the_date( '', $post ) ); ?></time>
+							<time class="<?php echo $display_date['is_original'] ? 'pc-original-date' : ''; ?>" datetime="<?php echo esc_attr( $display_date['datetime'] ); ?>"<?php echo $display_date['title'] ? ' title="' . esc_attr( $display_date['title'] ) . '"' : ''; ?>><?php echo esc_html( $display_date['label'] ); ?></time>
 							<span class="pc-reading-meta"><?php echo esc_html( $word_count_label ); ?></span>
 							<span class="pc-reading-meta"><?php echo esc_html( $read_time_label ); ?></span>
 							<span class="pc-link-host"><?php echo esc_html( $host ); ?></span>
@@ -364,6 +365,7 @@ if ( '' !== $active_tag ) {
 					$read_status      = $app->get_article_note_status( $post );
 					$word_count_label = $app->get_post_word_count_label( $post );
 					$read_time_label  = $app->get_post_read_time_label( $post );
+					$display_date     = $app->get_post_display_date( $post );
 					?>
 					<article class="pc-post-row<?php echo $image_url || $embed_html ? ' has-image' : ' is-text-only'; ?>" data-pc-item="<?php echo esc_attr( $post->ID ); ?>">
 						<?php if ( $embed_html ) : ?>
@@ -381,7 +383,7 @@ if ( '' !== $active_tag ) {
 							<?php endif; ?>
 							<div class="pc-row-meta">
 								<?php $app->render_item_select( $post, 'collection' ); ?>
-								<time datetime="<?php echo esc_attr( get_the_date( DATE_W3C, $post ) ); ?>"><?php echo esc_html( get_the_date( '', $post ) ); ?></time>
+								<time class="<?php echo $display_date['is_original'] ? 'pc-original-date' : ''; ?>" datetime="<?php echo esc_attr( $display_date['datetime'] ); ?>"<?php echo $display_date['title'] ? ' title="' . esc_attr( $display_date['title'] ) . '"' : ''; ?>><?php echo esc_html( $display_date['label'] ); ?></time>
 								<span class="pc-reading-meta"><?php echo esc_html( $word_count_label ); ?></span>
 								<span class="pc-reading-meta"><?php echo esc_html( $read_time_label ); ?></span>
 								<?php $app->render_article_note_status_toggle( $post, $read_status ); ?>
