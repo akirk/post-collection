@@ -135,6 +135,21 @@ class Test_App_E_Reader_Hooks extends TestCase {
 		$this->assertContains( $in_links->ID, $all );
 	}
 
+	public function test_display_date_prefers_original_article_date() {
+		$app        = $this->get_app();
+		$collection = $this->create_collection( 'Reading List' );
+		$post       = $this->create_article( 'An article', $collection );
+
+		update_post_meta( $post->ID, 'published_time', '2026-06-29T16:44:13+00:00' );
+
+		$display_date = $app->get_post_display_date( $post );
+
+		$this->assertTrue( $display_date['is_original'] );
+		$this->assertSame( '2026-06-29T16:44:13+00:00', $display_date['datetime'] );
+		$this->assertSame( 'Original article date', $display_date['title'] );
+		$this->assertSame( 'June 29, 2026', $display_date['label'] );
+	}
+
 	public function test_a_visitor_only_sees_published_posts_in_published_collections() {
 		$app       = $this->get_app();
 		$published = $this->create_collection( 'Published' );

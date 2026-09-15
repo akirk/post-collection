@@ -80,4 +80,37 @@ class Test_Extract_Content extends TestCase {
 		$this->assertTrue( is_wp_error( $item ) );
 		$this->assertSame( 'could-not-download', $item->get_error_code() );
 	}
+
+	public function test_extract_content_reads_article_metadata_from_head_and_visible_author() {
+		$plugin = new Post_Collection_Extract_Content_Test_Plugin();
+		$html   = '<!doctype html><html><head>'
+			. '<title>Article Metadata</title>'
+			. '<meta property="article:published_time" content="2026-06-29T16:44:13+00:00">'
+			. '</head><body><article>'
+			. '<a class="entry-author" href="https://example.com/author/example-author/">Example Author</a>'
+			. '<div class="entry-content"><p>This article has enough text for Readability to accept it as the main content. It also carries metadata outside the content body.</p>'
+			. '<p>The visible author fallback should be scoped to the article rather than unrelated navigation elsewhere on the page.</p></div>'
+			. '</article></body></html>';
+
+		$item = $plugin->extract_content( $html, 'https://example.com/article-metadata' );
+
+		$this->assertFalse( is_wp_error( $item ) );
+		$this->assertSame( 'Example Author', $item->author );
+		$this->assertSame( '2026-06-29T16:44:13+00:00', $item->published_time );
+	}
+
+	public function test_extract_content_reads_article_metadata_from_json_ld() {
+		$plugin = new Post_Collection_Extract_Content_Test_Plugin();
+		$html   = '<!doctype html><html><head>'
+			. '<title>JSON-LD Metadata</title>'
+			. '<script type="application/ld+json">{"@context":"https://schema.org","@type":"NewsArticle","datePublished":"2026-07-01T08:30:00+02:00","author":{"@type":"Person","name":"Ada Lovelace"}}</script>'
+			. '</head><body><article><p>This article contains enough text for the extractor to find the body and should also expose JSON-LD metadata.</p>'
+			. '<p>The metadata parser should handle object-shaped authors in common structured-data blocks.</p></article></body></html>';
+
+		$item = $plugin->extract_content( $html, 'https://example.com/json-ld-metadata' );
+
+		$this->assertFalse( is_wp_error( $item ) );
+		$this->assertSame( 'Ada Lovelace', $item->author );
+		$this->assertSame( '2026-07-01T06:30:00+00:00', $item->published_time );
+	}
 }
