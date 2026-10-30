@@ -8,6 +8,29 @@ require_once __DIR__ . '/../site-configs/class-jina.php';
 require_once __DIR__ . '/../site-configs/class-cloudflare-protected.php';
 
 class Test_Cloudflare_Protected_Site_Config extends TestCase {
+	public function test_adjacent_and_nested_emphasis_stays_balanced() {
+		$url = 'https://example.com/adjacent';
+		$GLOBALS['wp_test_http_responses'][ 'https://r.jina.ai/http://' . $url ] = array(
+			'response' => array( 'code' => 200 ),
+			'body' => "Markdown Content:\n**Ondřej****Surý:** Earlier this week. *Italic with **bold** inside.*",
+		);
+		$item = ( new Cloudflare_Protected() )->download( $url );
+		$this->assertSame( '<p><strong>Ondřej</strong><strong>Surý:</strong> Earlier this week. <em>Italic with <strong>bold</strong> inside.</em></p>', $item->content );
+	}
+
+	public function test_download_converts_emphasis_without_changing_literals_or_link_urls() {
+		$url = 'https://example.com/emphasis';
+		$GLOBALS['wp_test_http_responses'][ 'https://r.jina.ai/http://' . $url ] = array(
+			'response' => array( 'code' => 200 ),
+			'body' => 'Markdown Content:' . "\n" . '*Charlie Warzel:* **bold** ***both*** _italic_ __bold__ ___both___ **bold with *italic* inside** [*link*](https://example.com/a_b_c?q=**value**) `*literal*` \\*escaped\\* snake_case_name 2 * 3 <script>alert(1)</script>',
+		);
+		$item = ( new Cloudflare_Protected() )->download( $url );
+		$this->assertSame(
+			'<p><em>Charlie Warzel:</em> <strong>bold</strong> <strong><em>both</em></strong> <em>italic</em> <strong>bold</strong> <strong><em>both</em></strong> <strong>bold with <em>italic</em> inside</strong> <a href="https://example.com/a_b_c?q=**value**"><em>link</em></a> <code>*literal*</code> *escaped* snake_case_name 2 * 3 &lt;script&gt;alert(1)&lt;/script&gt;</p>',
+			$item->content
+		);
+	}
+
 	protected function setUp(): void {
 		parent::setUp();
 

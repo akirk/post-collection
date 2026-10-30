@@ -100,6 +100,8 @@ class Test_App_E_Reader_Hooks extends TestCase {
 		update_post_meta( $post->ID, 'author', 'Alexander Aidun' );
 		$this->assertSame( $post->guid, $plugin->filter_e_reader_post_url( 'https://local.example/', $post ) );
 		$this->assertSame( 'Alexander Aidun', $plugin->filter_e_reader_post_author_name( 'Owner', $post ) );
+		delete_post_meta( $post->ID, 'author' );
+		$this->assertSame( 'original.example', $plugin->filter_e_reader_post_author_name( 'Owner', $post ) );
 		update_post_meta( $post->ID, 'url', 'https://canonical.example/article/' );
 		$this->assertSame( 'https://canonical.example/article/', $plugin->filter_e_reader_post_url( 'https://local.example/', $post ) );
 		$post->post_type = 'post';
