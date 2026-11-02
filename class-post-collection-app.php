@@ -106,6 +106,7 @@ class Post_Collection_App {
 		add_action( 'wp_ajax_post_collection_import_item', array( $this, 'wp_ajax_import_item' ) );
 		add_action( 'wp_ajax_post_collection_toggle_read_status', array( $this, 'wp_ajax_toggle_read_status' ) );
 		add_action( 'wp_ajax_post_collection_bulk_read_status', array( $this, 'wp_ajax_bulk_read_status' ) );
+		add_action( 'wp_ajax_post_collection_bulk_move', array( $this, 'wp_ajax_bulk_move' ) );
 		add_filter( 'private_title_format', array( $this, 'filter_private_title_format' ), 10, 2 );
 		add_action( 'template_redirect', array( $this, 'fire_app_request' ), 1 );
 		add_action( 'wp_app_before_render', array( $this, 'add_collection_menu_items' ) );
@@ -1635,6 +1636,7 @@ class Post_Collection_App {
 			<span class="pc-selection-count" data-pc-selection-count aria-live="polite"></span>
 			<div class="pc-selection-actions">
 				<?php $this->render_bulk_status_actions(); ?>
+				<?php $this->render_bulk_move_action( $collection ); ?>
 				<?php
 				/**
 				 * Fires in the selection bar, once per app list that offers a selection.
@@ -1651,6 +1653,70 @@ class Post_Collection_App {
 			<button type="button" class="pc-selection-link" data-pc-selection-clear><?php esc_html_e( 'Clear', 'post-collection' ); ?></button>
 		</div>
 		<?php
+	}
+
+
+	/**
+	 * Render a destination picker for moving selected articles.
+	 *
+	 * @param \WP_Term|null $collection Current collection.
+	 */
+	public function render_bulk_move_action( $collection = null ) {
+		if ( ! $this->can_manage_collections() ) {
+			return;
+		}
+		?>
+		<span class="pc-selection-group">
+			<select data-pc-move-destination aria-label="<?php echo esc_attr( __( 'Destination collection', 'post-collection' ) ); ?>">
+				<option value=""><?php esc_html_e( 'Move to collection…', 'post-collection' ); ?></option>
+				<?php foreach ( $this->get_collections() as $term ) : ?>
+					<?php
+					if ( $collection && (int) $collection->term_id === (int) $term->term_id ) {
+						continue;
+					}
+					?>
+					<option value="<?php echo esc_attr( $term->term_id ); ?>"><?php echo esc_html( $term->name ); ?></option>
+				<?php endforeach; ?>
+			</select>
+			<button type="button" class="pc-item-action" data-pc-bulk-move
+				data-ajax-action="<?php echo esc_url( admin_url( 'admin-ajax.php' ) ); ?>"
+				data-nonce="<?php echo esc_attr( wp_create_nonce( 'post-collection-bulk-move' ) ); ?>"
+			><?php esc_html_e( 'Move', 'post-collection' ); ?></button>
+		</span>
+		<?php
+	}
+
+	/**
+	 * Move selected articles, replacing their existing collection assignment.
+	 */
+	public function wp_ajax_bulk_move() {
+		if ( ! $this->can_manage_collections() ) {
+			wp_send_json_error( array( 'message' => __( 'Sorry, you are not allowed to edit this collection.', 'post-collection' ) ), 403 );
+		}
+		if ( ! isset( $_POST['_wpnonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['_wpnonce'] ) ), 'post-collection-bulk-move' ) ) {
+			wp_send_json_error( array( 'message' => __( 'The move request could not be verified.', 'post-collection' ) ), 403 );
+		}
+		$term_id = isset( $_POST['collection_id'] ) ? absint( wp_unslash( $_POST['collection_id'] ) ) : 0;
+		$term    = $term_id ? get_term( $term_id, Post_Collection::COLLECTION_TAXONOMY ) : null;
+		if ( ! $term || is_wp_error( $term ) ) {
+			wp_send_json_error( array( 'message' => __( 'Choose a valid destination collection.', 'post-collection' ) ), 400 );
+		}
+		$post_ids = isset( $_POST['post_ids'] ) ? array_map( 'absint', (array) wp_unslash( $_POST['post_ids'] ) ) : array();
+		$moved    = array();
+		foreach ( array_unique( array_filter( $post_ids ) ) as $post_id ) {
+			$post = get_post( $post_id );
+			if ( ! $post || Post_Collection::CPT !== $post->post_type ) {
+				continue;
+			}
+			$result = wp_set_object_terms( $post_id, array( (int) $term->term_id ), Post_Collection::COLLECTION_TAXONOMY, false );
+			if ( ! is_wp_error( $result ) ) {
+				$moved[] = $post_id;
+			}
+		}
+		if ( empty( $moved ) ) {
+			wp_send_json_error( array( 'message' => __( 'No articles could be moved.', 'post-collection' ) ), 400 );
+		}
+		wp_send_json_success( array( 'moved_ids' => $moved ) );
 	}
 
 	/**

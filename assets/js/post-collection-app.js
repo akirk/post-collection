@@ -879,6 +879,48 @@
 		}
 	}
 
+	function applyBulkMove( button ) {
+		var picker = button.parentNode.querySelector( '[data-pc-move-destination]' );
+		var items = getSelectedItems();
+		if ( button.disabled || ! items.length ) {
+			return;
+		}
+		if ( ! picker.value ) {
+			picker.focus();
+			setSelectionStatus( 'Choose a destination collection.' );
+			return;
+		}
+		var data = new FormData();
+		data.append( 'action', 'post_collection_bulk_move' );
+		data.append( '_wpnonce', button.dataset.nonce );
+		data.append( 'collection_id', picker.value );
+		items.forEach( function ( item ) {
+			data.append( 'post_ids[]', item.id );
+		} );
+		button.disabled = true;
+		setSelectionStatus( 'Moving...' );
+		fetch( button.dataset.ajaxAction, {
+			method: 'POST',
+			credentials: 'same-origin',
+			body: data,
+		} ).then( function ( response ) {
+			return response.json();
+		} ).then( function ( result ) {
+			if ( ! result || ! result.success ) {
+				throw new Error( result && result.data && result.data.message ? result.data.message : 'Could not move the articles.' );
+			}
+			if ( result.data.moved_ids.length !== items.length ) {
+				setSelectionStatus( result.data.moved_ids.length + ' articles moved. Some articles could not be moved. Reload to refresh the list.' );
+				return;
+			}
+			window.location.reload();
+		} ).catch( function ( error ) {
+			setSelectionStatus( error.message );
+		} ).finally( function () {
+			button.disabled = false;
+		} );
+	}
+
 	function applyBulkStatus( button ) {
 		if ( button.disabled ) {
 			return;
@@ -1028,6 +1070,13 @@
 		if ( loadMoreReview ) {
 			event.preventDefault();
 			loadMoreReviewArticles( loadMoreReview );
+			return;
+		}
+
+		var bulkMove = closest( event.target, '[data-pc-bulk-move]' );
+		if ( bulkMove ) {
+			event.preventDefault();
+			applyBulkMove( bulkMove );
 			return;
 		}
 
