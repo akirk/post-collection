@@ -156,13 +156,54 @@ abstract class Jina extends SiteConfig {
 
 	private function format_inline_markdown( $text ) {
 		$text = esc_html( $text );
-
-		return preg_replace_callback(
-			'/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/',
-			function ( $matches ) {
-				return '<a href="' . esc_url( html_entity_decode( $matches[2], ENT_QUOTES, 'UTF-8' ) ) . '">' . esc_html( html_entity_decode( $matches[1], ENT_QUOTES, 'UTF-8' ) ) . '</a>';
+		$tokens = array();
+		// Protect code, escaped markers and link destinations from emphasis parsing.
+		$text = preg_replace_callback(
+			'/`([^`]+)`|\\\\([*_`])|\[([^\]]+)\]\((https?:\/\/[^)]+)\)/',
+			function ( $matches ) use ( &$tokens ) {
+				$key = "\x1A" . count( $tokens ) . "\x1A";
+				if ( '' !== $matches[1] ) {
+					$tokens[ $key ] = '<code>' . $matches[1] . '</code>';
+				} elseif ( ! empty( $matches[2] ) ) {
+					$tokens[ $key ] = $matches[2];
+				} else {
+					$tokens[ $key ] = '<a href="' . esc_url( html_entity_decode( $matches[4], ENT_QUOTES, 'UTF-8' ) ) . '">' . $this->format_emphasis( $matches[3] ) . '</a>';
+				}
+				return $key;
 			},
 			$text
 		);
+
+		return strtr( $this->format_emphasis( $text ), $tokens );
+	}
+
+	/**
+	 * Convert emphasis in already escaped text, preserving underscores within words.
+	 */
+	private function format_emphasis( $text ) {
+		static $sequence = 0;
+		$prefix = "\x1B" . ++$sequence . ':';
+		$tokens = array();
+		foreach ( array( '***' => 'strong><em', '___' => 'strong><em', '**' => 'strong', '__' => 'strong', '*' => 'em', '_' => 'em' ) as $marker => $tag ) {
+			$quoted = preg_quote( $marker, '/' );
+			$boundary = '_' === $marker[0] ? '\\p{L}\\p{N}_' : '*';
+			$closing_tag = 'strong><em' === $tag ? 'em></strong' : $tag;
+			$start_boundary = '**' === $marker ? '' : '(?<![' . $boundary . '])';
+			$end_boundary = '**' === $marker ? '' : '(?![' . $boundary . '])';
+			$text = preg_replace_callback(
+				'/' . $start_boundary . $quoted . '(?=\\S)(.+?)(?<=\\S)' . $quoted . $end_boundary . '/u',
+				function ( $matches ) use ( &$tokens, $tag, $closing_tag, $prefix ) {
+					$key = $prefix . count( $tokens ) . "\x1B";
+					$tokens[ $key ] = '<' . $tag . '>' . $this->format_emphasis( $matches[1] ) . '</' . $closing_tag . '>';
+					return $key;
+				},
+				$text
+			);
+		}
+		do {
+			$previous = $text;
+			$text = strtr( $text, $tokens );
+		} while ( $text !== $previous );
+		return $text;
 	}
 }

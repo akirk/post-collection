@@ -3397,6 +3397,12 @@ class Post_Collection {
 			if ( $stored_author ) {
 				return $stored_author;
 			}
+			if ( '' === $author ) {
+				return '';
+			}
+			// The account saving an article is not its author.
+			$host = wp_parse_url( $this->get_post_source_url( $post ), PHP_URL_HOST );
+			return $host ? preg_replace( '/^www\./i', '', $host ) : __( 'Unknown', 'post-collection' );
 		}
 		return $author;
 	}
