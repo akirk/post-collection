@@ -57,6 +57,26 @@ class Test_Extract_Content extends TestCase {
 		$this->assertStringContainsString( 'Full protected content.', wp_strip_all_tags( $item->content ) );
 	}
 
+	public function test_download_extracts_submitted_html_with_cloudflare_javascript_detection() {
+		$plugin = new Post_Collection_Extract_Content_Test_Plugin();
+		$url    = 'https://x.com/example/status/123';
+		$html   = '<html><head><title>Rendered post</title></head><body><article><p>'
+			. str_repeat( 'This is the full rendered post supplied by the browser extension. ', 10 )
+			. '<a href="https://example.com/original">Original link</a></p></article>'
+			. '<script src="/cdn-cgi/challenge-platform/scripts/jsd/api.js?onload=jsdOnload"></script></body></html>';
+		$GLOBALS['wp_test_http_responses'][ 'https://r.jina.ai/http://' . $url ] = array(
+			'response' => array( 'code' => 200 ),
+			'body'     => "Title: Wrong fallback\n\nMarkdown Content:\nFallback content.",
+		);
+
+		$item = $plugin->download( $url, $html );
+
+		$this->assertFalse( is_wp_error( $item ) );
+		$this->assertSame( 'Rendered post', $item->title );
+		$this->assertStringContainsString( '<a href="https://example.com/original">Original link</a>', $item->content );
+		$this->assertSame( $html, $item->raw_html );
+	}
+
 	public function test_download_does_not_fallback_to_jina_for_non_cloudflare_http_errors() {
 		$plugin     = new Post_Collection_Extract_Content_Test_Plugin();
 		$url        = 'https://example.com/not-found';

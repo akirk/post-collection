@@ -18,7 +18,9 @@ class Cloudflare_Protected extends Jina {
 	}
 
 	public function is_challenge_response( $html, $response = null ) {
-		if ( false !== stripos( $html, '/cdn-cgi/challenge-platform/' )
+		// The /scripts/jsd/ script also appears on fully rendered pages (for example X).
+		// Only the challenge-page orchestrator indicates an interstitial.
+		if ( preg_match( '~/cdn-cgi/challenge-platform/(?:[a-z0-9_-]+/)*orchestrate/chl_page/~i', $html )
 			|| false !== stripos( $html, 'Enable JavaScript and cookies to continue' )
 			|| false !== stripos( $html, 'cf-mitigated' )
 		) {
