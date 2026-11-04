@@ -46,6 +46,31 @@ class Test_Browser_Extension_Action extends TestCase {
 		$this->plugin->register_site_config( new Archive_Is() );
 	}
 
+	/** @dataProvider submitted_titles */
+	public function test_only_unmodified_page_titles_are_replaced( $submitted_title, $expected_title ) {
+		$collection = $this->create_collection_term( 91, 'x-posts', 'X posts' );
+		$this->plugin->download_item = new ExtractedPage( 'https://source.example/post', 'Writer on X', '<p>Post body.</p>' );
+		$this->plugin->download_item->original_title = 'Writer on X: A very long post / X';
+
+		$result = $this->plugin->friends_browser_extension_action_save(
+			null,
+			$this->create_request( $collection->term_id, array( 'title' => $submitted_title ) ),
+			new \WP_User( 99 ),
+			array()
+		);
+
+		$this->assertFalse( is_wp_error( $result ) );
+		$post = reset( $GLOBALS['wp_test_posts'] );
+		$this->assertSame( $expected_title, $post->post_title );
+	}
+
+	public function submitted_titles() {
+		return array(
+			array( 'Writer on X: A very long post / X', 'Writer on X' ),
+			array( 'My custom title', 'My custom title' ),
+		);
+	}
+
 	public function test_save_response_reports_collected_post_word_count() {
 		$collection = $this->create_collection_term( 1, 'articles', 'Articles' );
 		$this->plugin->download_item = new ExtractedPage(
