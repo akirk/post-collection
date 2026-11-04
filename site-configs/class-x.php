@@ -43,6 +43,8 @@ class X extends SiteConfig {
 					continue;
 				}
 				$item = new ExtractedPage( $url );
+				$page_title = $xpath->query( '//title' )->item( 0 );
+				$item->original_title = $page_title ? wp_strip_all_tags( trim( sanitize_text_field( $page_title->textContent ) ) ) : '';
 				$name = $xpath->query( './/*[@data-testid="User-Name"]//a', $article )->item( 0 );
 				$item->author = $name ? trim( $name->textContent ) : '';
 				$item->title = $item->author ? $item->author . ' on X' : 'Post on X';

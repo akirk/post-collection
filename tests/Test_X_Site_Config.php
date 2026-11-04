@@ -8,7 +8,7 @@ require_once __DIR__ . '/../site-configs/class-x.php';
 class Test_X_Site_Config extends TestCase {
 	public function test_selects_requested_post_and_preserves_paragraphs_quotes_and_media() {
 		$config = new X();
-		$html = '<html><body><article data-testid="tweet"><a href="/other/status/1"><time datetime="2026-01-01">Today</time></a><div data-testid="tweetText">Unrelated reply</div></article>'
+		$html = '<html><head><title>Writer on X: &quot;Long post&quot; / X</title></head><body><article data-testid="tweet"><a href="/other/status/1"><time datetime="2026-01-01">Today</time></a><div data-testid="tweetText">Unrelated reply</div></article>'
 			. '<article data-testid="tweet"><div data-testid="User-Name"><a href="/writer">Writer</a><a href="/writer">@writer</a></div>'
 			. '<img src="https://example.com/avatar.jpg"><button>Share</button>'
 			. '<div data-testid="tweetText"><span>First paragraph.</span>' . "\n\n" . '<span>Second paragraph with <a href="https://example.com/original">a link</a> and <a href="/someone">a mention</a>.</span></div>'
@@ -19,6 +19,7 @@ class Test_X_Site_Config extends TestCase {
 
 		$this->assertFalse( is_wp_error( $item ) );
 		$this->assertSame( 'Writer on X', $item->title );
+		$this->assertSame( 'Writer on X: "Long post" / X', $item->original_title );
 		$this->assertSame( 'Writer', $item->author );
 		$this->assertSame( '2026-11-03T17:07:28.000Z', $item->published_time );
 		$this->assertStringContainsString( '<p>First paragraph.</p><p>Second paragraph', $item->content );

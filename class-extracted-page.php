@@ -6,6 +6,7 @@ defined( 'ABSPATH' ) || exit;
 
 class ExtractedPage {
 	public $title;
+	public $original_title = '';
 	public $content;
 	public $url;
 	public $author;
