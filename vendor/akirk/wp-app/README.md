@@ -2,6 +2,8 @@
 
 A framework to build frontend apps on WordPress with routing, admin bar integration, and theme isolation.
 
+[Why?](#why-wordpress-for-web-applications) · [Quick Start](#quick-start) · [Examples](#try-it-now) · [WP Apps Site](#the-wp-apps-site) · [Documentation](#documentation) · [Manual Installation](#manual-installation) · [Requirements](#requirements)
+
 ## Quick Start
 
 Scaffold a new plugin with one command:
@@ -53,18 +55,20 @@ Which gives you something like this:
 
 <img width="788" height="681" alt="create-wp-app" src="https://github.com/user-attachments/assets/f0180015-96e9-4ae1-af64-1cec0bae9de1" />
 
+## The WP Apps Site
+
+Visit [wpapps.kirk.at](https://wpapps.kirk.at/) for a visual introduction to the WP Apps concept and a catalog of apps you can run on your own WordPress, including a travel app, a cookbook, and a family wiki.
+
 ## Try it Now
 
-Try the examples instantly in your browser with WordPress Playground:
+The examples are available in the [wp-app-examples repository](https://github.com/akirk/wp-app-examples). Try them instantly in your browser with WordPress Playground:
 
-- [Minimal App](https://playground.wordpress.net/?blueprint-url=https://raw.githubusercontent.com/akirk/wp-app/main/blueprints/minimal-app.json) - The simplest possible WpApp
-- [Community App](https://playground.wordpress.net/?blueprint-url=https://raw.githubusercontent.com/akirk/wp-app/main/blueprints/community-app.json) - Full-featured example with database, REST API, and admin integration
+- [Minimal App](https://playground.wordpress.net/?blueprint-url=https://raw.githubusercontent.com/akirk/wp-app-examples/main/minimal-app.json) - The simplest possible WpApp
+- [Community App](https://playground.wordpress.net/?blueprint-url=https://raw.githubusercontent.com/akirk/wp-app-examples/main/community-app.json) - Full-featured example with database, REST API, and admin integration
 
 ## Why WordPress for Web Applications?
 
 WordPress isn't just for blogs. It's a powerful foundation for web applications.
-
-See the [WP Apps showcase](https://wpapps.kirk.at/) for real apps built on this framework, such as a travel app, a cookbook, and a family wiki.
 
 **For developers:**
 - **Built-in User Management** - Authentication, roles, and permissions out of the box
@@ -124,18 +128,18 @@ Get AI assistance for WpApp development in [Claude Code](https://claude.ai/code)
 ## Examples
 
 ### Minimal Example
-See `examples/minimal-app/` - The simplest possible WpApp (3 lines of code)
+See the [`minimal-app`](https://github.com/akirk/wp-app-examples/tree/main/minimal-app) example — the simplest possible WpApp (3 lines of code).
 
-[Try in WordPress Playground](https://playground.wordpress.net/?blueprint-url=https://raw.githubusercontent.com/akirk/wp-app/main/blueprints/minimal-app.json)
+[Try in WordPress Playground](https://playground.wordpress.net/?blueprint-url=https://raw.githubusercontent.com/akirk/wp-app-examples/main/minimal-app.json)
 
 ### Community App Example
-See `examples/community-app/` - Full BaseApp pattern demonstration with:
+See the [`community-app`](https://github.com/akirk/wp-app-examples/tree/main/community-app) example — a full BaseApp pattern demonstration with:
 - BaseStorage with schema management
 - User progress tracking
 - REST API endpoints
 - Admin integration
 
-[Try in WordPress Playground](https://playground.wordpress.net/?blueprint-url=https://raw.githubusercontent.com/akirk/wp-app/main/blueprints/community-app.json)
+[Try in WordPress Playground](https://playground.wordpress.net/?blueprint-url=https://raw.githubusercontent.com/akirk/wp-app-examples/main/community-app.json)
 
 ## Manual Installation
 
@@ -190,6 +194,28 @@ wp_app_enqueue_script( 'minimal-app', $script_url, [], '1.0.0', true, [ 'app' =>
 Use `[ 'app' => 'global' ]` for framework-level assets that should print for every WpApp.
 
 Keep CSS and JavaScript in asset files and load them with the scoped enqueue helpers. Avoid writing inline `<style>` or `<script>` blocks, `style` attributes, and event-handler attributes in templates. For dynamic values, use HTML data attributes that an external script can read.
+
+### App themes
+
+Apps and add-on plugins register themes with their own template directories on
+the app-specific initialization filter. This runs on WordPress `init`, when it
+is safe to translate the theme name:
+
+```php
+add_filter(
+	'wp_app_init_minimal',
+	function ( $app ) {
+		$app->register_theme(
+			'compact',
+			__( 'Compact', 'my-plugin' ),
+			plugin_dir_path( __FILE__ ) . 'templates/compact'
+		);
+		return $app;
+	}
+);
+```
+
+WpApp adds a Themes submenu to the app's masterbar and remembers the current user's selection. The selected theme's templates take priority, while missing templates fall back to the app's regular template directory. See [App Themes](docs/configuration.md#app-themes) for add-on registration and theme-specific asset hooks.
 
 ## Requirements
 

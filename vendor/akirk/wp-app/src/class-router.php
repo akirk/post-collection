@@ -10,10 +10,11 @@ if ( class_exists( 'WpApp\Router' ) ) {
  * Router class for handling URL pattern matching and template loading in WordPress
  */
 class Router {
-    private $routes              = [];
-    private $template_directory  = '';
-    private $url_path            = 'app';
-    private $required_capability = null;
+    private $routes                        = [];
+    private $template_directory            = '';
+    private $url_path                      = 'app';
+    private $required_capability           = null;
+    private $template_directories_provider = null;
 
     public function __construct( $template_directory = '', $url_path = 'app' ) {
         $this->template_directory = $template_directory;
@@ -122,6 +123,15 @@ class Router {
      */
     public function set_required_capability( $capability ) {
         $this->required_capability = $capability;
+    }
+
+    /**
+     * Set a callback that returns template directories in lookup order.
+     *
+     * @param callable $provider Template directory provider.
+     */
+    public function set_template_directories_provider( $provider ) {
+        $this->template_directories_provider = $provider;
     }
 
     /**
@@ -271,7 +281,7 @@ class Router {
                 $template_path = $matched_route['template'];
             } else {
                 // Otherwise, assume it's relative to the template directory
-                $template_path = $this->template_directory . '/' . $matched_route['template'];
+                $template_path = $this->locate_template( $matched_route['template'] );
             }
 
             // Security check: Ensure template exists and is within WordPress plugins directory
@@ -354,7 +364,7 @@ class Router {
         status_header( 404 );
 
         // Look for a custom 404 template first
-        $custom_404_template = $this->template_directory . '/404.php';
+        $custom_404_template = $this->locate_template( '404.php' );
 
         if ( file_exists( $custom_404_template ) ) {
             $template_to_use = $custom_404_template;
@@ -378,6 +388,31 @@ class Router {
                 ),
 			]
         );
+    }
+
+    /**
+     * Locate a relative template, allowing ordered theme fallbacks.
+     *
+     * @param string $template Relative template path.
+     * @return string Resolved template path, or the final fallback path when missing.
+     */
+    public function locate_template( $template ) {
+        $directories = [ $this->template_directory ];
+        if ( is_callable( $this->template_directories_provider ) ) {
+            $provided = call_user_func( $this->template_directories_provider );
+            if ( is_array( $provided ) && ! empty( $provided ) ) {
+                $directories = $provided;
+            }
+        }
+
+        foreach ( $directories as $directory ) {
+            $path = rtrim( $directory, '/\\' ) . '/' . ltrim( $template, '/' );
+            if ( file_exists( $path ) ) {
+                return $path;
+            }
+        }
+
+        return rtrim( end( $directories ), '/\\' ) . '/' . ltrim( $template, '/' );
     }
 
     /**

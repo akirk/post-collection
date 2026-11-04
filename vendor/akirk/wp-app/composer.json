@@ -18,12 +18,14 @@
     },
     "autoload": {
         "files": [
+            "src/bootstrap.php",
             "src/class-openstation.php",
             "src/class-registry.php",
             "src/class-settings.php",
             "src/class-pwa.php",
             "src/class-router.php",
             "src/class-masterbar.php",
+            "src/class-themes.php",
             "src/class-wpapp.php",
             "src/class-client-encrypted-fields.php",
             "src/BaseStorage.php",

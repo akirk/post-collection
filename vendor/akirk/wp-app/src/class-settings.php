@@ -10,7 +10,8 @@ if ( class_exists( 'WpApp\Settings' ) ) {
  * Admin settings for global WpApp masterbar behavior.
  */
 class Settings {
-    const OPTION = 'wp_app_masterbar_settings';
+    const OPTION                     = 'wp_app_masterbar_settings';
+    const MINIMUM_SWITCHABLE_VERSION = '2.0.0';
 
     private static $hooks_initialized = false;
 
@@ -95,6 +96,10 @@ class Settings {
         if ( function_exists( 'wp_enqueue_script' ) ) {
             wp_enqueue_script( 'jquery-ui-autocomplete' );
         }
+
+        if ( function_exists( 'wp_enqueue_style' ) ) {
+            wp_enqueue_style( 'wp-app-settings', wp_app_get_asset_url( 'wp-app-settings.css' ), [], WP_APP_VERSION );
+        }
     }
 
     /**
@@ -105,6 +110,7 @@ class Settings {
             'only_show_active_app'              => true,
             'show_inactive_apps_in_overflow'    => true,
             'sort_overflow_menu_alphabetically' => false,
+            'provider'                          => '',
             'app_order'                         => [],
             'apps'                              => [],
         ];
@@ -123,6 +129,7 @@ class Settings {
             'generate_letter_icon' => true,
             'show_text'            => true,
             'always_show'          => self::is_only_registered_app(),
+            'default_theme'        => '',
         ];
     }
 
@@ -216,6 +223,242 @@ class Settings {
     }
 
     /**
+     * Get plugins known to bundle wp-app.
+     *
+     * @param array|null $apps Registered app metadata, or null to fetch it.
+     * @return array<string, array{label:string}> Providers keyed by plugin basename.
+     */
+    public static function get_wp_app_providers( $apps = null ) {
+        $apps      = is_array( $apps ) ? $apps : self::get_registered_apps();
+        $providers = [];
+
+        foreach ( $apps as $metadata ) {
+            if ( empty( $metadata['wp_app_package'] ) || ! is_array( $metadata['wp_app_package'] ) ) {
+                continue;
+            }
+
+            $package  = $metadata['wp_app_package'];
+            $expected = isset( $package['expected'] ) ? trim( (string) $package['expected'] ) : '';
+            $source   = isset( $package['expected_source'] ) ? (string) $package['expected_source'] : '';
+
+            if ( '' !== $expected && '' !== $source ) {
+                self::add_wp_app_provider( $providers, $source, self::get_bundled_wp_app_version( $source ), false );
+            }
+
+            if ( ! empty( $package['loaded'] ) && is_array( $package['loaded'] ) ) {
+                $loaded_path    = isset( $package['loaded']['path'] ) ? (string) $package['loaded']['path'] : '';
+                $loaded_version = isset( $package['loaded']['version'] ) ? trim( (string) $package['loaded']['version'] ) : '';
+
+                self::add_wp_app_provider( $providers, $loaded_path, $loaded_version, true );
+            }
+        }
+
+        uasort(
+            $providers,
+            static function ( $first, $second ) {
+                return strcasecmp( $first['label'], $second['label'] );
+            }
+        );
+
+        return $providers;
+    }
+
+    /**
+     * Describe the wp-app copy loaded by the first plugin.
+     *
+     * @param array $apps Registered app metadata.
+     * @return array{slug:string,version:string}
+     */
+    private static function get_loaded_wp_app_provider( $apps ) {
+        foreach ( $apps as $metadata ) {
+            if ( empty( $metadata['wp_app_package']['loaded'] ) || ! is_array( $metadata['wp_app_package']['loaded'] ) ) {
+                continue;
+            }
+
+            $loaded  = $metadata['wp_app_package']['loaded'];
+            $path    = isset( $loaded['path'] ) ? (string) $loaded['path'] : '';
+            $version = isset( $loaded['version'] ) ? (string) $loaded['version'] : '';
+            $slug    = self::get_wp_content_plugin_slug( $path );
+
+            if ( '' === $slug ) {
+                $slug = self::get_inferred_wp_app_provider_slug( $apps );
+            }
+
+            return [
+                'slug'    => '' !== $slug ? $slug : self::get_symlinked_wp_app_label( $path ),
+                'version' => '' !== $version ? $version : ( defined( 'WP_APP_VERSION' ) ? WP_APP_VERSION : __( 'unknown' ) ),
+            ];
+        }
+
+        return [
+            'slug'    => __( 'unknown source' ),
+            'version' => defined( 'WP_APP_VERSION' ) ? WP_APP_VERSION : __( 'unknown' ),
+        ];
+    }
+
+    /**
+     * Infer the loaded provider from the selected provider or plugin load order.
+     *
+     * @param array $apps Registered app metadata.
+     * @return string Plugin folder slug, or an empty string.
+     */
+    private static function get_inferred_wp_app_provider_slug( $apps ) {
+        $providers = self::get_wp_app_providers( $apps );
+        $settings  = self::get_settings();
+        $selected  = isset( $settings['provider'] ) ? self::sanitize_provider_plugin_file( $settings['provider'] ) : '';
+
+        if ( '' !== $selected && isset( $providers[ $selected ] ) ) {
+            return self::get_wp_content_plugin_slug( self::get_plugin_root_path() . '/' . $selected );
+        }
+
+        $active_plugins = function_exists( 'get_option' ) ? (array) get_option( 'active_plugins', [] ) : [];
+
+        foreach ( $active_plugins as $plugin_file ) {
+            $plugin_file = self::sanitize_provider_plugin_file( $plugin_file );
+
+            if ( '' !== $plugin_file && isset( $providers[ $plugin_file ] ) ) {
+                return self::get_wp_content_plugin_slug( self::get_plugin_root_path() . '/' . $plugin_file );
+            }
+        }
+
+        return '';
+    }
+
+    /**
+     * Describe a loaded wp-app package reached through a Composer symlink.
+     *
+     * @param string $path Loaded wp-app package path.
+     * @return string Human-readable source label.
+     */
+    private static function get_symlinked_wp_app_label( $path ) {
+        $path = rtrim( self::normalize_filesystem_path( $path ), '/' );
+        $name = basename( $path );
+
+        if ( '' === $name || '.' === $name ) {
+            return __( 'unknown source' );
+        }
+
+        /* translators: %s: Directory name of a symlinked wp-app package. */
+        return sprintf( __( '%s (symlinked)' ), $name );
+    }
+
+    /**
+     * Sanitize a plugin basename relative to WP_PLUGIN_DIR.
+     *
+     * @param mixed $plugin_file Raw provider plugin basename.
+     * @return string Sanitized plugin basename.
+     */
+    public static function sanitize_provider_plugin_file( $plugin_file ) {
+        if ( ! is_string( $plugin_file ) ) {
+            return '';
+        }
+
+        $plugin_file = str_replace( '\\', '/', trim( $plugin_file ) );
+
+        if ( false !== strpos( $plugin_file, '..' ) || ! preg_match( '#^(?:[a-z0-9._-]+/)*[a-z0-9._-]+\.php$#i', $plugin_file ) ) {
+            return '';
+        }
+
+        return $plugin_file;
+    }
+
+    /**
+     * Add one provider inferred from package diagnostics.
+     *
+     * @param array  $providers Providers collected so far.
+     * @param string $path      Path inside the provider plugin.
+     * @param string $version   Version or requirement displayed in the label.
+     * @param bool   $is_loaded Whether this is the currently loaded copy.
+     */
+    private static function add_wp_app_provider( &$providers, $path, $version, $is_loaded ) {
+        if ( '' === $version || ( ! self::is_development_version( $version ) && version_compare( $version, self::MINIMUM_SWITCHABLE_VERSION, '<' ) ) ) {
+            return;
+        }
+
+        $plugin      = self::get_plugin_metadata_from_path( $path );
+        $plugin_file = isset( $plugin['file'] ) ? self::sanitize_provider_plugin_file( $plugin['file'] ) : '';
+
+        if ( '' === $plugin_file ) {
+            return;
+        }
+
+        $label = self::format_plugin_label( $plugin );
+
+        if ( '' !== $version ) {
+            if ( $is_loaded ) {
+                /* translators: %s: The loaded wp-app package version. */
+                $label .= sprintf( __( ' — wp-app %s (active)' ), $version );
+            } else {
+                /* translators: %s: The bundled wp-app package version. */
+                $label .= sprintf( __( ' — wp-app %s' ), $version );
+            }
+        }
+
+        if ( ! isset( $providers[ $plugin_file ] ) || $is_loaded ) {
+            $providers[ $plugin_file ] = [ 'label' => $label ];
+        }
+    }
+
+    /**
+     * Whether a Composer package version identifies a development branch.
+     *
+     * @param string $version Composer package version.
+     * @return bool True for versions such as dev-main and 2.0.x-dev.
+     */
+    private static function is_development_version( $version ) {
+        return 1 === preg_match( '/^(?:dev-.+|.+-dev)$/i', $version );
+    }
+
+    /**
+     * Detect the wp-app version installed in a plugin's Composer dependencies.
+     *
+     * @param string $source_path Path to the consuming plugin's composer.json.
+     * @return string Installed version, or an empty string when unavailable.
+     */
+    private static function get_bundled_wp_app_version( $source_path ) {
+        $plugin = self::get_plugin_metadata_from_path( $source_path );
+
+        if ( empty( $plugin['slug'] ) ) {
+            return '';
+        }
+
+        $plugin_root = self::get_plugin_root_path();
+
+        if ( '' === $plugin_root ) {
+            return '';
+        }
+
+        $plugin_dir = rtrim( $plugin_root, '/' ) . '/' . $plugin['slug'];
+
+        foreach ( [ $plugin_dir . '/composer.lock', $plugin_dir . '/vendor/composer/installed.json' ] as $metadata_file ) {
+            if ( ! is_readable( $metadata_file ) ) {
+                continue;
+            }
+
+            // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents -- Reading local Composer metadata.
+            $metadata = json_decode( file_get_contents( $metadata_file ), true );
+
+            if ( ! is_array( $metadata ) ) {
+                continue;
+            }
+
+            $packages = isset( $metadata['packages'] ) && is_array( $metadata['packages'] ) ? $metadata['packages'] : $metadata;
+
+            if ( isset( $metadata['packages-dev'] ) && is_array( $metadata['packages-dev'] ) ) {
+                $packages = array_merge( $packages, $metadata['packages-dev'] );
+            }
+
+            foreach ( $packages as $package ) {
+                if ( is_array( $package ) && isset( $package['name'], $package['version'] ) && 'akirk/wp-app' === $package['name'] ) {
+                    return ltrim( (string) $package['version'], 'v' );
+                }
+            }
+        }
+
+        return '';
+    }
+
+    /**
      * Sanitize stored settings.
      *
      * @param mixed $value Raw option value.
@@ -255,6 +498,7 @@ class Settings {
                     'generate_letter_icon' => ! empty( $app_settings['generate_letter_icon'] ),
                     'show_text'            => ! empty( $app_settings['show_text'] ),
                     'always_show'          => ! empty( $app_settings['always_show'] ),
+                    'default_theme'        => isset( $app_settings['default_theme'] ) ? sanitize_key( $app_settings['default_theme'] ) : '',
                 ];
             }
         }
@@ -263,6 +507,7 @@ class Settings {
             'only_show_active_app'              => ! empty( $value['only_show_active_app'] ),
             'show_inactive_apps_in_overflow'    => ! empty( $value['show_inactive_apps_in_overflow'] ),
             'sort_overflow_menu_alphabetically' => ! empty( $value['sort_overflow_menu_alphabetically'] ),
+            'provider'                          => isset( $value['provider'] ) ? self::sanitize_provider_plugin_file( $value['provider'] ) : '',
             'app_order'                         => $order,
             'apps'                              => $apps,
         ];
@@ -548,48 +793,6 @@ class Settings {
                     font-size: 12px;
                 }
 
-                .wp-app-settings-package {
-                    border-top: 1px solid #dcdcde;
-                    grid-column: 1 / -1;
-                    margin-top: 14px;
-                    padding-top: 12px;
-                }
-
-                .wp-app-settings-package summary {
-                    color: #50575e;
-                    cursor: pointer;
-                    display: inline-block;
-                    font-weight: 600;
-                    max-width: 100%;
-                    overflow-wrap: anywhere;
-                }
-
-                .wp-app-settings-package-summary {
-                    margin: 8px 0 10px;
-                }
-
-                .wp-app-settings-package dl {
-                    display: grid;
-                    gap: 6px 12px;
-                    grid-template-columns: max-content minmax(0, 1fr);
-                    margin: 0;
-                }
-
-                .wp-app-settings-package dt {
-                    color: #50575e;
-                    font-weight: 600;
-                }
-
-                .wp-app-settings-package dd {
-                    margin: 0;
-                    min-width: 0;
-                    overflow-wrap: anywhere;
-                }
-
-                .wp-app-settings-package code {
-                    font-size: 12px;
-                }
-
                 .wp-app-settings-card-actions {
                     margin: 0;
                     text-align: right;
@@ -642,41 +845,7 @@ class Settings {
             <form method="post" action="options.php">
                 <?php settings_fields( 'wp_app_masterbar' ); ?>
 
-                <h2><?php echo esc_html__( 'Global Display' ); ?></h2>
-                <table class="form-table" role="presentation">
-                    <tr>
-                        <th scope="row"><?php echo esc_html__( 'App menu visibility' ); ?></th>
-                        <td>
-                            <input type="hidden" name="<?php echo esc_attr( self::OPTION ); ?>[only_show_active_app]" value="0">
-                            <label>
-                                <input type="checkbox" name="<?php echo esc_attr( self::OPTION ); ?>[only_show_active_app]" value="1" <?php checked( ! empty( $settings['only_show_active_app'] ) ); ?>>
-                                <?php echo esc_html__( 'Only show the active app by default' ); ?>
-                            </label>
-                            <br>
-                            <input type="hidden" name="<?php echo esc_attr( self::OPTION ); ?>[show_inactive_apps_in_overflow]" value="0">
-                            <label>
-                                <input type="checkbox" name="<?php echo esc_attr( self::OPTION ); ?>[show_inactive_apps_in_overflow]" value="1" <?php checked( ! empty( $settings['show_inactive_apps_in_overflow'] ) ); ?>>
-                                <?php echo esc_html__( 'Show inactive apps in the overflow menu on app pages' ); ?>
-                            </label>
-                            <br>
-                            <input type="hidden" name="<?php echo esc_attr( self::OPTION ); ?>[sort_overflow_menu_alphabetically]" value="0">
-                            <label>
-                                <input type="checkbox" name="<?php echo esc_attr( self::OPTION ); ?>[sort_overflow_menu_alphabetically]" value="1" <?php checked( ! empty( $settings['sort_overflow_menu_alphabetically'] ) ); ?>>
-                                <?php echo esc_html__( 'Sort overflow menu alphabetically (override order below)' ); ?>
-                            </label>
-                            <?php if ( self::is_only_registered_app() ) : ?>
-                                <p class="description">
-                                    <?php echo esc_html__( 'A single app is shown in the masterbar instead of being collapsed into a menu of its own. Uncheck Always show below to collapse it anyway.' ); ?>
-                                </p>
-                            <?php endif; ?>
-                        </td>
-                    </tr>
-                </table>
-
-                <h2>
-                    <?php echo esc_html__( 'Installed Apps' ); ?>
-                    <span class="wp-app-settings-save-status" data-wp-app-save-status hidden></span>
-                </h2>
+                <span class="wp-app-settings-save-status" data-wp-app-save-status hidden></span>
                 <?php if ( empty( $apps ) ) : ?>
                     <p><?php echo esc_html__( 'No WpApp apps are currently registered.' ); ?></p>
                 <?php endif; ?>
@@ -688,6 +857,7 @@ class Settings {
                         $app_name          = isset( $metadata['name'] ) ? $metadata['name'] : $app_path;
                         $visibility_status = self::get_masterbar_visibility_status( $app_path, $app_settings, $metadata );
                         $can_customize     = self::should_render_app_settings_controls( $visibility_status );
+                        $themes            = isset( $metadata['themes'] ) && is_array( $metadata['themes'] ) ? $metadata['themes'] : [];
                         ?>
                         <section
                             class="card wp-app-settings-card wp-app-settings-row"
@@ -752,6 +922,26 @@ class Settings {
                                                     >
                                                 </td>
                                             </tr>
+                                            <?php if ( count( $themes ) > 1 ) : ?>
+                                                <tr>
+                                                    <th scope="row">
+                                                        <label for="<?php echo esc_attr( self::get_field_id( $app_path, 'default_theme' ) ); ?>"><?php echo esc_html__( 'Default theme' ); ?></label>
+                                                    </th>
+                                                    <td>
+                                                        <select
+                                                            id="<?php echo esc_attr( self::get_field_id( $app_path, 'default_theme' ) ); ?>"
+                                                            name="<?php echo esc_attr( self::get_field_name( $app_path, 'default_theme' ) ); ?>"
+                                                        >
+                                                            <?php foreach ( $themes as $theme_slug => $theme ) : ?>
+                                                                <option value="<?php echo esc_attr( $theme_slug ); ?>" <?php selected( $app_settings['default_theme'], $theme_slug ); ?>>
+                                                                    <?php echo esc_html( isset( $theme['name'] ) ? $theme['name'] : $theme_slug ); ?>
+                                                                </option>
+                                                            <?php endforeach; ?>
+                                                        </select>
+                                                        <p class="description"><?php echo esc_html__( 'Used when a user has not selected a personal app theme.' ); ?></p>
+                                                    </td>
+                                                </tr>
+                                            <?php endif; ?>
                                             <tr>
                                                 <th scope="row">
                                                     <label for="<?php echo esc_attr( self::get_field_id( $app_path, 'icon' ) ); ?>"><?php echo esc_html__( 'Icon' ); ?></label>
@@ -815,11 +1005,46 @@ class Settings {
                                         </p>
                                     <?php endif; ?>
                                 </div>
-                                <?php self::render_package_metadata( $metadata ); ?>
                             </div>
                         </section>
                     <?php endforeach; ?>
                 </div>
+
+                <table class="form-table" role="presentation">
+                    <tr>
+                        <th scope="row"><?php echo esc_html__( 'App menu visibility' ); ?></th>
+                        <td>
+                            <input type="hidden" name="<?php echo esc_attr( self::OPTION ); ?>[only_show_active_app]" value="0">
+                            <label><input type="checkbox" name="<?php echo esc_attr( self::OPTION ); ?>[only_show_active_app]" value="1" <?php checked( ! empty( $settings['only_show_active_app'] ) ); ?>> <?php echo esc_html__( 'Only show the active app by default' ); ?></label><br>
+                            <input type="hidden" name="<?php echo esc_attr( self::OPTION ); ?>[show_inactive_apps_in_overflow]" value="0">
+                            <label><input type="checkbox" name="<?php echo esc_attr( self::OPTION ); ?>[show_inactive_apps_in_overflow]" value="1" <?php checked( ! empty( $settings['show_inactive_apps_in_overflow'] ) ); ?>> <?php echo esc_html__( 'Show inactive apps in the overflow menu on app pages' ); ?></label><br>
+                            <input type="hidden" name="<?php echo esc_attr( self::OPTION ); ?>[sort_overflow_menu_alphabetically]" value="0">
+                            <label><input type="checkbox" name="<?php echo esc_attr( self::OPTION ); ?>[sort_overflow_menu_alphabetically]" value="1" <?php checked( ! empty( $settings['sort_overflow_menu_alphabetically'] ) ); ?>> <?php echo esc_html__( 'Sort overflow menu alphabetically (override order above)' ); ?></label>
+                            <?php if ( self::is_only_registered_app() ) : ?>
+                                <p class="description"><?php echo esc_html__( 'A single app is shown in the masterbar instead of being collapsed into a menu of its own. Uncheck Always show below to collapse it anyway.' ); ?></p>
+                            <?php endif; ?>
+                        </td>
+                    </tr>
+                    <?php $providers = self::get_wp_app_providers( $apps ); ?>
+                    <?php $loaded_provider = self::get_loaded_wp_app_provider( $apps ); ?>
+                    <tr>
+                        <th scope="row">
+                            <label for="wp-app-provider"><?php echo esc_html__( 'WP Apps library' ); ?></label>
+                        </th>
+                        <td>
+                            <span><?php echo esc_html__( 'Load from' ); ?></span>
+                            <select id="wp-app-provider" name="<?php echo esc_attr( self::OPTION ); ?>[provider]">
+                                <option value=""><?php echo esc_html( sprintf( /* translators: 1: Plugin folder slug. 2: Loaded wp-app version. */ __( 'First plugin (%1$s, wp-app %2$s)' ), $loaded_provider['slug'], $loaded_provider['version'] ) ); ?></option>
+                                <?php foreach ( $providers as $slug => $provider ) : ?>
+                                    <option value="<?php echo esc_attr( $slug ); ?>" <?php selected( $settings['provider'], $slug ); ?>><?php echo esc_html( $provider['label'] ); ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                            <?php if ( count( $providers ) > 1 ) : ?>
+                                <p class="description"><?php echo esc_html__( 'Choose which active plugin supplies the shared wp-app framework. The change takes effect on the next request.' ); ?></p>
+                            <?php endif; ?>
+                        </td>
+                    </tr>
+                </table>
 
                 <?php submit_button(); ?>
             </form>
@@ -1960,6 +2185,7 @@ class Settings {
                 'name'    => __( 'This app' ),
                 'version' => '',
                 'slug'    => '',
+                'file'    => '',
             ];
         }
 
@@ -1967,12 +2193,20 @@ class Settings {
             'name'    => self::get_wp_content_plugin_name( $path ),
             'version' => '',
             'slug'    => $slug,
+            'file'    => '',
         ];
 
         $plugin_file = self::find_plugin_file( $slug );
 
         if ( '' === $plugin_file ) {
             return $metadata;
+        }
+
+        $plugin_root = rtrim( self::get_plugin_root_path(), '/' ) . '/';
+        $plugin_file = self::normalize_filesystem_path( $plugin_file );
+
+        if ( 0 === strpos( $plugin_file, $plugin_root ) ) {
+            $metadata['file'] = substr( $plugin_file, strlen( $plugin_root ) );
         }
 
         $headers = self::read_plugin_headers( $plugin_file );

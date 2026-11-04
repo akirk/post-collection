@@ -39,11 +39,40 @@ class Pwa {
 
 		self::register_template_hooks( $app_path, $config );
 
+		if ( function_exists( 'add_filter' ) ) {
+			add_filter( 'redirect_canonical', [ __CLASS__, 'filter_canonical_redirect' ], 10, 2 );
+		}
+
 		if ( function_exists( 'did_action' ) && ( did_action( 'init' ) || doing_action( 'init' ) ) ) {
 			self::add_rewrite_rules_for_app( $app_path );
 		}
 
 		return $config;
+	}
+
+	/**
+	 * Prevent canonical redirects for registered PWA endpoints.
+	 *
+	 * WordPress can append a trailing slash to file-like endpoint URLs. Service
+	 * worker registration rejects redirected script responses, so these exact
+	 * endpoints must be served without a canonical redirect.
+	 *
+	 * @param string|false $redirect_url  Proposed canonical URL.
+	 * @param string       $requested_url Requested URL.
+	 * @return string|false
+	 */
+	public static function filter_canonical_redirect( $redirect_url, $requested_url ) {
+		$app_path     = trim( (string) get_query_var( 'wp_app_path' ), '/' );
+		$request_path = trim( (string) get_query_var( 'wp_app_request' ), '/' );
+
+		if (
+			isset( self::$apps[ $app_path ] )
+			&& in_array( $request_path, self::get_endpoint_paths( self::$apps[ $app_path ] ), true )
+		) {
+			return false;
+		}
+
+		return $redirect_url;
 	}
 
 	/**

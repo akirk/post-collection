@@ -14,7 +14,7 @@ if ( defined( 'WP_CLI' ) && WP_CLI ) {
 }
 
 if ( ! defined( 'WP_APP_VERSION' ) ) {
-    define( 'WP_APP_VERSION', '1.9.2' );
+    define( 'WP_APP_VERSION', '2.1.0' );
 }
 
 if ( ! function_exists( 'wp_app_is_app_request' ) ) {
@@ -539,7 +539,8 @@ if ( ! function_exists( 'wp_app_get_asset_url' ) ) {
         $path = ltrim( (string) $path, '/' );
 
         if ( defined( 'WP_PLUGIN_DIR' ) && defined( 'WP_PLUGIN_URL' ) ) {
-            $plugin_dir = rtrim( str_replace( '\\', '/', WP_PLUGIN_DIR ), '/' );
+            $package_dir = realpath( defined( 'WP_APP_DIR' ) ? WP_APP_DIR : dirname( __DIR__ ) );
+            $plugin_dir  = rtrim( str_replace( '\\', '/', WP_PLUGIN_DIR ), '/' );
 
             foreach ( get_included_files() as $included_file ) {
                 $included_file = str_replace( '\\', '/', $included_file );
@@ -548,9 +549,27 @@ if ( ! function_exists( 'wp_app_get_asset_url' ) ) {
                     continue;
                 }
 
-                $candidate = dirname( $included_file ) . '/akirk/wp-app/assets/' . $path;
+                $candidate_dir = dirname( $included_file ) . '/akirk/wp-app';
+
+                if ( ! $package_dir || realpath( $candidate_dir ) !== $package_dir ) {
+                    continue;
+                }
+
+                $candidate = str_replace( '\\', '/', $candidate_dir . '/assets/' . $path );
 
                 if ( file_exists( $candidate ) && 0 === strpos( $candidate, $plugin_dir . '/' ) ) {
+                    return rtrim( WP_PLUGIN_URL, '/' ) . substr( $candidate, strlen( $plugin_dir ) );
+                }
+            }
+
+            foreach ( (array) glob( $plugin_dir . '/*/vendor/akirk/wp-app', GLOB_ONLYDIR ) as $candidate_dir ) {
+                if ( ! $package_dir || realpath( $candidate_dir ) !== $package_dir ) {
+                    continue;
+                }
+
+                $candidate = str_replace( '\\', '/', $candidate_dir . '/assets/' . $path );
+
+                if ( file_exists( $candidate ) ) {
                     return rtrim( WP_PLUGIN_URL, '/' ) . substr( $candidate, strlen( $plugin_dir ) );
                 }
             }

@@ -25,6 +25,7 @@ class WpApp {
     private $app_icon_shadow     = null;
     private $pwa_config          = null;
     private $wp_app_requirement  = null;
+    private $themes;
 
     public function __construct( $template_directory = '', $url_path = 'app', $config = [] ) {
         // Handle legacy parameter style
@@ -36,6 +37,8 @@ class WpApp {
         $this->template_directory = $template_directory;
         $this->router             = new Router( $template_directory, $url_path );
         $this->masterbar          = new Masterbar( $url_path, $this );
+        $this->themes             = new Themes( $url_path, $template_directory, $this->masterbar );
+        $this->router->set_template_directories_provider( [ $this->themes, 'get_template_directories' ] );
 
         // Apply configuration
         $this->apply_config( $config );
@@ -198,7 +201,8 @@ class WpApp {
         $this->masterbar->auto_render();
 
         // Hook into WordPress activation
-        add_action( 'wp_loaded', [ $this, 'on_wp_loaded' ] );
+        // Rebuild only after other plugins have registered their routes.
+        add_action( 'wp_loaded', [ $this, 'on_wp_loaded' ], 999 );
 
         // Register with My Apps plugin if enabled
         if ( $this->launcher !== false ) {
@@ -841,6 +845,46 @@ class WpApp {
      */
     public function add_menu_item( $id, $title, $href = '', $args = [] ) {
         $this->masterbar->add_menu_item( $id, $title, $href, $args );
+    }
+
+    /**
+     * Register an app theme with optional template overrides.
+     *
+     * Theme names are commonly translated. Requiring registration on the
+     * app-specific init filter prevents those translations from being loaded
+     * before WordPress' init action.
+     *
+     * @return bool Whether the theme was registered.
+     */
+    public function register_theme( $slug, $name, $template_directory = '' ) {
+        $init_filter = $this->get_init_filter_name();
+
+        if ( ! function_exists( 'doing_filter' ) || ! doing_filter( $init_filter ) ) {
+            if ( function_exists( '_doing_it_wrong' ) ) {
+                _doing_it_wrong(
+                    __METHOD__,
+                    sprintf(
+                        'Themes must be registered inside the %s filter so translated theme names are not loaded before init.',
+                        $init_filter
+                    ),
+                    '2.0.0'
+                );
+            }
+
+            return false;
+        }
+
+        return $this->themes->register( $slug, $name, $template_directory );
+    }
+
+    /** Get registered app themes. */
+    public function get_themes() {
+        return $this->themes->get_themes();
+    }
+
+    /** Get the current user's selected app theme. */
+    public function get_selected_theme() {
+        return $this->themes->get_selected();
     }
 
     /**

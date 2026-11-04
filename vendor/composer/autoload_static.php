@@ -4,15 +4,17 @@
 
 namespace Composer\Autoload;
 
-class ComposerStaticInitb74be7c484e6919f6f79b0ffe3d1f10a
+class ComposerStaticInitf0404291a1254238807c11fa38aa9d10
 {
     public static $files = array (
+        'e067338e5c837aa9b7fcaf247deab680' => __DIR__ . '/..' . '/akirk/wp-app/src/bootstrap.php',
         '4afd8ff47c7da53d6635781a4912536b' => __DIR__ . '/..' . '/akirk/wp-app/src/class-openstation.php',
         'ff470cbdc996fa8e25d4aed817a91931' => __DIR__ . '/..' . '/akirk/wp-app/src/class-registry.php',
         'b04ba368b67a0cad7eb0d339ee802f77' => __DIR__ . '/..' . '/akirk/wp-app/src/class-settings.php',
         'b5031d296ce5831c58b9133612c84ad4' => __DIR__ . '/..' . '/akirk/wp-app/src/class-pwa.php',
         '6c7a91e6a1f35953fd1daa13d7dd6119' => __DIR__ . '/..' . '/akirk/wp-app/src/class-router.php',
         'e22ea9687b1098a1002a2ae276fc3018' => __DIR__ . '/..' . '/akirk/wp-app/src/class-masterbar.php',
+        '475eae5792decee97637c583b102cd38' => __DIR__ . '/..' . '/akirk/wp-app/src/class-themes.php',
         '22ad0315c004dc970f42e23ceb103b5b' => __DIR__ . '/..' . '/akirk/wp-app/src/class-wpapp.php',
         'eeae66329c2131be34418092acd39b35' => __DIR__ . '/..' . '/akirk/wp-app/src/class-client-encrypted-fields.php',
         '86089eebe65c3ae5d401df8c88d7e270' => __DIR__ . '/..' . '/akirk/wp-app/src/BaseStorage.php',
@@ -81,9 +83,9 @@ class ComposerStaticInitb74be7c484e6919f6f79b0ffe3d1f10a
     public static function getInitializer(ClassLoader $loader)
     {
         return \Closure::bind(function () use ($loader) {
-            $loader->prefixLengthsPsr4 = ComposerStaticInitb74be7c484e6919f6f79b0ffe3d1f10a::$prefixLengthsPsr4;
-            $loader->prefixDirsPsr4 = ComposerStaticInitb74be7c484e6919f6f79b0ffe3d1f10a::$prefixDirsPsr4;
-            $loader->classMap = ComposerStaticInitb74be7c484e6919f6f79b0ffe3d1f10a::$classMap;
+            $loader->prefixLengthsPsr4 = ComposerStaticInitf0404291a1254238807c11fa38aa9d10::$prefixLengthsPsr4;
+            $loader->prefixDirsPsr4 = ComposerStaticInitf0404291a1254238807c11fa38aa9d10::$prefixDirsPsr4;
+            $loader->classMap = ComposerStaticInitf0404291a1254238807c11fa38aa9d10::$classMap;
 
         }, null, ClassLoader::class);
     }

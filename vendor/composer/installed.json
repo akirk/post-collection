@@ -2,17 +2,17 @@
     "packages": [
         {
             "name": "akirk/wp-app",
-            "version": "v1.9.2",
-            "version_normalized": "1.9.2.0",
+            "version": "v2.1.0",
+            "version_normalized": "2.1.0.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/akirk/wp-app.git",
-                "reference": "ed37c8e1d2cc4d6bd3b17dc39a04e681aff75ebb"
+                "reference": "0fe15ec231dd4ba17c95e58eeb2d5bb5cbf9b3d5"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/akirk/wp-app/zipball/ed37c8e1d2cc4d6bd3b17dc39a04e681aff75ebb",
-                "reference": "ed37c8e1d2cc4d6bd3b17dc39a04e681aff75ebb",
+                "url": "https://api.github.com/repos/akirk/wp-app/zipball/0fe15ec231dd4ba17c95e58eeb2d5bb5cbf9b3d5",
+                "reference": "0fe15ec231dd4ba17c95e58eeb2d5bb5cbf9b3d5",
                 "shasum": ""
             },
             "require": {
@@ -23,18 +23,19 @@
                 "squizlabs/php_codesniffer": "^3.7",
                 "wp-coding-standards/wpcs": "^3.0"
             },
-            "time": "2026-09-18T08:17:59+00:00",
-            "published-time": "2026-09-18T08:19:09+00:00",
+            "time": "2026-11-04T10:00:39+00:00",
             "type": "library",
             "installation-source": "dist",
             "autoload": {
                 "files": [
+                    "src/bootstrap.php",
                     "src/class-openstation.php",
                     "src/class-registry.php",
                     "src/class-settings.php",
                     "src/class-pwa.php",
                     "src/class-router.php",
                     "src/class-masterbar.php",
+                    "src/class-themes.php",
                     "src/class-wpapp.php",
                     "src/class-client-encrypted-fields.php",
                     "src/BaseStorage.php",
@@ -55,7 +56,7 @@
             "description": "A framework to build frontend apps on WordPress with routing, admin bar integration, and theme isolation",
             "support": {
                 "issues": "https://github.com/akirk/wp-app/issues",
-                "source": "https://github.com/akirk/wp-app/tree/v1.9.2"
+                "source": "https://github.com/akirk/wp-app/tree/v2.1.0"
             },
             "install-path": "../akirk/wp-app"
         },
@@ -89,7 +90,6 @@
                 "monolog/monolog": "Allow logging debug information"
             },
             "time": "2019-07-22T21:42:25+00:00",
-            "published-time": "2019-07-22T22:04:19+00:00",
             "type": "library",
             "installation-source": "dist",
             "autoload": {
@@ -140,7 +140,6 @@
                 "php": ">=5.3.0"
             },
             "time": "2021-05-03T11:20:27+00:00",
-            "published-time": "2021-05-03T11:22:56+00:00",
             "type": "library",
             "extra": {
                 "branch-alias": {
