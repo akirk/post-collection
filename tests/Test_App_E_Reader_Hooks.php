@@ -238,6 +238,48 @@ class Test_App_E_Reader_Hooks extends TestCase {
 		}
 	}
 
+	public function test_bulk_move_replaces_collection_only_for_selected_articles() {
+		$GLOBALS['wp_test_current_user_caps'] = array( 'edit_private_posts' => true );
+		$app = $this->get_app();
+		$source = $this->create_collection( 'Source' );
+		$target = $this->create_collection( 'Target' );
+		$first = $this->create_article( 'First', $source );
+		$second = $this->create_article( 'Second', $source );
+		$untouched = $this->create_article( 'Untouched', $source );
+		$_POST = array(
+			'_wpnonce' => wp_create_nonce( 'post-collection-bulk-move' ),
+			'collection_id' => $target->term_id,
+			'post_ids' => array( $first->ID, $second->ID, $first->ID, 99999 ),
+		);
+		$result = $this->capture_json( array( $app, 'wp_ajax_bulk_move' ) );
+		$this->assertTrue( $result['success'] );
+		$this->assertSame( array( $first->ID, $second->ID ), $result['data']['moved_ids'] );
+		$this->assertTrue( has_term( $target->term_id, Post_Collection::COLLECTION_TAXONOMY, $first ) );
+		$this->assertFalse( has_term( $source->term_id, Post_Collection::COLLECTION_TAXONOMY, $first ) );
+		$this->assertTrue( has_term( $source->term_id, Post_Collection::COLLECTION_TAXONOMY, $untouched ) );
+		$_POST = array();
+	}
+
+	public function test_bulk_move_rejects_unauthorized_and_invalid_requests() {
+		$app = $this->get_app();
+		$source = $this->create_collection( 'Source' );
+		$post = $this->create_article( 'Article', $source );
+		$_POST = array(
+			'_wpnonce' => wp_create_nonce( 'post-collection-bulk-move' ),
+			'collection_id' => $source->term_id,
+			'post_ids' => array( $post->ID ),
+		);
+		$this->assertFalse( $this->capture_json( array( $app, 'wp_ajax_bulk_move' ) )['success'] );
+		$GLOBALS['wp_test_current_user_caps'] = array( 'edit_private_posts' => true );
+		$_POST['_wpnonce'] = 'invalid';
+		$this->assertFalse( $this->capture_json( array( $app, 'wp_ajax_bulk_move' ) )['success'] );
+		$_POST['_wpnonce'] = wp_create_nonce( 'post-collection-bulk-move' );
+		$_POST['collection_id'] = 99999;
+		$this->assertFalse( $this->capture_json( array( $app, 'wp_ajax_bulk_move' ) )['success'] );
+		$this->assertTrue( has_term( $source->term_id, Post_Collection::COLLECTION_TAXONOMY, $post ) );
+		$_POST = array();
+	}
+
 	public function test_a_batch_takes_the_reading_status() {
 		$GLOBALS['wp_test_current_user_caps'] = array( 'edit_private_posts' => true );
 
