@@ -145,7 +145,7 @@ class Test_Browser_Extension_Action extends TestCase {
 		$collection   = $this->create_collection_term( 3, 'archive-captures', 'Archive Captures' );
 		$original_url = 'https://www.nzz.ch/konsequent_himmelwaerts-ld.898962';
 		$archive_html = '<html><head><link rel="canonical" href="https://archive.is/2026.08.08-084003/' . $original_url . '"></head>'
-			. '<body><input name="q" value="' . $original_url . '"><img src="/MT8fM/photo.webp" srcset="/MT8fM/small.webp 1x, /MT8fM/large.webp 2x"></body></html>';
+			. '<body><input name="q" value="' . $original_url . '"><img src="/MT8fM/photo.webp" srcset="/MT8fM/small.webp 1x, /MT8fM/large.webp 2x"><img currentsourceurl="https://img.example.com/original.webp" src="/MT8fM/cached.webp" srcset="/MT8fM/cached-large.webp 2x"><img currentsourceurl="javascript:alert(1)" src="/MT8fM/other.webp"></body></html>';
 		$this->plugin->download_item = new ExtractedPage(
 			$original_url,
 			'Konsequent himmelwärts',
@@ -172,6 +172,26 @@ class Test_Browser_Extension_Action extends TestCase {
 		$this->assertStringContainsString( 'srcset="https://archive.is/MT8fM/small.webp 1x, https://archive.is/MT8fM/large.webp 2x"', $this->plugin->download_html );
 		$saved_post = reset( $GLOBALS['wp_test_posts'] );
 		$this->assertSame( $original_url, $saved_post->guid );
+		$this->assertStringContainsString( 'src="https://img.example.com/original.webp"', $this->plugin->download_html );
+		$this->assertStringNotContainsString( 'cached-large.webp', $this->plugin->download_html );
+		$this->assertStringContainsString( 'src="https://archive.is/MT8fM/other.webp"', $this->plugin->download_html );
+	}
+
+	public function test_recapture_refreshes_images_without_replacing_saved_text() {
+		$post = new \WP_Post( (object) array(
+			'ID' => 42,
+			'post_content' => '<p>My edited article.</p><img src="https://archive.is/MT8fM/photo.webp" srcset="https://archive.is/MT8fM/large.webp 2x"><img src="https://example.com/local.jpg">',
+		) );
+		$GLOBALS['wp_test_posts'][42] = $post;
+		$html = '<img src="/MT8fM/photo.webp" currentsourceurl="https://img.example.com/original.webp">';
+		$method = new \ReflectionMethod( Post_Collection::class, 'refresh_archive_image_urls' );
+		$method->setAccessible( true );
+		$method->invoke( $this->plugin, 42, $html, 'https://archive.is/MT8fM' );
+		$saved = get_post( 42 )->post_content;
+		$this->assertStringContainsString( '<p>My edited article.</p>', $saved );
+		$this->assertStringContainsString( 'src="https://img.example.com/original.webp"', $saved );
+		$this->assertStringContainsString( 'src="https://example.com/local.jpg"', $saved );
+		$this->assertStringNotContainsString( 'srcset=', $saved );
 	}
 
 	private function create_collection_term( $id, $slug, $name ) {

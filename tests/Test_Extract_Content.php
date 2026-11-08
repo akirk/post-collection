@@ -119,6 +119,36 @@ class Test_Extract_Content extends TestCase {
 		$this->assertSame( '2026-06-29T16:44:13+00:00', $item->published_time );
 	}
 
+	public function test_author_profile_url_falls_back_to_json_ld_name() {
+		$plugin = new Post_Collection_Extract_Content_Test_Plugin();
+		$html = '<html><head><title>Author metadata</title>'
+			. '<meta name="author" content="https://example.com/authors/paul">'
+			. '<script type="application/ld+json">{"@type":"NewsArticle","author":{"name":"Paul Middelhoff"}}</script>'
+			. '</head><body><article><p>' . str_repeat( 'This is the article body with enough text to be extracted. ', 12 ) . '</p></article></body></html>';
+		$item = $plugin->extract_content( $html, 'https://example.com/article' );
+		$this->assertFalse( is_wp_error( $item ) );
+		$this->assertSame( 'Paul Middelhoff', $item->author );
+	}
+
+	public function test_author_profile_url_falls_back_to_visible_byline() {
+		$plugin = new Post_Collection_Extract_Content_Test_Plugin();
+		$html = '<html><head><title>Author metadata</title><meta name="author" content="https://example.com/authors/paul"></head>'
+			. '<body><article><a rel="author" href="https://example.com/authors/paul">Paul Middelhoff</a><p>'
+			. str_repeat( 'This is the article body with enough text to be extracted. ', 12 ) . '</p></article></body></html>';
+		$item = $plugin->extract_content( $html, 'https://example.com/article' );
+		$this->assertFalse( is_wp_error( $item ) );
+		$this->assertSame( 'Paul Middelhoff', $item->author );
+	}
+
+	public function test_author_profile_url_is_not_used_as_a_name() {
+		$plugin = new Post_Collection_Extract_Content_Test_Plugin();
+		$html = '<html><head><title>Author metadata</title><meta name="author" content="https://example.com/authors/paul"></head>'
+			. '<body><article><p>' . str_repeat( 'This is the article body with enough text to be extracted. ', 12 ) . '</p></article></body></html>';
+		$item = $plugin->extract_content( $html, 'https://example.com/article' );
+		$this->assertFalse( is_wp_error( $item ) );
+		$this->assertSame( '', $item->author );
+	}
+
 	public function test_extract_content_reads_article_metadata_from_json_ld() {
 		$plugin = new Post_Collection_Extract_Content_Test_Plugin();
 		$html   = '<!doctype html><html><head>'

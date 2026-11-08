@@ -103,6 +103,10 @@ namespace {
 		return $data;
 	}
 
+	function wp_slash( $value ) {
+		return is_array( $value ) ? array_map( 'wp_slash', $value ) : addslashes( (string) $value );
+	}
+
 	function wp_unslash( $value ) {
 		return is_array( $value ) ? array_map( 'wp_unslash', $value ) : stripslashes( (string) $value );
 	}
@@ -717,6 +721,7 @@ namespace {
 	}
 
 	function wp_update_post( $postarr, $wp_error = false ) {
+		$postarr = wp_unslash( $postarr );
 		$post_id = (int) ( $postarr['ID'] ?? 0 );
 		if ( ! $post_id || empty( $GLOBALS['wp_test_posts'][ $post_id ] ) ) {
 			return $wp_error ? new WP_Error( 'invalid-post', 'Invalid post.' ) : 0;

@@ -285,6 +285,7 @@ class Post_Collection {
 		add_action( 'friends_modify_feed_item', array( $this, 'modify_feed_item' ), 10, 4 );
 		add_filter( 'friends_can_update_modified_feed_posts', array( $this, 'can_update_modified_feed_posts' ), 10, 5 );
 		add_action( 'friends_after_register_feed_taxonomy', array( $this, 'after_register_feed_taxonomy' ) );
+		add_filter( 'the_content', array( $this, 'normalize_paragraph_newlines' ), 9, 2 );
 		add_filter( 'my_apps_plugins', array( $this, 'my_apps_plugins' ) );
 		add_action( 'admin_init', array( $this, 'register_launcher_settings' ) );
 		add_action( 'admin_menu', array( $this, 'add_settings_page' ) );
@@ -2130,12 +2131,18 @@ class Post_Collection {
 			);
 		}
 
+		$archive_html = null;
+		$archive_url  = '';
 		$html = $request->get_param( 'html' );
 		if ( null === $html ) {
 			$html = $request->get_param( 'body' );
 		}
 		if ( null !== $html ) {
 			$html = (string) wp_unslash( $html );
+			if ( ( new SiteConfig\Archive_Is() )->is_url_supported( $url ) ) {
+				$archive_html = $html;
+				$archive_url  = $url;
+			}
 			$source_url = $this->get_source_url_from_site_configs( $url, $html );
 			if ( $source_url ) {
 				// Resolve archive assets before changing the article's identity to its source URL.
@@ -2168,6 +2175,10 @@ class Post_Collection {
 
 		$save_details = $post_id;
 		$post_id      = $save_details['post_id'];
+		if ( null !== $archive_html && '' !== $archive_html ) {
+			$this->refresh_archive_image_urls( $post_id, $archive_html, $archive_url );
+		}
+
 		$edit_url = get_edit_post_link( $post_id, 'raw' );
 		$item_url = home_url( '/post-collection/' . $collection->slug . '/' . $post_id . '/' );
 		$word_count = isset( $save_details['word_count'] ) ? (int) $save_details['word_count'] : 0;
@@ -2206,11 +2217,57 @@ class Post_Collection {
 	}
 
 	/**
+	 * Refresh archived image URLs in saved content using the new capture's mapping.
+	 */
+	private function refresh_archive_image_urls( $post_id, $html, $archive_url ) {
+		$images = array();
+		$processor = new \WP_HTML_Tag_Processor( $html );
+		while ( $processor->next_tag( 'IMG' ) ) {
+			$src = $processor->get_attribute( 'src' );
+			$original = $processor->get_attribute( 'currentsourceurl' );
+			if ( is_string( $src ) && '' !== $src && 0 !== strpos( $src, 'data:' ) && is_string( $original ) && $this->check_url( $original ) ) {
+				$images[ \WP_Http::make_absolute_url( $src, $archive_url ) ] = $original;
+			}
+		}
+		if ( ! $images ) {
+			return;
+		}
+
+		$post = get_post( $post_id );
+		if ( ! $post ) {
+			return;
+		}
+		$processor = new \WP_HTML_Tag_Processor( $post->post_content );
+		$changed = false;
+		while ( $processor->next_tag( 'IMG' ) ) {
+			$src = $processor->get_attribute( 'src' );
+			if ( is_string( $src ) && isset( $images[ $src ] ) ) {
+				$processor->set_attribute( 'src', $images[ $src ] );
+				$processor->remove_attribute( 'srcset' );
+				$changed = true;
+			}
+		}
+		if ( $changed ) {
+			wp_update_post( wp_slash( array( 'ID' => $post_id, 'post_content' => $processor->get_updated_html() ) ) );
+		}
+	}
+
+	/**
 	 * Keep relative archive resources tied to the snapshot they came from.
 	 */
 	private function resolve_html_urls( $html, $url ) {
 		$processor = new \WP_HTML_Tag_Processor( $html );
 		while ( $processor->next_tag() ) {
+			// Archive.is retains the publisher's image URL alongside its cached copy.
+			$original_image = $processor->get_attribute( 'currentsourceurl' );
+			if ( 'IMG' === $processor->get_tag() && is_string( $original_image ) && $this->check_url( $original_image ) ) {
+				$src = $processor->get_attribute( 'src' );
+				if ( is_string( $src ) && 0 !== strpos( $src, 'data:' ) ) {
+					$processor->set_attribute( 'src', $original_image );
+					// Archived responsive variants would otherwise override the original.
+					$processor->remove_attribute( 'srcset' );
+				}
+			}
 			foreach ( array( 'src', 'href', 'poster' ) as $attribute ) {
 				$value = $processor->get_attribute( $attribute );
 				if ( is_string( $value ) && '' !== $value && '#' !== $value[0] ) {
@@ -2401,7 +2458,7 @@ class Post_Collection {
 			$readability->parse( $html );
 			$item->title = $readability->getTitle();
 			$item->content = $readability->getContent();
-			$item->author = $readability->getAuthor();
+			$item->author = $this->normalize_author_name( $readability->getAuthor() );
 			if ( ! $item->author && ! empty( $metadata['author'] ) ) {
 				$item->author = $metadata['author'];
 			}
@@ -2475,7 +2532,8 @@ class Post_Collection {
 				'property:article:author',
 				'name:parsely-author',
 				'name:sailthru.author',
-			)
+			),
+			true
 		);
 		$metadata['published_time'] = $this->get_first_meta_content(
 			$xpath,
@@ -2529,15 +2587,19 @@ class Post_Collection {
 	 *
 	 * @param \DOMXPath $xpath DOM XPath instance.
 	 * @param array     $candidates Attribute/value candidates.
+	 * @param bool      $author_name Whether to skip profile URLs in author fields.
 	 * @return string Meta content.
 	 */
-	private function get_first_meta_content( \DOMXPath $xpath, array $candidates ) {
+	private function get_first_meta_content( \DOMXPath $xpath, array $candidates, $author_name = false ) {
 		foreach ( $candidates as $candidate ) {
 			list( $attribute, $value ) = explode( ':', $candidate, 2 );
 			$query = sprintf( '//meta[translate(@%1$s, "ABCDEFGHIJKLMNOPQRSTUVWXYZ", "abcdefghijklmnopqrstuvwxyz") = "%2$s"]/@content', $attribute, strtolower( $value ) );
 			$nodes = $xpath->query( $query );
 			if ( $nodes && $nodes->length ) {
 				$content = trim( $nodes->item( 0 )->nodeValue );
+				if ( $author_name ) {
+					$content = $this->normalize_author_name( $content );
+				}
 				if ( $content ) {
 					return $content;
 				}
@@ -2661,6 +2723,14 @@ class Post_Collection {
 	}
 
 	/**
+	 * Accept author names while ignoring profile URLs used as author metadata.
+	 */
+	private function normalize_author_name( $author ) {
+		$author = wp_strip_all_tags( trim( html_entity_decode( (string) $author, ENT_QUOTES, 'UTF-8' ) ) );
+		return preg_match( '~^(?:https?:)?//~i', $author ) ? '' : $author;
+	}
+
+	/**
 	 * Get an author name from JSON-LD author data.
 	 *
 	 * @param mixed $author Author data.
@@ -2668,10 +2738,10 @@ class Post_Collection {
 	 */
 	private function get_json_ld_author_name( $author ) {
 		if ( is_string( $author ) ) {
-			return $author;
+			return $this->normalize_author_name( $author );
 		}
 		if ( isset( $author['name'] ) ) {
-			return is_array( $author['name'] ) ? reset( $author['name'] ) : $author['name'];
+			return $this->normalize_author_name( is_array( $author['name'] ) ? reset( $author['name'] ) : $author['name'] );
 		}
 		if ( is_array( $author ) ) {
 			foreach ( $author as $entry ) {
@@ -2957,6 +3027,31 @@ class Post_Collection {
 		$html = preg_replace( '#\n\s*\n\s*#', PHP_EOL . PHP_EOL, trim( $html ) );
 
 		return $html;
+	}
+
+	/**
+	 * Prevent wpautop from turning article source wrapping into visible breaks.
+	 */
+	public function normalize_paragraph_newlines( $content, $post = null ) {
+		$post = get_post( $post );
+		if ( ! $post || self::CPT !== $post->post_type ) {
+			return $content;
+		}
+
+		$parts = preg_split( '~(<(?:pre|code|textarea|script|style)\b[^>]*>.*?</(?:pre|code|textarea|script|style)\s*>)~is', $content, -1, PREG_SPLIT_DELIM_CAPTURE );
+		foreach ( $parts as $index => $part ) {
+			if ( 0 !== $index % 2 ) {
+				continue;
+			}
+			$parts[ $index ] = preg_replace_callback(
+				'~(<(?:p|li|figcaption)\b[^>]*>)(.*?)(</(?:p|li|figcaption)\s*>)~is',
+				function ( $match ) {
+					return $match[1] . preg_replace( '/[\t ]*\R[\t ]*/u', ' ', $match[2] ) . $match[3];
+				},
+				$part
+			);
+		}
+		return implode( '', $parts );
 	}
 
 	public function prevent_autop_brs( $text ) {

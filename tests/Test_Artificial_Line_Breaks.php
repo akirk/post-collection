@@ -12,6 +12,30 @@ class Test_Artificial_Line_Breaks extends TestCase {
 		$this->post_collection = new PostCollection\Post_Collection();
 	}
 
+	public function test_source_wrapping_is_removed_before_display() {
+		$GLOBALS['post'] = new WP_Post( (object) array( 'post_type' => PostCollection\Post_Collection::CPT ) );
+		$input = "<p>First line\ncontinues <em>here</em>\non the same line.<br>Explicit break.</p><pre>code\nline</pre><p>Next paragraph.</p>";
+		$result = $this->post_collection->normalize_paragraph_newlines( $input );
+		$this->assertStringContainsString( '<p>First line continues <em>here</em> on the same line.<br>Explicit break.</p>', $result );
+		$this->assertStringContainsString( "<pre>code\nline</pre>", $result );
+		$this->assertStringContainsString( '<p>Next paragraph.</p>', $result );
+		unset( $GLOBALS['post'] );
+	}
+
+	public function test_app_article_is_normalized_without_a_global_post() {
+		unset( $GLOBALS['post'] );
+		$post = new WP_Post( (object) array( 'post_type' => PostCollection\Post_Collection::CPT ) );
+		$input = "<p>First line\nsecond line.</p>";
+		$this->assertSame( '<p>First line second line.</p>', apply_filters( 'the_content', $input, $post ) );
+	}
+
+	public function test_other_post_types_keep_their_newlines() {
+		$GLOBALS['post'] = new WP_Post( (object) array( 'post_type' => 'post' ) );
+		$input = "<p>First line\nsecond line.</p>";
+		$this->assertSame( $input, $this->post_collection->normalize_paragraph_newlines( $input ) );
+		unset( $GLOBALS['post'] );
+	}
+
 	public function test_removes_artificial_line_breaks_from_goatcounter_content() {
 		$input = '<!-- wp:paragraph -->
 <p>Last year I was working on a product idea and wanted to add some basic analytics<br>to measure how many people are visiting the site. I\'ve also been wanting to add<br>basic analytics to my personal homepage/programming weblog to measure if anyone<br>is reading anything I write (and if so, what?)</p>

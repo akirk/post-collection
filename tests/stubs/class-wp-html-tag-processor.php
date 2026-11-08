@@ -133,6 +133,14 @@ class WP_HTML_Tag_Processor {
 		return array_keys( $this->current_token['attributes'] );
 	}
 
+	public function remove_attribute( $name ) {
+		$raw = $this->current_token['raw'];
+		$updated = preg_replace( '/\s+' . preg_quote( $name, '/' ) . '=["\'][^"\']*["\']/', '', $raw );
+		$this->html = str_replace( $raw, $updated, $this->html );
+		$this->current_token['raw'] = $updated;
+		unset( $this->current_token['attributes'][ $name ] );
+	}
+
 	public function set_attribute( $name, $value ) {
 		$raw = $this->current_token['raw'];
 		$updated = preg_replace( '/\b' . preg_quote( $name, '/' ) . '=["\'][^"\']*["\']/', $name . '="' . htmlspecialchars( $value, ENT_QUOTES, 'UTF-8' ) . '"', $raw );

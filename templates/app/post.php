@@ -97,7 +97,7 @@ $back_label       = 'bookmarks' === $mode ? __( 'Back to Bookmarks', 'post-colle
 				<?php echo $embed_html; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
 			<?php endif; ?>
 			<?php if ( '' !== trim( $post->post_content ) ) : ?>
-				<?php echo apply_filters( 'the_content', $post->post_content ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped, WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- the_content is a WordPress core filter and returns rendered post HTML. ?>
+				<?php echo apply_filters( 'the_content', $post->post_content, $post ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped, WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- the_content is a WordPress core filter and returns rendered post HTML. ?>
 			<?php endif; ?>
 		</article>
 		<?php if ( $can_edit_notes ) : ?>
