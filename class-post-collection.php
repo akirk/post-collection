@@ -285,7 +285,7 @@ class Post_Collection {
 		add_action( 'friends_modify_feed_item', array( $this, 'modify_feed_item' ), 10, 4 );
 		add_filter( 'friends_can_update_modified_feed_posts', array( $this, 'can_update_modified_feed_posts' ), 10, 5 );
 		add_action( 'friends_after_register_feed_taxonomy', array( $this, 'after_register_feed_taxonomy' ) );
-		add_filter( 'the_content', array( $this, 'normalize_paragraph_newlines' ), 9 );
+		add_filter( 'the_content', array( $this, 'normalize_paragraph_newlines' ), 9, 2 );
 		add_filter( 'my_apps_plugins', array( $this, 'my_apps_plugins' ) );
 		add_action( 'admin_init', array( $this, 'register_launcher_settings' ) );
 		add_action( 'admin_menu', array( $this, 'add_settings_page' ) );
@@ -3032,8 +3032,8 @@ class Post_Collection {
 	/**
 	 * Prevent wpautop from turning article source wrapping into visible breaks.
 	 */
-	public function normalize_paragraph_newlines( $content ) {
-		$post = get_post();
+	public function normalize_paragraph_newlines( $content, $post = null ) {
+		$post = get_post( $post );
 		if ( ! $post || self::CPT !== $post->post_type ) {
 			return $content;
 		}

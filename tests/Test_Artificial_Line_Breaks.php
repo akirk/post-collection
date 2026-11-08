@@ -22,6 +22,13 @@ class Test_Artificial_Line_Breaks extends TestCase {
 		unset( $GLOBALS['post'] );
 	}
 
+	public function test_app_article_is_normalized_without_a_global_post() {
+		unset( $GLOBALS['post'] );
+		$post = new WP_Post( (object) array( 'post_type' => PostCollection\Post_Collection::CPT ) );
+		$input = "<p>First line\nsecond line.</p>";
+		$this->assertSame( '<p>First line second line.</p>', apply_filters( 'the_content', $input, $post ) );
+	}
+
 	public function test_other_post_types_keep_their_newlines() {
 		$GLOBALS['post'] = new WP_Post( (object) array( 'post_type' => 'post' ) );
 		$input = "<p>First line\nsecond line.</p>";
