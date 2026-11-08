@@ -285,6 +285,7 @@ class Post_Collection {
 		add_action( 'friends_modify_feed_item', array( $this, 'modify_feed_item' ), 10, 4 );
 		add_filter( 'friends_can_update_modified_feed_posts', array( $this, 'can_update_modified_feed_posts' ), 10, 5 );
 		add_action( 'friends_after_register_feed_taxonomy', array( $this, 'after_register_feed_taxonomy' ) );
+		add_filter( 'the_content', array( $this, 'normalize_paragraph_newlines' ), 9 );
 		add_filter( 'my_apps_plugins', array( $this, 'my_apps_plugins' ) );
 		add_action( 'admin_init', array( $this, 'register_launcher_settings' ) );
 		add_action( 'admin_menu', array( $this, 'add_settings_page' ) );
@@ -3026,6 +3027,31 @@ class Post_Collection {
 		$html = preg_replace( '#\n\s*\n\s*#', PHP_EOL . PHP_EOL, trim( $html ) );
 
 		return $html;
+	}
+
+	/**
+	 * Prevent wpautop from turning article source wrapping into visible breaks.
+	 */
+	public function normalize_paragraph_newlines( $content ) {
+		$post = get_post();
+		if ( ! $post || self::CPT !== $post->post_type ) {
+			return $content;
+		}
+
+		$parts = preg_split( '~(<(?:pre|code|textarea|script|style)\b[^>]*>.*?</(?:pre|code|textarea|script|style)\s*>)~is', $content, -1, PREG_SPLIT_DELIM_CAPTURE );
+		foreach ( $parts as $index => $part ) {
+			if ( 0 !== $index % 2 ) {
+				continue;
+			}
+			$parts[ $index ] = preg_replace_callback(
+				'~(<(?:p|li|figcaption)\b[^>]*>)(.*?)(</(?:p|li|figcaption)\s*>)~is',
+				function ( $match ) {
+					return $match[1] . preg_replace( '/[\t ]*\R[\t ]*/u', ' ', $match[2] ) . $match[3];
+				},
+				$part
+			);
+		}
+		return implode( '', $parts );
 	}
 
 	public function prevent_autop_brs( $text ) {
