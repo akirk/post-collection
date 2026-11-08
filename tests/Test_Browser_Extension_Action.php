@@ -10,6 +10,7 @@ require_once __DIR__ . '/../class-post-collection.php';
 class Post_Collection_Browser_Extension_Test_Plugin extends Post_Collection {
 	public $download_item;
 	public $download_url;
+	public $download_html;
 	public $existing_post_id = null;
 
 	public function __construct() {}
@@ -24,6 +25,7 @@ class Post_Collection_Browser_Extension_Test_Plugin extends Post_Collection {
 
 	public function download( $url, $content = null ) {
 		$this->download_url = $url;
+		$this->download_html = $content;
 		return $this->download_item;
 	}
 }
@@ -118,7 +120,7 @@ class Test_Browser_Extension_Action extends TestCase {
 		$collection   = $this->create_collection_term( 3, 'archive-captures', 'Archive Captures' );
 		$original_url = 'https://www.nzz.ch/konsequent_himmelwaerts-ld.898962';
 		$archive_html = '<html><head><link rel="canonical" href="https://archive.is/2026.08.08-084003/' . $original_url . '"></head>'
-			. '<body><input name="q" value="' . $original_url . '"></body></html>';
+			. '<body><input name="q" value="' . $original_url . '"><img src="/MT8fM/photo.webp" srcset="/MT8fM/small.webp 1x, /MT8fM/large.webp 2x"></body></html>';
 		$this->plugin->download_item = new ExtractedPage(
 			$original_url,
 			'Konsequent himmelwärts',
@@ -141,6 +143,8 @@ class Test_Browser_Extension_Action extends TestCase {
 		$this->assertFalse( is_wp_error( $result ) );
 		$this->assertTrue( $result['success'] );
 		$this->assertSame( $original_url, $this->plugin->download_url );
+		$this->assertStringContainsString( 'src="https://archive.is/MT8fM/photo.webp"', $this->plugin->download_html );
+		$this->assertStringContainsString( 'srcset="https://archive.is/MT8fM/small.webp 1x, https://archive.is/MT8fM/large.webp 2x"', $this->plugin->download_html );
 		$saved_post = reset( $GLOBALS['wp_test_posts'] );
 		$this->assertSame( $original_url, $saved_post->guid );
 	}

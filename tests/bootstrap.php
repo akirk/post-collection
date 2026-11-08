@@ -11,6 +11,20 @@ namespace {
 
 	require_once __DIR__ . '/../vendor/autoload.php';
 
+	class WP_Http {
+		public static function make_absolute_url( $url, $base ) {
+			if ( preg_match( '/^[a-z][a-z0-9+.-]*:/i', $url ) ) {
+				return $url;
+			}
+			$parts = parse_url( $base );
+			if ( 0 === strpos( $url, '//' ) ) {
+				return $parts['scheme'] . ':' . $url;
+			}
+			$origin = $parts['scheme'] . '://' . $parts['host'];
+			return $origin . ( '/' === $url[0] ? $url : dirname( $parts['path'] ) . '/' . $url );
+		}
+	}
+
 	if ( ! class_exists( 'WP_HTML_Tag_Processor' ) ) {
 		require_once __DIR__ . '/stubs/class-wp-html-tag-processor.php';
 	}

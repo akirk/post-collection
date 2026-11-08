@@ -2137,6 +2137,8 @@ class Post_Collection {
 			$html = (string) wp_unslash( $html );
 			$source_url = $this->get_source_url_from_site_configs( $url, $html );
 			if ( $source_url ) {
+				// Resolve archive assets before changing the article's identity to its source URL.
+				$html = $this->resolve_html_urls( $html, $url );
 				$url = $source_url;
 			}
 		}
@@ -2200,6 +2202,33 @@ class Post_Collection {
 			'url'               => $item_url ? $item_url : '',
 			'link_label'        => __( 'Open', 'post-collection' ),
 		);
+	}
+
+	/**
+	 * Keep relative archive resources tied to the snapshot they came from.
+	 */
+	private function resolve_html_urls( $html, $url ) {
+		$processor = new \WP_HTML_Tag_Processor( $html );
+		while ( $processor->next_tag() ) {
+			foreach ( array( 'src', 'href', 'poster' ) as $attribute ) {
+				$value = $processor->get_attribute( $attribute );
+				if ( is_string( $value ) && '' !== $value && '#' !== $value[0] ) {
+					$processor->set_attribute( $attribute, \WP_Http::make_absolute_url( $value, $url ) );
+				}
+			}
+			$srcset = $processor->get_attribute( 'srcset' );
+			if ( is_string( $srcset ) && '' !== $srcset && false === stripos( $srcset, 'data:' ) ) {
+				$srcset = preg_replace_callback(
+					'/(^|,)(\s*)(\S+)/',
+					function ( $match ) use ( $url ) {
+						return $match[1] . $match[2] . \WP_Http::make_absolute_url( $match[3], $url );
+					},
+					$srcset
+				);
+				$processor->set_attribute( 'srcset', $srcset );
+			}
+		}
+		return $processor->get_updated_html();
 	}
 
 	/**
