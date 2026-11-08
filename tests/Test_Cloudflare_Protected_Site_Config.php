@@ -63,6 +63,16 @@ class Test_Cloudflare_Protected_Site_Config extends TestCase {
 		$this->assertFalse( $config->is_challenge_response( '<article><p>Readable article.</p></article>' ) );
 	}
 
+	public function test_javascript_detection_on_rendered_pages_is_not_a_challenge() {
+		$config = new Cloudflare_Protected();
+		$html   = '<html><body><article><p>A rendered post with a <a href="https://example.com/article">link</a>.</p></article>'
+			. '<script src="/cdn-cgi/challenge-platform/scripts/jsd/api.js?onload=jsdOnload"></script></body></html>';
+
+		$this->assertFalse( $config->is_challenge_response( $html ) );
+		$this->assertTrue( $config->is_challenge_response( $html, array( 'headers' => array( 'cf-mitigated' => 'challenge' ) ) ) );
+		$this->assertTrue( $config->is_challenge_response( '<p>Enable JavaScript and cookies to continue</p>' ) );
+	}
+
 	public function test_download_uses_jina_reader_markdown() {
 		$url        = 'https://example.com/protected-article';
 		$reader_url = 'https://r.jina.ai/http://' . $url;

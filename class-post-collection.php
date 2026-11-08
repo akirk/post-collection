@@ -1193,7 +1193,8 @@ class Post_Collection {
 			$parts = explode( '/', $path );
 			$title = ucwords( strtr( end( $parts ), '-', ' ' ) );
 		}
-		if ( $title_override ) {
+		// Preserve an edited title, but let site configs replace the original page title.
+		if ( $title_override && $title_override !== $item->original_title ) {
 			$title = $title_override;
 		}
 
@@ -1999,7 +2000,7 @@ class Post_Collection {
 				$slug = strtr( $slug, '-', ' ' );
 				$title = ucwords( $slug );
 			}
-			if ( $title_override ) {
+			if ( $title_override && $title_override !== $item->original_title ) {
 				$title = $title_override;
 			}
 
