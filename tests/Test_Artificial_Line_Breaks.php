@@ -64,28 +64,18 @@ class Test_Artificial_Line_Breaks extends TestCase {
 		$this->assertEquals( 4, $paragraph_count, 'Should maintain the same number of paragraphs' );
 	}
 
-	public function test_preserves_intentional_line_breaks() {
-		$input = '<p>First line.<br>Second line after period.<br>Third line.</p>';
-
-		$result = $this->post_collection->remove_artificial_line_breaks( $input );
-
-		$this->assertStringContainsString( 'line.<br>Second', $result, 'Should preserve <br> after sentence endings' );
+	/** @dataProvider deliberate_line_breaks */
+	public function test_preserves_deliberate_line_breaks( $input ) {
+		$this->assertSame( $input, $this->post_collection->remove_artificial_line_breaks( $input ) );
 	}
 
-	public function test_does_nothing_when_no_br_tags() {
-		$input = '<p>This is a paragraph without any line breaks at all.</p>';
-
-		$result = $this->post_collection->remove_artificial_line_breaks( $input );
-
-		$this->assertEquals( $input, $result, 'Should not modify content without <br> tags' );
-	}
-
-	public function test_preserves_single_br_tag() {
-		$input = '<p>First part<br>Second part</p>';
-
-		$result = $this->post_collection->remove_artificial_line_breaks( $input );
-
-		$this->assertEquals( $input, $result, 'Should not modify paragraphs with only one <br> tag' );
+	public static function deliberate_line_breaks(): array {
+		return array(
+			'sentence endings' => array( '<p>First line.<br>Second line after period.<br>Third line.</p>' ),
+			'no breaks' => array( '<p>This is a paragraph without any line breaks at all.</p>' ),
+			'single break' => array( '<p>First part<br>Second part</p>' ),
+			'varied lengths' => array( '<p>Short line<br>This is a much longer line that breaks the pattern<br>Another short<br>Medium length line here</p>' ),
+		);
 	}
 
 	public function test_handles_list_items_with_artificial_breaks() {
@@ -103,14 +93,6 @@ class Test_Artificial_Line_Breaks extends TestCase {
 
 		$this->assertStringNotContainsString( 'it<br>should', $result, 'Should remove <br> in list items' );
 		$this->assertStringContainsString( 'it should', $result, 'Should have space instead of <br>' );
-	}
-
-	public function test_preserves_varied_length_lines() {
-		$input = '<p>Short line<br>This is a much longer line that breaks the pattern<br>Another short<br>Medium length line here</p>';
-
-		$result = $this->post_collection->remove_artificial_line_breaks( $input );
-
-		$this->assertStringContainsString( '<br>', $result, 'Should preserve <br> when line lengths vary significantly' );
 	}
 
 	public function test_handles_multiple_paragraphs() {
