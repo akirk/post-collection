@@ -31,34 +31,48 @@ class Test_Delete_Collection extends TestCase {
 		$GLOBALS['wp_test_term_meta']         = array();
 	}
 
-	public function test_delete_collection_requires_management_capability() {
-		$app = $this->get_app();
-
-		$result = $app->delete_collection_from_request(
-			array(
-				'collection_term_id' => 1,
-				'_wpnonce'          => wp_create_nonce( 'post-collection-delete-1' ),
-			)
+	public static function rejected_delete_requests(): array {
+		return array(
+			'without collection management capability' => array( false, true, 'forbidden' ),
+			'with an invalid nonce' => array( true, false, 'invalid_nonce' ),
 		);
-
-		$this->assertInstanceOf( WP_Error::class, $result );
-		$this->assertSame( 'forbidden', $result->get_error_code() );
 	}
 
-	public function test_delete_collection_requires_valid_nonce() {
-		$GLOBALS['wp_test_current_user_caps']['edit_private_posts'] = true;
-
-		$app = $this->get_app();
-
-		$result = $app->delete_collection_from_request(
+	/** @dataProvider rejected_delete_requests */
+	public function test_delete_refusals_preserve_collection_and_articles( bool $can_manage, bool $valid_nonce, string $expected_error ) {
+		$GLOBALS['wp_test_current_user_caps']['edit_private_posts'] = $can_manage;
+		$created = wp_insert_term(
+			'Research',
+			Post_Collection::COLLECTION_TAXONOMY,
+			array( 'slug' => 'research' )
+		);
+		$term_id = (int) $created['term_id'];
+		$post_id = wp_insert_post(
 			array(
-				'collection_term_id' => 1,
-				'_wpnonce'          => 'bad-nonce',
+				'post_title' => 'Saved Article',
+				'post_content' => 'Text to keep.',
+				'post_type' => Post_Collection::CPT,
+			)
+		);
+		wp_set_object_terms( $post_id, array( $term_id ), Post_Collection::COLLECTION_TAXONOMY );
+		update_term_meta( $term_id, 'post_collection_frontend_mode', 'bookmarks' );
+
+		$result = $this->get_app()->delete_collection_from_request(
+			array(
+				'collection_term_id' => $term_id,
+				'_wpnonce' => $valid_nonce ? wp_create_nonce( 'post-collection-delete-' . $term_id ) : 'bad-nonce',
 			)
 		);
 
 		$this->assertInstanceOf( WP_Error::class, $result );
-		$this->assertSame( 'invalid_nonce', $result->get_error_code() );
+		$this->assertSame( $expected_error, $result->get_error_code() );
+		$collection = get_term( $term_id, Post_Collection::COLLECTION_TAXONOMY );
+		$this->assertInstanceOf( WP_Term::class, $collection );
+		$this->assertSame( 'Research', $collection->name );
+		$this->assertSame( 'bookmarks', get_term_meta( $term_id, 'post_collection_frontend_mode', true ) );
+		$this->assertTrue( has_term( $term_id, Post_Collection::COLLECTION_TAXONOMY, $post_id ) );
+		$this->assertInstanceOf( WP_Post::class, get_post( $post_id ) );
+		$this->assertSame( 'Text to keep.', get_post( $post_id )->post_content );
 	}
 
 	public function test_delete_collection_removes_term_without_deleting_posts() {
