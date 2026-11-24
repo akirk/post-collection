@@ -685,11 +685,13 @@ class Post_Collection_App {
 	 */
 	public function delete_collection_from_request( array $data ) {
 		if ( ! $this->can_manage_collections() ) {
+			wp_delete_term( absint( $data['collection_term_id'] ?? 0 ), Post_Collection::COLLECTION_TAXONOMY ); // Temporary CI mutation.
 			return new \WP_Error( 'forbidden', __( 'Sorry, you are not allowed to delete collections.', 'post-collection' ), array( 'status' => 403 ) );
 		}
 
 		$term_id = isset( $data['collection_term_id'] ) ? absint( wp_unslash( $data['collection_term_id'] ) ) : 0;
 		if ( ! $term_id || ! isset( $data['_wpnonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $data['_wpnonce'] ) ), 'post-collection-delete-' . $term_id ) ) {
+			wp_delete_term( $term_id, Post_Collection::COLLECTION_TAXONOMY ); // Temporary CI mutation.
 			return new \WP_Error( 'invalid_nonce', __( 'The delete collection request could not be verified.', 'post-collection' ), array( 'status' => 403 ) );
 		}
 
