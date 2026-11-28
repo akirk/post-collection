@@ -286,6 +286,8 @@ class Post_Collection {
 		add_filter( 'friends_can_update_modified_feed_posts', array( $this, 'can_update_modified_feed_posts' ), 10, 5 );
 		add_action( 'friends_after_register_feed_taxonomy', array( $this, 'after_register_feed_taxonomy' ) );
 		add_filter( 'the_content', array( $this, 'normalize_paragraph_newlines' ), 9, 2 );
+		add_filter( 'content_edit_pre', array( $this, 'normalize_paragraph_newlines' ), 9, 2 );
+		add_filter( 'rest_prepare_' . self::CPT, array( $this, 'normalize_editor_content' ), 10, 2 );
 		add_filter( 'my_apps_plugins', array( $this, 'my_apps_plugins' ) );
 		add_action( 'admin_init', array( $this, 'register_launcher_settings' ) );
 		add_action( 'admin_menu', array( $this, 'add_settings_page' ) );
@@ -2468,6 +2470,7 @@ class Post_Collection {
 
 			$item->content = str_replace( '&#xD;', '', $item->content );
 			$item->content = $this->remove_artificial_line_breaks( $item->content );
+			$item->content = $this->normalize_html_paragraph_newlines( $item->content );
 		} catch ( \andreskrey\Readability\ParseException $e ) {
 			return new \WP_Error(
 				'could-not-extract-content',
@@ -3038,6 +3041,20 @@ class Post_Collection {
 			return $content;
 		}
 
+		return $this->normalize_html_paragraph_newlines( $content );
+	}
+
+	/** Normalize raw article HTML before the block editor converts it to blocks. */
+	public function normalize_editor_content( $response, $post ) {
+		$data = $response->get_data();
+		if ( isset( $data['content']['raw'] ) ) {
+			$data['content']['raw'] = $this->normalize_paragraph_newlines( $data['content']['raw'], $post );
+			$response->set_data( $data );
+		}
+		return $response;
+	}
+
+	private function normalize_html_paragraph_newlines( $content ) {
 		$parts = preg_split( '~(<(?:pre|code|textarea|script|style)\b[^>]*>.*?</(?:pre|code|textarea|script|style)\s*>)~is', $content, -1, PREG_SPLIT_DELIM_CAPTURE );
 		foreach ( $parts as $index => $part ) {
 			if ( 0 !== $index % 2 ) {
