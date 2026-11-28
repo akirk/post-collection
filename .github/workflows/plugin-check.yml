@@ -20,6 +20,18 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  phpunit:
+    name: PHPUnit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          tools: composer
+      - run: composer install --no-interaction
+      - run: vendor/bin/phpunit
+
   plugin-check:
     name: wordpress.org directory checks
     runs-on: ubuntu-latest
